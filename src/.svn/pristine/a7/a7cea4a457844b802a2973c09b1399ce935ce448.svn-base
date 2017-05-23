@@ -1,0 +1,1005 @@
+package com.rd.client.view.settlement;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import com.google.gwt.user.client.Cookies;
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGButtonItem;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.RecInitBillDS;
+import com.rd.client.ds.settlement.RecInitdetailsDS;
+import com.rd.client.ds.settlement.RecInitialDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.BussWin;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.Autofit;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.util.BooleanCallback;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.PickerIcon;
+import com.smartgwt.client.widgets.form.fields.events.FormItemClickHandler;
+import com.smartgwt.client.widgets.form.fields.events.FormItemIconClickEvent;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 
+ *费用管理---结算管理-应收期初账单
+ *
+ */
+@ClassForNameAble
+public class RecInitBillView extends SGForm implements PanelFactory {
+	
+	 private DataSource ds;
+	 private DataSource lstDS; 
+	 private DataSource RecInitBillDs;
+	 private SGTable table;
+	 private SGTable unshpmlstTable;
+	 private SectionStack section;
+	 private Window searchWin = null;
+	 private DynamicForm searchForm;
+     private IButton confButton;
+     private IButton confCanButton;
+     private IButton addButton;
+     private IButton removeButton;
+     private IButton generateReqButton ;
+     private IButton generateAdjButton ;
+	 private Window addWin;
+	 
+	 /*public RecInitBillView(String id) {
+		 super(id);
+	 }*/
+	 
+	 public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+	    ToolStrip toolStrip = new ToolStrip();  //按钮布局
+	    toolStrip.setAlign(Alignment.LEFT);
+	    ds = RecInitialDS.getInstance("V_REC_INITIAL","BILL_REC_INITIAL");
+	    lstDS=RecInitdetailsDS.getInstance("V_REC_INITDETAILS","BILL_REC_INITDETAILS");
+	    RecInitBillDs=RecInitBillDS.getInstance("V_REC_INIT");
+	    //主布局
+		HStack stack = new HStack();
+		stack.setWidth("100%");
+		stack.setHeight100();
+	
+		//STACK的左边列表
+		table=new SGTable(ds, "100%", "100%", false, false, false) {
+			
+        	//明细表
+			protected Canvas getExpansionComponent(final ListGridRecord record) {    				  
+                VLayout layout = new VLayout();              
+  
+                unshpmlstTable = new SGTable();
+                unshpmlstTable.setDataSource(lstDS);
+                unshpmlstTable.setWidth("100%");
+                unshpmlstTable.setHeight(60);
+                unshpmlstTable.setCanEdit(false);
+                unshpmlstTable.setAutoFitData(Autofit.VERTICAL);
+                unshpmlstTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+               
+                Criteria findValues = new Criteria();
+                findValues.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+		        findValues.addCriteria("INIT_NO", record.getAttributeAsString("INIT_NO"));
+		        	
+		        //作业单明细列表
+		        ListGridField ODR_NO = new ListGridField("ODR_NO","订单号", 100);
+		        ListGridField ID = new ListGridField("ID","", 100);
+		        ID.setHidden(true);
+		        ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO","客户单号", 100);
+		        //ListGridField PLATE_NO = new ListGridField("PLATE_NO","车牌", 80);
+		        //ListGridField VEHICLE_TYP_ID_NAME = new ListGridField("VEHICLE_TYP_ID_NAME","车型", 80);
+		        //ListGridField LOAD_DATE = new ListGridField("LOAD_DATE","发货日期",120);
+		        //ListGridField UNLOAD_DATE = new ListGridField("UNLOAD_DATE","收货日期", 120);
+		       // ListGridField LOAD_NAME = new ListGridField("LOAD_NAME","发货方", 120);
+		        //ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME","收货方", 120);
+		        //ListGridField FEE_BAS = new ListGridField("FEE_BAS_NAME","计费基准", 60);
+		       // ListGridField BAS_VALUE = new ListGridField("BAS_VALUE","基准值", 60);
+		        ListGridField TOT_AMOUNT = new ListGridField("TOT_AMOUNT","应收金额", 80);
+		        ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT","税金", 80);
+		        ListGridField SUBTAX_AMOUNT = new ListGridField("SUBTAX_AMOUNT","应收金额（不含税）", 120);
+		        ListGridField NOTES = new ListGridField("NOTES","备注", 140);
+		        unshpmlstTable.setFields(ID,ODR_NO, CUSTOM_ODR_NO,TOT_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT,NOTES);
+        		unshpmlstTable.fetchData(findValues);
+
+        		
+                layout.addMember(unshpmlstTable);
+                layout.setLayoutLeftMargin(60);
+                
+                return layout;   
+            } 
+		};
+		table.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		table.setCanEdit(false); 
+		table.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		table.setCanExpandRecords(true);
+		getConfigList();
+		section = new SectionStack();
+		SectionStackSection listItem = new SectionStackSection("列表信息");
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+		listItem.setControls(new SGPage(table, true).initPageBtn());
+	    section.addSection(listItem);
+	    section.setWidth("100%");
+		stack.addMember(section);
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		
+		main.addMember(stack);
+		
+		
+		initVerify();
+        return main;
+              
+	}
+
+ 
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+	private void getConfigList() {
+		
+        ListGridField INIT_NO = new ListGridField("INIT_NO", "对账单号", 110);
+        ListGridField ID = new ListGridField("ID", "", 200);
+        ID.setHidden(true);
+        ListGridField ACCOUNT_STAT = new ListGridField("ACCOUNT_STAT", "", 90);
+        ACCOUNT_STAT.setHidden(true);
+        ListGridField BUSS_NAME = new ListGridField("BUSS_NAME", "客户", 100);
+        ListGridField BELONG_MONTH = new ListGridField("BELONG_MONTH", "所属账期", 80);
+        ListGridField INIT_AMOUNT = new ListGridField("INIT_AMOUNT", "期初金额", 100);
+        ListGridField INITITAL_AMOUNT = new ListGridField("INITITAL_AMOUNT", "应收金额", 90);
+        ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT", "税金", 90);
+        ListGridField SUBTAX_AMOUNT = new ListGridField("SUBTAX_AMOUNT", "应收金额（不含税）", 120);
+        ListGridField ACCOUNT_STAT_NAME = new ListGridField("ACCOUNT_STAT_NAME", "对账状态",90);
+        table.setFields(ACCOUNT_STAT,ID,INIT_NO, BUSS_NAME,BELONG_MONTH, INIT_AMOUNT,INITITAL_AMOUNT, TAX_AMOUNT, SUBTAX_AMOUNT,ACCOUNT_STAT_NAME);
+
+        table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				ListGridRecord record=table.getSelectedRecord();
+                //Record  rec=event.getRecord();
+                //System.out.println(rec.getAttribute("ACCOUNT_STAT"));
+				if(record!=null){				
+					if(record.getAttribute("ACCOUNT_STAT")!=null){				
+						if(record.getAttribute("ACCOUNT_STAT").equals("20")){				
+							confButton.setDisabled(true);
+							confCanButton.setDisabled(false);	
+							addButton.setDisabled(true);
+							removeButton.setDisabled(true);
+							generateAdjButton.setDisabled(true);
+						}			
+						else if(record.getAttribute("ACCOUNT_STAT").equals("10")){					
+							confCanButton.setDisabled(true);	
+							confButton.setDisabled(false);
+//							addButton.setDisabled(false);
+//							removeButton.setDisabled(false);
+//							generateAdjButton.setDisabled(false);
+							if(("Y").equals(record.getAttribute("HOLD_FLAG"))){
+								addButton.setDisabled(true);
+								removeButton.setDisabled(true);
+								generateAdjButton.setDisabled(true);
+							}
+							else if(("N").equals(record.getAttribute("HOLD_FLAG"))){
+								addButton.setDisabled(false);
+								removeButton.setDisabled(false);
+								generateAdjButton.setDisabled(false);
+							}							
+						}				
+					}								
+					if(record.getAttribute("INVOICE_FLAG")!=null){					
+						if(record.getAttribute("INVOICE_FLAG").equals("Y")){
+							generateReqButton.setDisabled(true);					
+						}else{				
+							generateReqButton.setDisabled(false);
+						}		
+					}	
+				}		
+			}			
+		});	
+	}
+		
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.setAlign(Alignment.RIGHT);
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,SettPrivRef.RecInitBill_P0);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new DynamicForm();
+					searchWin = new SearchWin(ds,
+							createSerchForm(searchForm),section.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+		
+      //添加费用
+        addButton = createUDFBtn("添加费用",StaticRef.ICON_COPY,SettPrivRef.RecInitBill_P0_01);
+        addButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(table.getSelection().length==1){
+					if(table.getSelectedRecord().getAttribute("ACCOUNT_STAT").equals("20")){
+            			SC.say("该记录已经确认对账");
+            			return;
+            		}
+					if(addWin==null){
+					 addWin=getShpTable();
+					 addWin.show();
+				   }
+				   else{
+					   addWin.show();
+				   }		
+				}else if(table.getSelection().length==0){
+					SC.say("请选中记录！");
+				}else if(table.getSelection().length>1){
+					SC.say("只允许对单个期初单添加费用！");
+				}
+			}
+		});
+        
+        
+		//移除费用
+        removeButton = createUDFBtn("移除费用",StaticRef.ICON_DEL,SettPrivRef.RecInitBill_P0_02);
+        removeButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(unshpmlstTable!=null){
+				if(unshpmlstTable.getRecords().length!=unshpmlstTable.getSelection().length){
+				final ListGridRecord[] record=unshpmlstTable.getSelection();
+				if(record!=null&&record.length>0){
+				SC.confirm("是否移除勾选的费用?", new BooleanCallback() {
+					public void execute(Boolean value) {
+	                    if (value != null && value) {
+	                    	ArrayList<String> sqlList = new ArrayList<String>();
+	                    	
+	                    	for(int i=0;i<record.length;i++){
+	                    		if(record[i].getAttribute("ACCOUNT_STAT").equals("20")){
+	                    			SC.say("该记录已经确认对账");
+	                    			sqlList=null;
+	                    			return;
+	                    		}
+		                    	String sql="update BILL_REC_INITDETAILS set INIT_NO = NULL where ID='"+record[i].getAttribute("ID")+"'";
+		                    	sqlList.add(sql);
+	                    	}
+	        				Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+	        					
+	        					@Override
+	        					public void onFailure(Throwable caught) {
+	        						MSGUtil.sayError(caught.getMessage());
+	        					}
+
+	        					@Override
+	        					public void onSuccess(String result) {
+	        				
+	        						ArrayList<String> sqlList1 = new ArrayList<String>();
+	        						String sql="UPDATE BILL_REC_INITIAL set(INITITAL_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT)=(select SUM(TOT_AMOUNT),SUM(TOT_AMOUNT)*BILL_REC_INITIAL.TAX/(1+BILL_REC_INITIAL.TAX),SUM(TOT_AMOUNT)-SUM(TOT_AMOUNT)*BILL_REC_INITIAL.TAX/(1+BILL_REC_INITIAL.TAX) from BILL_REC_INITDETAILS where BILL_REC_INITDETAILS.INIT_NO=BILL_REC_INITIAL.INIT_NO group by INIT_NO)  where ID='"+table.getSelectedRecord().getAttribute("ID")+"'";
+	        		
+	        						sqlList1.add(sql);
+	        						Util.async.excuteSQLList(sqlList1, new AsyncCallback<String>() {
+	    	        					
+	    	        					@Override
+	    	        					public void onFailure(Throwable caught) {
+	    	        						MSGUtil.sayError(caught.getMessage());
+	    	        					}
+
+	    	        					@Override
+	    	        					public void onSuccess(String result) {
+	    	        						
+	    	        						//System.out.println(table.getSelectedRecord());
+	    	        						table.collapseRecord(table.getSelectedRecord());
+	    	        						
+	    	        						final Criteria criteria = new Criteria();
+	    	        						criteria.addCriteria("OP_FLAG","M");
+	    	        						table.invalidateCache();
+	    	        						table.fetchData(criteria);
+	    	        						table.redraw();
+	    	        						
+	    	        						MSGUtil.showOperSuccess();
+	    	        						
+	    	        					}
+	    	        					
+	    	        				});	
+	        					}
+	        					
+	        				});	
+	                    	
+	                    }
+	                }
+	            });
+				}else{
+					SC.say("请选中记录");
+				}
+			}else{
+			  SC.say("不允许移除所有的费用明细");
+		  
+			}
+			
+			
+			}else{
+				 SC.say("请展开期初账单，并勾选订单号再进行移除费用操作");
+			}
+			
+			
+			}
+		});
+        
+        
+        
+		//生成调整账单
+        generateAdjButton = createUDFBtn("生成调整账单",StaticRef.ICON_EXPORT,SettPrivRef.RecInitBill_P0_03);
+        generateAdjButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				HashMap<String, String> no_list = new HashMap<String, String>(); //期初单号
+				ListGridRecord [] records=table.getSelection();
+				if(records!=null&&records.length>0){
+					for(int i=0;i<records.length;i++){
+						no_list.put(String.valueOf(i+1), records[i].getAttribute("INIT_NO"));
+					}
+					
+				}
+				String loginUser = LoginCache.getLoginUser().getUSER_ID();
+				HashMap<String, Object> listMap = new HashMap<String, Object>();
+				//list.add(shpm_No);
+				listMap.put("1", no_list);
+				listMap.put("2",loginUser);
+				
+				String json = Util.mapToJson(listMap);
+				Util.async.execProcedure(json, "BMS_CREATE_ADJNO(?,?,?)", new AsyncCallback<String>() {
+					
+					@Override
+					public void onSuccess(String result) {
+						
+						if(result.substring(0, 2).equals(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							
+							//刷新数据
+							table.discardAllEdits();
+							table.invalidateCache();
+							Criteria crit = table.getCriteria();
+							if(crit == null) {
+								crit = new Criteria();
+							}
+							crit.addCriteria("OP_FLAG",StaticRef.MOD_FLAG);
+							crit.addCriteria(searchForm.getValuesAsCriteria());
+							table.fetchData(crit,new DSCallback() {
+								
+								@Override
+								public void execute(DSResponse response, Object rawData, DSRequest request) {
+									if (table.getRecordList().getLength() > 0){
+										table.selectRecord(0);
+									}
+									addButton.setDisabled(true);
+									removeButton.setDisabled(true);
+									generateAdjButton.setDisabled(true);
+								}
+							});
+						
+						}else{
+							MSGUtil.sayError(result.substring(2));
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+		});
+        
+        
+        
+        
+        //确认对账
+        confButton= createUDFBtn("确认对账",StaticRef.ICON_SAVE,SettPrivRef.RecInitBill_P0_04);
+        confButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				
+				final ListGridRecord []record=table.getSelection();
+				ArrayList<String> sqlList = new ArrayList<String>();
+				
+				for(int i=0;i<record.length;i++){
+					
+					double inititalAmount=Double.parseDouble(ObjUtil.ifNull(record[i].getAttribute("INITITAL_AMOUNT"),"0"));
+					double initAmount=Double.parseDouble(ObjUtil.ifNull(record[i].getAttribute("INIT_AMOUNT"),"0"));
+					
+					if(inititalAmount!=initAmount){						
+						SC.say("账单金额已发生变化，请先生成调整账单！");
+						sqlList=null;
+						return;
+					}
+					
+					if(record[i].getAttribute("ACCOUNT_STAT").equals("20")){
+						SC.say("该记录已经确认对账");
+						sqlList=null;
+	                    return;
+	                    
+					}else{
+						String ID=record[i].getAttribute("ID");	
+						String sql="update BILL_REC_INITIAL set ACCOUNT_STAT='20' where Id='"+ID+"'";				
+				
+						sqlList.add(sql);
+						
+					}
+					
+				}
+				
+				
+				Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError(caught.getMessage());
+					}
+
+					@Override
+					public void onSuccess(String result) {
+						for(int i=0;i<record.length;i++){						
+						record[i].setAttribute("ACCOUNT_STAT_NAME", "已对账");
+						record[i].setAttribute("ACCOUNT_STAT", "20");
+						}
+						table.redraw();
+						MSGUtil.showOperSuccess();
+						confButton.setDisabled(true);
+						confCanButton.setDisabled(false);
+						addButton.setDisabled(true);
+						removeButton.setDisabled(true);
+					}
+					
+				});
+		  
+			}
+		
+        });
+   //     取消对账
+        confCanButton= createUDFBtn("取消对账",StaticRef.ICON_SAVE,SettPrivRef.RecInitBill_P0_05);
+        confCanButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				
+				final ListGridRecord []record=table.getSelection();
+				
+				if(record!=null&&record.length>0){
+					
+					String recs="'"+record[0].getAttribute("INIT_NO")+"'";
+					if(record.length>1){
+					
+						for(int k=1;k<record.length;k++){
+							recs=recs+",'"+record[k].getAttribute("INIT_NO")+"'";
+					
+						}
+					}
+					
+					Util.db_async.getRecord("INIT_NO", "BILL_REC_INVOICE", " where INIT_NO in ("+recs+")", null, new AsyncCallback<ArrayList<HashMap<String,String>>>() {
+						
+						@Override
+						public void onSuccess(ArrayList<HashMap<String, String>> result) {
+							if(result!=null&&result.size()>0){
+								SC.say("账单已生成开票申请单，无法取消对账！");
+								return;
+							}
+							
+							ArrayList<String> sqlList = new ArrayList<String>();
+							
+							for(int i=0;i<record.length;i++){
+								
+								if(record[i].getAttribute("ACCOUNT_STAT").equals("10")){
+								
+									SC.say("该记录还没有确认对账");
+								
+									sqlList=null;
+			                    
+									return;
+									
+								}else{
+							
+									String ID=record[i].getAttribute("ID");
+							
+									String sql="update BILL_REC_INITIAL set ACCOUNT_STAT='10' where Id='"+ID+"'";
+											
+									sqlList.add(sql);
+							    }
+							}
+								Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+								
+									@Override
+									public void onFailure(Throwable caught) {
+										MSGUtil.sayError(caught.getMessage());
+									}
+				
+									@Override
+									public void onSuccess(String result) {
+										
+										for(int i=0;i<record.length;i++){						
+											
+											record[i].setAttribute("ACCOUNT_STAT_NAME", "未对账");
+											record[i].setAttribute("ACCOUNT_STAT", "10");
+										}
+										
+										table.redraw();
+										MSGUtil.showOperSuccess();
+										confButton.setDisabled(false);	
+										confCanButton.setDisabled(true);
+										addButton.setDisabled(false);
+										removeButton.setDisabled(false);
+									
+									}
+								
+							
+								});
+							}
+						
+						@Override
+						public void onFailure(Throwable caught) {
+							
+						
+						}
+					
+					});
+					
+				}
+				
+			}
+		
+        });
+		//申请开票
+        generateReqButton = createUDFBtn("申请开票",StaticRef.ICON_SAVE,SettPrivRef.RecInitBill_P0_06);
+        generateReqButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				HashMap<String, String> no_list = new HashMap<String, String>(); //期初单号
+				ListGridRecord [] records=table.getSelection();
+				if(records!=null&&records.length>0){
+					for(int i=0;i<records.length;i++){
+						no_list.put(String.valueOf(i+1), records[i].getAttribute("INIT_NO"));
+					}
+					
+				}
+				String loginUser = LoginCache.getLoginUser().getUSER_ID();
+				HashMap<String, Object> listMap = new HashMap<String, Object>();
+				//list.add(shpm_No);
+				listMap.put("1", no_list);
+				listMap.put("2",loginUser);
+				
+				String json = Util.mapToJson(listMap);
+				Util.async.execProcedure(json, "BMS_CONFIRM_INVOICE(?,?,?)", new AsyncCallback<String>() {
+					
+					@Override
+					public void onSuccess(String result) {
+						
+						if(result.substring(0, 2).equals(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							
+							//刷新数据
+							table.discardAllEdits();
+							table.invalidateCache();
+							Criteria crit = table.getCriteria();
+							if(crit == null) {
+								crit = new Criteria();
+							}
+							crit.addCriteria("OP_FLAG",StaticRef.MOD_FLAG);
+							crit.addCriteria(searchForm.getValuesAsCriteria());
+							table.fetchData(crit,new DSCallback() {
+								
+								@Override
+								public void execute(DSResponse response, Object rawData, DSRequest request) {
+									if (table.getRecordList().getLength() > 0){
+										table.selectRecord(0);
+									}
+									generateReqButton.setDisabled(true);
+								}
+							});
+						
+						}else{
+							MSGUtil.sayError(result.substring(2));
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+		});
+		//导出
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN,SettPrivRef.RecInitBill_P0_07);
+        expButton.addClickHandler(new ExportAction(table,"addtime desc"));
+       
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton,addButton,removeButton,generateAdjButton,confButton,confCanButton,generateReqButton,expButton);
+	}
+	
+	public void initVerify() {
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(final DynamicForm form){
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);
+		form.setTitleSuffix("");
+		
+		SGText BUSS_NAME = new SGText("BUSS_NAME","客户");
+    	PickerIcon searchPicker = new PickerIcon(PickerIcon.SEARCH);
+    	
+		searchPicker.addFormItemClickHandler(new FormItemClickHandler() {
+			
+			@Override
+			public void onFormItemClick(FormItemIconClickEvent event) {
+				 new BussWin(form,"20%","50%").getViewPanel();		
+			}
+		});
+       
+		BUSS_NAME.setIcons(searchPicker);
+		
+		
+		SGText BUSS_ID = new SGText("BUSS_ID","客户");
+		BUSS_ID.setVisible(false);
+		
+		SGText BELONG_MONTH = new SGText("BELONG_MONTH","所属账期");
+		
+		SGCombo ACCOUNT_STAT = new SGCombo("ACCOUNT_STAT","对账状态");
+		Util.initComboValue(ACCOUNT_STAT, "BAS_CODES","CODE","NAME_C"," where prop_code='ACCOUNT_STAT'");
+		
+        form.setItems(BUSS_ID,BUSS_NAME,BELONG_MONTH,ACCOUNT_STAT);
+        
+        return form;
+	}
+	
+    public Window getShpTable() {
+    	  	
+    	final SGTable unshpmTable1;
+    	unshpmTable1=new SGTable(RecInitBillDs, "100%", "100%", false, true, false);
+		unshpmTable1.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		unshpmTable1.setCanEdit(false); 
+		createUnshpmField(unshpmTable1);
+	
+		final SectionStack shpSectionStack =new SectionStack();	 	
+		SectionStackSection shpsection=new SectionStackSection("费用信息");
+		final DynamicForm unpageform=new SGPage(unshpmTable1, true).initPageBtn();		
+		shpsection.setItems(unshpmTable1);
+		shpsection.setExpanded(true);
+		shpsection.setControls(unpageform);
+		shpSectionStack.addSection(shpsection);
+		final Window win=new Window();
+		VLayout shpLay = new VLayout();
+		final SGPanel form=new SGPanel();
+		
+		SGText CUSTOMER_CNAME = new SGText("CUSTOMER_CNAME","客户");
+		CUSTOMER_CNAME.setValue(table.getSelectedRecord().getAttribute("BUSS_NAME"));
+		CUSTOMER_CNAME.setDisabled(true);
+//    	PickerIcon searchPicker = new PickerIcon(PickerIcon.SEARCH);
+//    	
+//		searchPicker.addFormItemClickHandler(new FormItemClickHandler() {
+//			
+//			@Override
+//			public void onFormItemClick(FormItemIconClickEvent event) {
+//				 new CustomerWin(form,"20%","50%").getViewPanel();		
+//			}
+//		});
+//       
+//      CUSTOMER_CNAME.setIcons(searchPicker);
+		SGText CUSTOM_ODR_NO = new SGText("CUSTOM_ODR_NO", "客户单号");
+		SGCombo FEE_TYPE = new SGCombo("FEE_TYPE", "费用类型");
+		Util.initComboValue(FEE_TYPE,"BAS_CODES","NAME_C","NAME_C"," where prop_code='INITBILL_TYPE' ","");
+        SGText BELONG_MONTH = new SGText("BELONG_MONTH", "所属账期");
+		//SGText UNLOAD_NAME = new SGText("UNLOAD_NAME", "收货方");
+		
+		SGButtonItem searchButton1=new SGButtonItem("查询",StaticRef.SAVE_BTN);
+		searchButton1.setWidth(80);
+		searchButton1.setColSpan(2);
+		searchButton1.addClickHandler(
+			    new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+				
+				@Override
+				public void onClick(
+						com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+										   
+					unshpmTable1.discardAllEdits();
+					unshpmTable1.invalidateCache();
+					final Criteria criteria = new Criteria();
+					criteria.addCriteria("OP_FLAG","M");
+					criteria.addCriteria(form.getValuesAsCriteria());
+					unshpmTable1.setFilterEditorCriteria(criteria);
+					unshpmTable1.fetchData(criteria, new DSCallback() {
+
+						@SuppressWarnings("unchecked")
+						@Override
+						public void execute(DSResponse response, Object rawData,
+								DSRequest request) {
+							if(unpageform != null) {
+								unpageform.getField("CUR_PAGE").setValue("1");
+								unpageform.getField("TOTAL_COUNT").setValue(Cookies.getCookie("TOTALROWS"));
+								unpageform.getField("SUM_PAGE").setValue(Cookies.getCookie("TOTALPAGES"));
+								String sqlwhere = Cookies.getCookie("SQLWHERE");
+								if(ObjUtil.isNotNull(sqlwhere) && sqlwhere.length() > 1) {
+									table.setProperty("WHERE", sqlwhere.substring(1,sqlwhere.length()-1));
+									//LoginCache.setPageResult(table, pageForm.getField("TOTAL_COUNT"), pageForm.getField("SUM_PAGE"));
+								}
+							}
+							LinkedHashMap<String, String> map = (LinkedHashMap<String, String>) criteria.getValues();
+							if(map.get("criteria") != null) {
+								map.remove("criteria");
+							}
+							if(map.get("_constructor") != null) {
+								map.remove("_constructor");
+							}
+							if(map.get("C_ORG_FLAG") != null) {
+								Object obj = map.get("C_ORG_FLAG");
+								Boolean c_org_flag = (Boolean)obj;
+								map.put("C_ORG_FLAG",c_org_flag.toString());
+							}			
+						
+						}
+						
+					});
+				}
+			});
+		//searchButton1.setTop(10);
+		
+		
+		
+		SGButtonItem confirmButton=new SGButtonItem("确定",StaticRef.SAVE_BTN);
+		confirmButton.setWidth(80);
+		confirmButton.setColSpan(2);
+		confirmButton.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+			
+			@Override
+			public void onClick(
+					com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+				if(table.getSelectedRecord().getAttribute("ACCOUNT_STAT").equals("20")){
+					SC.say("已经确认的对账单，无法添加费用！");
+					return;
+				}
+			
+				final ListGridRecord []records=unshpmTable1.getSelection();
+			
+				if(records!=null&&records.length>0){
+					
+					Util.db_async.getRecord("ODR_NO,TOT_AMOUNT", "BILL_REC_INITDETAILS", " where INIT_NO='"+table.getSelectedRecord().getAttribute("INIT_NO")+"'", null, new AsyncCallback<ArrayList<HashMap<String,String>>>() {
+						
+						@Override
+						public void onSuccess(ArrayList<HashMap<String, String>> result) {
+							String nums="";
+							
+							if(result!=null&&result.size()>0){
+							
+								for(int i=0;i<result.size();i++){
+								
+									nums=nums+result.get(i).get("ODR_NO")+",";
+							
+								}
+							}
+							final ArrayList<String> sqlList = new ArrayList<String>();
+		                	
+							String INIT_NO=table.getSelectedRecord().getAttribute("INIT_NO");
+		                	
+							for(int i=0;i<records.length;i++){
+		                	
+								
+								if(nums.indexOf(records[i].getAttribute("SHPM_NO")+",")>=0){
+									
+									for(int k=0;k<result.size();k++){
+										if(result.get(k).get("ODR_NO").equals(records[i].getAttribute("SHPM_NO"))){
+											final String amount2=records[i].getAttribute("AMOUNT");
+											final String shpm_no=records[i].getAttribute("SHPM_NO");
+											String amount1=result.get(k).get("TOT_AMOUNT");
+											double amounts=Double.parseDouble(amount1)+Double.parseDouble(amount2);
+											String sql="update BILL_REC_INITDETAILS set TOT_AMOUNT='"+amounts+"' where ODR_NO='"+shpm_no+"'";
+							                sqlList.add(sql);	
+										}
+									}
+								}else{		                		
+									String sql="insert into  BILL_REC_INITDETAILS " +
+	                				"(INIT_NO,ODR_NO,CUSTOM_ODR_NO,BELONG_MONTH,TOT_AMOUNT,BUSS_ID,BUSS_NAME,NOTES,INIT_AMOUNT)" +
+	                				"VALUES('"+INIT_NO+"','"+ObjUtil.ifNull(records[i].getAttribute("SHPM_NO"),"")+
+	                				"','"+ObjUtil.ifNull(records[i].getAttribute("CUSTOM_ODR_NO"),"")+"','"+ObjUtil.ifNull(records[i].getAttribute("BELONG_MONTH"),"")+
+	                				"','"+ObjUtil.ifNull(records[i].getAttribute("AMOUNT"),"0")+"','"+records[i].getAttribute("CUSTOMER_ID")+"','"+ObjUtil.ifNull(records[i].getAttribute("CUSTOMER_CNAME"),"")+"','"+ObjUtil.ifNull(records[i].getAttribute("DESCR"),"")+"',0)";     		                		
+									sqlList.add(sql);		                				        	
+		                	
+								}
+		                	
+							
+							}
+		    				Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+
+								@Override
+								public void onFailure(Throwable caught) {
+								
+								}
+
+								@Override
+								public void onSuccess(String result) {
+									if(result.substring(0,2).equals("00")){
+										String sql="UPDATE BILL_REC_INITIAL set(INITITAL_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT)=(select SUM(TOT_AMOUNT),SUM(TOT_AMOUNT)*BILL_REC_INITIAL.TAX/(1+BILL_REC_INITIAL.TAX),SUM(TOT_AMOUNT)-SUM(TOT_AMOUNT)*BILL_REC_INITIAL.TAX/(1+BILL_REC_INITIAL.TAX) from BILL_REC_INITDETAILS where BILL_REC_INITDETAILS.INIT_NO=BILL_REC_INITIAL.INIT_NO group by INIT_NO)  where ID='"+table.getSelectedRecord().getAttribute("ID")+"'";
+						        	
+										ArrayList<String> sqlList1 = new ArrayList<String>();
+										
+										sqlList1.add(sql);
+		        						
+										Util.async.excuteSQLList(sqlList1, new AsyncCallback<String>() {
+		    	        					
+		    	        					@Override
+		    	        					public void onFailure(Throwable caught) {
+		    	        						MSGUtil.sayError(caught.getMessage());
+		    	        					}
+
+		    	        					@Override
+		    	        					public void onSuccess(String result) {
+		    	        						if(result.substring(0,2).equals("00")){
+		    	        						//System.out.println(table.getSelectedRecord());
+		    	        							
+		    	        							win.hide();
+		    	        							table.collapseRecord(table.getSelectedRecord());
+		    	        							final Criteria criteria = new Criteria();
+		    	        							criteria.addCriteria("OP_FLAG","M");
+		    	        							table.fetchData(criteria);
+		    	        							table.redraw();
+		    	        							MSGUtil.showOperSuccess();
+		    	        						}
+		    	        					}
+		    	        					
+		    	        				});	
+										
+									}else{
+										
+										SC.say("操作失败");
+										win.hide();
+									}
+								}
+		    				});
+						}
+						
+						@Override
+						public void onFailure(Throwable caught) {
+							// TODO Auto-generated method stub
+							
+						}
+					});
+				
+	
+				}else{
+					SC.say("请选中记录操作");
+				}	
+
+			}
+		
+		});
+		
+		
+		
+		
+		//confirmButton.setTextAlign(Alignment.CENTER);
+		//confirmButton.setWidth(FormUtil.Width);
+		form.setItems(CUSTOMER_CNAME,CUSTOM_ODR_NO,FEE_TYPE,BELONG_MONTH,searchButton1,confirmButton);
+		form.setNumCols(8);
+		form.setWidth("40%");
+		form.setMargin(1);
+		//form.setHeight("14%");
+		shpLay.addMember(form);
+
+		shpLay.addMember(shpSectionStack);		
+		win.addItem(shpLay);
+		win.setTitle("添加费用");
+		win.setWidth("60%");
+		win.setHeight("70%");
+		win.setTop("20%");
+		win.setLeft("25%");
+		return win;
+	}
+	public void createUnshpmField(SGTable addTable){
+		
+		ListGridField FEE_TYPE = new ListGridField("FEE_TYPE", "费用类型", 80);
+		ListGridField SHPM_NO = new ListGridField("SHPM_NO", "托运单号", 110);
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO", "客户单号", 90);
+		//ListGridField LOAD_DATE = new ListGridField("LOAD_DATE", "发货日期", 120);
+		//ListGridField UNLOAD_DATE = new ListGridField("UNLOAD_DATE", "收货日期", 120);
+		//ListGridField LOAD_NAME = new ListGridField("LOAD_NAME", "发货方", 120);
+		//ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME", "收货方", 120);
+		//ListGridField VEHICLE_TYPE = new ListGridField("VEHICLE_TYPE", "车型", 60);
+		ListGridField BELONG_MONTH = new ListGridField("BELONG_MONTH", "所属账期", 80);
+		ListGridField TYPE_NAME = new ListGridField("TYPE_NAME", "类型说明", 100);
+		ListGridField AMOUNT = new ListGridField("AMOUNT", "应收金额（含税）", 100);
+		ListGridField DESCR = new ListGridField("DESCR", "备注", 140);
+		
+		addTable.setFields(FEE_TYPE,BELONG_MONTH,CUSTOM_ODR_NO,SHPM_NO,AMOUNT,TYPE_NAME,DESCR);
+	}	
+	
+	
+	
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		if(addWin != null) {
+			addWin.destroy();
+		}
+		
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		RecInitBillView view = new RecInitBillView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

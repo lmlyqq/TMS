@@ -1,0 +1,212 @@
+package com.rd.client.view.report;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.KPIExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.report.R_KPI_DMG_RATE_DS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.RadioGroupItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangeEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangeHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+@ClassForNameAble
+public class R_KPI_DMG_RATE_VIEW extends SGForm implements PanelFactory {
+	private DataSource DS;
+	private SGTable table;
+	private Window searchWin;
+    private SGPanel searchForm;
+	private SectionStack section;
+	private SGDateTime ODR_TIME_FROM;
+	private SGDateTime ODR_TIME_TO;
+	private Object cur_value;
+	private RadioGroupItem radioGroupItem;
+	
+	/*public R_KPI_DMG_RATE_VIEW(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+        searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(DS, createSerchForm(searchForm),section.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN);
+//      expButton.addClickHandler(new ExportAction(table));
+        
+        String fieldname="suplr_name,sum(num) as num,sum(losdam) as losdam,sum(dmg1_qnty) as dmg1_qnty,sum(dmg2_qnty) as dmg2_qnty,sum(dmg3_qnty) as dmg3_qnty,sum(los_qnty) as los_qnty,sum(los_amount) as los_amount,to_char(round(sum(losdam) * 100/ sum(num),2)) || '%' as dmg_rate ";
+        expButton.addClickHandler(new KPIExportAction(table,fieldname,"addtime desc"));
+            
+        toolStrip.setMembersMargin(2);
+        toolStrip.setMembers(searchButton,expButton);
+
+	}
+	
+	public DynamicForm createSerchForm(SGPanel form) {
+		ODR_TIME_FROM = new SGDateTime("ODR_TIME_FROM",Util.TI18N.ODR_TIME_FROM());
+		ODR_TIME_FROM.setColSpan(2);
+		ODR_TIME_FROM.setTitleOrientation(TitleOrientation.TOP);
+		
+		ODR_TIME_TO = new SGDateTime("ODR_TIME_TO","到");
+		ODR_TIME_TO.setColSpan(2);
+		ODR_TIME_TO.setTitleOrientation(TitleOrientation.TOP);
+		
+		String PreMonDate=Util.getMonthPreDay();
+		ODR_TIME_FROM.setDefaultValue(PreMonDate);
+		ODR_TIME_TO.setDefaultValue(Util.getCurTime());
+		
+		radioGroupItem = new RadioGroupItem();  
+		radioGroupItem.setShowTitle(false); 
+		radioGroupItem.setVertical(false);
+		radioGroupItem.setValueMap("本月", "本季度","半年度", "全年");  
+	    radioGroupItem.setDefaultValue("本月");
+	    radioGroupItem.setColSpan(4);
+	  
+	    radioGroupItem.addChangeHandler(new ChangeHandler() {
+			
+			@Override
+			public void onChange(ChangeEvent event) {
+				cur_value=event.getValue();
+				
+				String PreMonDate=Util.getMonthPreDay();
+				
+				String YearPreDay=Util.getAllYearPreDay();
+				
+				String BanYearPreDay=Util.getHalfYearPreDay();
+				
+				String jiduPreDay=Util.getQuarterPreDay();
+				
+				if(cur_value.equals("本月")){
+					ODR_TIME_FROM.setValue(PreMonDate);
+					ODR_TIME_TO.setValue(Util.getCurTime());
+			    }else if(cur_value.equals("本季度")){
+					ODR_TIME_FROM.setValue(jiduPreDay);
+					ODR_TIME_TO.setValue(Util.getCurTime());
+			    } else if(cur_value.equals("半年度")){
+					ODR_TIME_FROM.setValue(BanYearPreDay);
+					ODR_TIME_TO.setValue(Util.getCurTime());
+			    }else if(cur_value.equals("全年")){
+					ODR_TIME_FROM.setValue(YearPreDay);
+					ODR_TIME_TO.setValue(Util.getCurTime());
+			    }
+			}
+		});
+		
+		
+		
+		form.setItems(ODR_TIME_FROM,ODR_TIME_TO,radioGroupItem);
+		
+		return form;
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		ToolStrip toolstrip = new ToolStrip();
+		toolstrip.setAlign(Alignment.RIGHT);
+		
+		DS = R_KPI_DMG_RATE_DS.getInstance("R_KPI_DMG_RATE");
+		table = new SGTable(DS,"100%","70%");
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		
+		createListFields(table);
+		createBtnWidget(toolstrip);
+		section = createSection(table, null,true,true); 
+		
+		VLayout layout = new VLayout();
+		layout.setHeight100();
+		layout.setWidth100();
+		
+		layout.addMember(toolstrip);
+		layout.addMember(section);
+		
+		return layout;
+	}
+    
+	private void createListFields(SGTable table){
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_NAME",Util.TI18N.SUPLR_NAME(),77);
+		ListGridField ODR_QNTY = new ListGridField("NUM",Util.TI18N.ODR_QNTY(),90);
+		ListGridField LOS_DAM = new ListGridField("LOSDAM",Util.TI18N.LOSDAM_NO(),77);
+		ListGridField DAM1_QNTY = new ListGridField("DMG1_QNTY",Util.TI18N.DAM1_QNTY(),77);
+		ListGridField DAM2_QNTY = new ListGridField("DMG2_QNTY",Util.TI18N.DAM2_QNTY(),77);
+		ListGridField DAM3_QNTY = new ListGridField("DMG3_QNTY",Util.TI18N.DAM3_QNTY(),77);
+		ListGridField LOS_QNTY = new ListGridField("LOS_QNTY",Util.TI18N.LOS_QNTY(),77);
+//		ListGridField ORD_PACK_ID = new ListGridField("TRANS_UOM",Util.TI18N.ORD_PACK_ID(),77);
+		ListGridField TRANS_AMOUNT = new ListGridField("LOS_AMOUNT",Util.TI18N.TRANS_AMOUNT(),77);
+		ListGridField DAM_RATE = new ListGridField("DMG_RATE",Util.TI18N.DAM_RATE(),77);
+		
+		table.setFields(SUPLR_NAME,ODR_QNTY,LOS_DAM,DAM1_QNTY,DAM2_QNTY,DAM3_QNTY,LOS_QNTY,TRANS_AMOUNT,DAM_RATE);
+	}
+	
+	@Override
+	public void initVerify() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null ) {
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		R_KPI_DMG_RATE_VIEW view = new R_KPI_DMG_RATE_VIEW();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+}

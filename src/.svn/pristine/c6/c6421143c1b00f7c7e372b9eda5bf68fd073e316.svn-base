@@ -1,0 +1,401 @@
+package com.rd.client.view.base;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.action.GetHintAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.MsrmntDS;
+import com.rd.client.ds.base.MsrmntUnitDS;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 基础资料->度量衡
+ * @author yuanlei
+ *
+ */
+public class BasMeasureView extends SGForm {
+
+	private DataSource mainDS;
+	private DataSource detailDS;
+	private SGTable propTable;
+	private SGTable codeTable;
+	private SectionStack stack;
+	private Window searchWin = null;
+	private SGPanel searchForm;
+	private HashMap<String,String> detail_ck_map ;
+	private HashMap<String,String> detail_map;
+	
+	private HashMap<String, IButton> add_detail_map;
+	private HashMap<String, IButton> save_detail_map;
+	private HashMap<String, IButton> del_detail_map;
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+	public BasMeasureView(String id) {
+		super(id);
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		//初始化主界面、按钮布局、Section布局
+		VLayout main = new VLayout();
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		detail_ck_map = new HashMap<String,String>();
+		detail_map = new HashMap<String,String>();
+		
+		//创建表格和数据源
+		mainDS = MsrmntDS.getInstance("BAS_MSRMNT", "BAS_MSRMNT");
+		propTable = new SGTable(mainDS, "100%", "65%", false, true, false);
+		propTable.setCanEdit(true);
+		propTable.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		propTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				Record record = event.getRecord();
+				Criteria findValues = new Criteria();
+	            findValues.addCriteria("MSRMNT_CODE", record.getAttribute("MSRMNT_CODE"));
+	            findValues.addCriteria("OP_FLAG", codeTable.OP_FLAG);
+	            codeTable.PKEY = "MSRMNT_CODE";
+	            codeTable.PVALUE = record.getAttribute("MSRMNT_CODE");
+	            codeTable.fetchData(findValues);
+			}
+			
+		});
+		detailDS = MsrmntUnitDS.getInstance("BAS_MSRMNT_UNIT", "BAS_MSRMNT_UNIT");
+		codeTable = new SGTable(detailDS,"100%","35%",false,true,false);
+		
+		getConfigList();
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		Canvas[] widget = new Canvas[2];
+		String[] title = new String[2];
+		widget[0] = propTable;
+		widget[1] = codeTable;
+		title[0] = "度量衡";
+		title[1] = "单位";
+		stack = this.createUDFSection(widget, title, true, true);
+        
+        main.setWidth100();
+        main.setHeight100();
+		main.addMember(toolStrip);
+		main.addMember(stack);
+		
+		propTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+		        enableOrDisables(save_map, true);
+				
+			}
+		});
+		
+		propTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(del_map, true);
+				enableOrDisables(add_detail_map, true);
+				enableOrDisables(del_detail_map, false);
+				enableOrDisables(save_detail_map, false);
+				
+			}
+		});
+		
+		codeTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_detail_map, false);
+				enableOrDisables(del_detail_map, false);
+		        enableOrDisables(save_detail_map, true);
+				
+			}
+		});
+		
+		codeTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(del_detail_map,true);
+				
+			}
+		});
+		
+		
+		
+		initVerify();
+		return main;
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.MSRMNT);
+		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.MSRMNT_P0_01);
+        newButton.addClickHandler(new NewAction(propTable, codeTable, cache_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.MSRMNT_P0_02);
+        saveButton.addClickHandler(new SaveAction(propTable, check_map,this,1));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.MSRMNT_P0_03);
+        delButton.addClickHandler(new DeleteAction(propTable, codeTable, "MSRMNT_CODE",this));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.MSRMNT_P0_04);
+        canButton.addClickHandler(new CancelAction(propTable,codeTable,this));
+        
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN,BasPrivRef.MSRMNT_P0_08);
+        expButton.addClickHandler(new ExportAction(propTable));
+        
+        IButton newSubButton = createUDFBtn(Util.BI18N.NEWDETAIL(), StaticRef.ICON_NEW,BasPrivRef.MSRMNT_P0_05);
+        newSubButton.addClickHandler(new NewAction(codeTable,detail_map,this,2));
+        
+        IButton savSubButton = createUDFBtn(Util.BI18N.SAVEDETAIL(), StaticRef.ICON_SAVE,BasPrivRef.MSRMNT_P0_06);
+        savSubButton.addClickHandler(new SaveAction(codeTable, propTable,detail_ck_map,this,3));
+        
+        IButton delSubButton = createUDFBtn(Util.BI18N.REMOVEDETAIL(), StaticRef.ICON_DEL,BasPrivRef.MSRMNT_P0_07); 
+        delSubButton.addClickHandler(new DeleteAction(codeTable,this,4));
+        
+        IButton canSubButton = createUDFBtn(Util.BI18N.CANCELDETAIL(), StaticRef.ICON_CANCEL,BasPrivRef.MSRMNT_P0_07); 
+        canSubButton.addClickHandler(new CancelAction(codeTable,this,5));
+    
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton, newSubButton
+        		, savSubButton, delSubButton,canSubButton,expButton);
+        
+      //主表按钮联动
+        add_map.put(BasPrivRef.MSRMNT_P0_01, newButton);
+        del_map.put(BasPrivRef.MSRMNT_P0_03, delButton);
+        save_map.put(BasPrivRef.MSRMNT_P0_02, saveButton);
+        save_map.put(BasPrivRef.MSRMNT_P0_04, canButton);
+//        save_map.put(BasPrivRef.MSRMNT_P0_05, newSubButton);
+        
+        enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        enableOrDisables(save_map, false);
+        //从表按钮联动
+        add_detail_map = new HashMap<String, IButton>();
+        save_detail_map = new HashMap<String, IButton>();
+        del_detail_map = new HashMap<String, IButton>();
+        add_detail_map.put(BasPrivRef.MSRMNT_P0_05, newSubButton);
+        del_detail_map.put(BasPrivRef.MSRMNT_P0_07, delSubButton);
+        save_detail_map.put(BasPrivRef.MSRMNT_P0_06, savSubButton);
+        save_detail_map.put(BasPrivRef.MSRMNT_P0_07, canSubButton);
+        enableOrDisables(add_detail_map, false);
+        enableOrDisables(del_detail_map, false);
+        enableOrDisables(save_detail_map, false);
+        
+        
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(mainDS,createSerchForm(searchForm), stack.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+	}
+	
+	private void getConfigList() {
+		List<String> fldList  = new ArrayList<String>();
+		List<String> titList  = new ArrayList<String>();
+		List<String> widList = new ArrayList<String>();
+		List<ListGridFieldType> typList = new ArrayList<ListGridFieldType>();
+		
+		String[] fields = {"MSRMNT_CODE", "MSRMNT_NAME", "UDF1", "UDF2", "HINT_CODE", "ENABLE_FLAG", "SHOW_SEQ"};
+		fldList = Arrays.asList(fields);
+		String[] titles = {ColorUtil.getRedTitle(Util.TI18N.MSRMNT()),ColorUtil.getRedTitle(Util.TI18N.MSRMNT_NAME()), Util.TI18N.MSRMNT_UDF1(),  Util.TI18N.MSRMNT_UDF2(), 
+				ColorUtil.getBlueTitle(Util.TI18N.HINT_CODE()),Util.TI18N.ENABLE_FLAG(), Util.TI18N.SHOW_SEQ()};
+		titList = Arrays.asList(titles);
+		
+		String[] width = {"90", "150", "90", "90", "90", "70", "70"};
+		widList = Arrays.asList(width);
+		
+		ListGridFieldType[] types = {null, null, null, null, null, ListGridFieldType.BOOLEAN, null};
+		typList = Arrays.asList(types);
+		
+		createListField(propTable, fldList, titList, widList, typList);
+		ListGridField MSRMNT_NAME = propTable.getField("MSRMNT_NAME");
+		MSRMNT_NAME.addEditorExitHandler(new GetHintAction(propTable));
+		
+		fldList  = new ArrayList<String>();
+		titList  = new ArrayList<String>();
+		widList = new ArrayList<String>();
+		typList = new ArrayList<ListGridFieldType>();		
+		fields = new String[]{"UNIT", "UNIT_NAME", "CONVERT_SCALE", "BASUNIT_FLAG","TRANS_UOM_FLAG", "HINT_CODE", "SHOW_SEQ"};
+		fldList = Arrays.asList(fields);
+		titles = new String[]{ColorUtil.getRedTitle(Util.TI18N.UNIT()),ColorUtil.getRedTitle(Util.TI18N.UNIT_NAME()), Util.TI18N.CONVERT_SCALE(), 
+				ColorUtil.getBlueTitle(Util.TI18N.BASUNIT_FLAG()),ColorUtil.getBlueTitle(Util.TI18N.TRANS_UOM_FLAG()), ColorUtil.getBlueTitle(Util.TI18N.HINT_CODE()), Util.TI18N.LIST_SHOW_SEQ()};
+		titList = Arrays.asList(titles);
+		
+		width = new String[]{"90", "120", "80" , "70", "70", "80", "70"};
+		widList = Arrays.asList(width);
+		
+		types = new ListGridFieldType[]{null, null, null, ListGridFieldType.BOOLEAN,ListGridFieldType.BOOLEAN, null, null};
+		typList = Arrays.asList(types);
+		
+		createListField(codeTable, fldList, titList, widList, typList);
+		ListGridField UNIT_NAME = codeTable.getField("UNIT_NAME");
+		UNIT_NAME.addEditorExitHandler(new GetHintAction(codeTable));
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(SGPanel form){
+		
+		form.setDataSource(mainDS);
+		form.setAutoFetchData(false);
+		form.setAlign(Alignment.LEFT);
+		/*form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);*/
+		
+		TextItem txt_global = new TextItem("FULL_INDEX", "模糊查询");
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(330);
+		txt_global.setColSpan(5);
+		txt_global.setEndRow(true);
+		
+		//2行
+		SGText  MSRMNT = new SGText("MSRMNT_CODE", Util.TI18N.MSRMNT());
+		SGText MSRMNT_NAME = new SGText("MSRMNT_NAME", Util.TI18N.MSRMNT_NAME());
+		
+		//3行
+		SGCheck ENABLE_FLAG = new SGCheck("ENABLE_FLAG", Util.TI18N.ENABLE_FLAG(), true);
+		ENABLE_FLAG.setValue(true);
+		
+        form.setItems(txt_global, MSRMNT, MSRMNT_NAME, ENABLE_FLAG);
+        
+        return form;
+	}
+	
+	public void initVerify() {
+		
+		check_map.put("TABLE", "BAS_MSRMNT");
+		
+		check_map.put("MSRMNT_CODE", StaticRef.CHK_NOTNULL + Util.TI18N.MSRMNT());
+		check_map.put("MSRMNT_NAME", StaticRef.CHK_NOTNULL + Util.TI18N.MSRMNT_NAME());
+		check_map.put("MSRMNT_CODE", StaticRef.CHK_UNIQUE + Util.TI18N.MSRMNT());
+		check_map.put("MSRMNT_NAME", StaticRef.CHK_UNIQUE + Util.TI18N.MSRMNT_NAME());
+		
+		detail_ck_map.put("TABLE", "BAS_MSRMNT_UNIT");
+		
+		detail_ck_map.put("MSRMNT_CODE,BASUNIT_FLAG",StaticRef.CHK_UNIQUE+Util.TI18N.BASUNIT_FLAG() );
+		detail_ck_map.put("MSRMNT_CODE,TRANS_UOM_FLAG",StaticRef.CHK_UNIQUE+Util.TI18N.TRANS_UOM_FLAG() );
+
+		detail_ck_map.put("MSRMNT_CODE,UNIT", StaticRef.CHK_NOTNULL + Util.TI18N.UNIT());
+		detail_ck_map.put("MSRMNT_CODE,UNIT_NAME", StaticRef.CHK_NOTNULL + Util.TI18N.UNIT_NAME());
+		detail_ck_map.put("MSRMNT_CODE,UNIT", StaticRef.CHK_UNIQUE + Util.TI18N.UNIT());
+		detail_ck_map.put("MSRMNT_CODE,UNIT_NAME", StaticRef.CHK_UNIQUE + Util.TI18N.UNIT_NAME());
+		
+
+		detail_map.put("BASUNIT_FLAG", "Y");
+		detail_map.put("TRANS_UOM_FLAG","Y");
+		
+		cache_map.put("ENABLE_FLAG", "Y");
+		cache_map.put("MODIFY_FLAG", "N");
+	}
+	
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		
+	}
+	
+	@Override
+	public void initBtn(int initBtn) {
+		if(initBtn == 1){
+			enableOrDisables(add_detail_map, true);
+		}
+		else if(initBtn == 2){
+			enableOrDisables(add_detail_map, false);
+			enableOrDisables(save_detail_map, true);
+			enableOrDisables(del_detail_map, false);
+		}
+		else if(initBtn ==3){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, true);
+		}else if(initBtn ==4){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, false);
+		}else if(initBtn ==5){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			if(codeTable.getRecords().length > 0){
+				enableOrDisables(del_detail_map, true);
+			}else{
+				enableOrDisables(del_detail_map, false);
+			}
+			codeTable.OP_FLAG = StaticRef.MOD_FLAG;
+		}
+	}
+}

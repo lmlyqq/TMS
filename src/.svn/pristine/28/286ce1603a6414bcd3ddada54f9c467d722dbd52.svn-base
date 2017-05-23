@@ -1,0 +1,1234 @@
+package com.rd.server.util;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.sql.ResultSet;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
+import org.apache.poi.hssf.usermodel.HSSFClientAnchor;
+import org.apache.poi.hssf.usermodel.HSSFComment;
+import org.apache.poi.hssf.usermodel.HSSFFont;
+import org.apache.poi.hssf.usermodel.HSSFPatriarch;
+import org.apache.poi.hssf.usermodel.HSSFRichTextString;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.hssf.util.CellRangeAddress;
+import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.IndexedColors;
+
+import com.rd.client.util.ObjUtil;
+
+
+/**
+
+ * 利用开源组件POI3.0.2动态导出EXCEL文档
+
+ * 转载时请保留以下信息，注明出处！
+
+ * @author fanglm
+
+ * @version v1.0
+
+ * @param <T> 应用泛型，代表任意一个符合javabean风格的类
+
+ * 注意这里为了简单起见，boolean型的属性xxx的get器方式为getXxx(),而不是isXxx()
+
+ * byte[]表jpg格式的图片数据
+
+ */
+
+public class ExportExcel<T> {
+ 
+
+   public void exportExcel(String headers, Collection<T> dataset,
+
+         OutputStream out) {
+
+      exportExcel("sheet1", headers, dataset, out, "yyyy-MM-dd");
+
+   }
+ 
+
+   public void exportExcel(String headers, Collection<T> dataset,
+
+         OutputStream out, String pattern) {
+
+      exportExcel("sheet1", headers, dataset, out, pattern);
+
+   }
+
+ 
+
+   /**
+
+    * 这是一个通用的方法，利用了JAVA的反射机制，可以将放置在JAVA集合中并且符号一定条件的数据以EXCEL 的形式输出到指定IO设备上
+
+    *
+
+    * @param title
+
+    *            表格标题名
+
+    * @param headers
+
+    *            表格属性列名数组
+
+    * @param dataset
+
+    *            需要显示的数据集合,集合中一定要放置符合javabean风格的类的对象。此方法支持的
+
+    *            javabean属性的数据类型有基本数据类型及String,Date,byte[](图片数据)
+
+    * @param out
+
+    *            与输出设备关联的流对象，可以将EXCEL文档导出到本地文件或者网络中
+
+    * @param pattern
+
+    *            如果有时间数据，设定输出格式。默认为"yyy-MM-dd"
+
+    */
+
+   @SuppressWarnings("unchecked")
+
+   public void exportExcel(String title, String headers,
+
+         Collection<T> dataset, OutputStream out, String pattern) {
+
+      // 声明一个工作薄
+
+      HSSFWorkbook workbook = new HSSFWorkbook();
+
+      // 生成一个表格
+
+      HSSFSheet sheet = workbook.createSheet(title);
+
+      // 设置表格默认列宽度为15个字节
+
+      sheet.setDefaultColumnWidth(15);
+
+      // 生成一个样式
+
+      HSSFCellStyle style = workbook.createCellStyle();
+
+      // 设置这些样式
+
+      style.setFillForegroundColor(HSSFColor.SKY_BLUE.index);
+
+      style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+      style.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+      style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+      style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+      style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+      style.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+      // 生成一个字体
+
+      HSSFFont font = workbook.createFont();
+
+      font.setColor(HSSFColor.VIOLET.index);
+
+      font.setFontHeightInPoints((short) 12);
+
+      font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+
+      // 把字体应用到当前的样式
+
+      style.setFont(font);
+
+      // 生成并设置另一个样式
+
+      HSSFCellStyle style2 = workbook.createCellStyle();
+
+      style2.setFillForegroundColor(HSSFColor.LIGHT_YELLOW.index);
+
+      style2.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+      style2.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+      style2.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+      style2.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+      style2.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+      style2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+      style2.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER);
+
+      // 生成另一个字体
+
+      HSSFFont font2 = workbook.createFont();
+
+      font2.setBoldweight(HSSFFont.BOLDWEIGHT_NORMAL);
+
+      // 把字体应用到当前的样式
+
+      style2.setFont(font2);
+
+      // 声明一个画图的顶级管理器
+
+      HSSFPatriarch patriarch = sheet.createDrawingPatriarch();
+
+      // 定义注释的大小和位置,详见文档
+
+      HSSFComment comment = patriarch.createComment(new HSSFClientAnchor(0, 0, 0, 0, (short) 4, 2, (short) 6, 5));
+
+      // 设置注释内容
+
+      comment.setString(new HSSFRichTextString("上海任大科技"));
+
+      // 设置注释作者，当鼠标移动到单元格上是可以在状态栏中看到该内容.
+
+      comment.setAuthor("fanglm");
+
+ 
+
+      //产生表格标题行
+
+      HSSFRow row = sheet.createRow(0);
+      String[] header = headers.split(",");
+
+      for (int i = 0; i < header.length; i++) {
+
+         HSSFCell cell = row.createCell(i);
+
+         cell.setCellStyle(style);
+
+         HSSFRichTextString text = new HSSFRichTextString(header[i]);
+
+         cell.setCellValue(text);
+
+      }
+
+      //遍历集合数据，产生数据行
+
+      Iterator<T> it = dataset.iterator();
+
+      int index = 0;
+
+//      for (Iterator i = dataset.iterator(); i.hasNext(); ) {  
+//          Map record = (Map)i.next();  
+//          String dateField = record.get("START_DATE").toString();  
+//          if (dateField != null) {  
+//              record.put("new_date", dateField);  
+//          }  
+//
+//      }  
+      while (it.hasNext()) {
+
+         index++;
+
+         row = sheet.createRow(index);
+
+         T t = (T) it.next();
+
+         //利用反射，根据javabean属性的先后顺序，动态调用getXxx()方法得到属性值
+
+         Field[] fields = t.getClass().getDeclaredFields();
+
+         for (int i = 0; i < fields.length; i++) {
+
+            HSSFCell cell = row.createCell(i);
+
+            cell.setCellStyle(style2);
+
+            Field field = fields[i];
+
+            String fieldName = field.getName();
+
+            String getMethodName = "get"
+
+                   + fieldName.substring(0, 1).toUpperCase()
+
+                   + fieldName.substring(1);
+
+            try {
+
+                Class tCls = t.getClass();
+
+                Method getMethod = tCls.getMethod(getMethodName,
+
+                      new Class[] {});
+
+                Object value = getMethod.invoke(t, new Object[] {});
+
+                //判断值的类型后进行强制类型转换
+
+                String textValue = null;
+
+                if (value instanceof Boolean) {
+
+                   boolean bValue = (Boolean) value;
+
+                   textValue = "是";
+
+                   if (!bValue) {
+
+                      textValue ="否";
+
+                   }
+
+                } else if (value instanceof Date) {
+
+                   Date date = (Date) value;
+
+                   SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+
+                    textValue = sdf.format(date);
+
+                }  else if (value instanceof byte[]) {
+
+                   // 有图片时，设置行高为60px;
+
+                   row.setHeightInPoints(60);
+
+                   // 设置图片所在列宽度为80px,注意这里单位的一个换算
+
+                   sheet.setColumnWidth(i, (short) (35.7 * 80));
+
+                   // sheet.autoSizeColumn(i);
+
+                   byte[] bsValue = (byte[]) value;
+
+                   HSSFClientAnchor anchor = new HSSFClientAnchor(0, 0,
+
+                         1023, 255, (short) 6, index, (short) 6, index);
+
+                   anchor.setAnchorType(2);
+
+                   patriarch.createPicture(anchor, workbook.addPicture(
+
+                         bsValue, HSSFWorkbook.PICTURE_TYPE_JPEG));
+
+                } else{
+
+                   //其它数据类型都当作字符串简单处理
+
+                   textValue = value.toString();
+
+                }
+
+                //如果不是图片数据，就利用正则表达式判断textValue是否全部由数字组成
+
+                if(textValue!=null){
+
+                   Pattern p = Pattern.compile("^\\d+(\\.\\d+)?$");  
+
+                   Matcher matcher = p.matcher(textValue);
+
+                   if(matcher.matches()){
+
+                      //是数字当作double处理
+
+                      cell.setCellValue(Double.parseDouble(textValue));
+
+                   }else{
+
+                      HSSFRichTextString richString = new HSSFRichTextString(textValue);
+
+                      HSSFFont font3 = workbook.createFont();
+
+                      font3.setColor(HSSFColor.BLUE.index);
+
+                      richString.applyFont(font3);
+
+                      cell.setCellValue(richString);
+
+                   }
+
+                }
+
+            } catch (SecurityException e) {
+
+                e.printStackTrace();
+
+            } catch (NoSuchMethodException e) {
+
+                e.printStackTrace();
+
+            } catch (IllegalArgumentException e) {
+
+                e.printStackTrace();
+
+            } catch (IllegalAccessException e) {
+
+                e.printStackTrace();
+
+            } catch (InvocationTargetException e) {
+
+                e.printStackTrace();
+
+            } finally {
+
+            }
+
+         }
+
+      }
+
+      try {
+
+         workbook.write(out);
+
+      } catch (IOException e) {
+
+         e.printStackTrace();
+
+      }
+
+   }
+   
+   @SuppressWarnings("unchecked")
+public HSSFWorkbook exportExcel(String title,String headers, String fieldNames,
+
+	         List dataset, OutputStream out, String pattern) {
+
+	      // 声明一个工作薄
+
+	      HSSFWorkbook workbook = new HSSFWorkbook();
+
+	      // 生成一个表格
+
+	      HSSFSheet sheet = workbook.createSheet(title);
+
+	      // 设置表格默认列宽度为15个字节
+
+	      sheet.setDefaultColumnWidth(15);
+
+	      // 生成一个样式
+
+	      HSSFCellStyle style = workbook.createCellStyle();
+
+	      // 设置这些样式
+
+	      style.setFillForegroundColor(HSSFColor.SKY_BLUE.index);
+
+	      style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+	      style.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+	      style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+	      style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+	      style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+	      style.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+	      // 生成一个字体
+
+	      HSSFFont font = workbook.createFont();
+
+	      font.setColor(HSSFColor.VIOLET.index);
+
+	      font.setFontHeightInPoints((short) 12);
+
+	      font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+
+	      // 把字体应用到当前的样式
+
+	      style.setFont(font);
+
+	      // 生成并设置另一个样式
+
+	      HSSFCellStyle style2 = workbook.createCellStyle();
+
+	      style2.setFillForegroundColor(HSSFColor.LIGHT_YELLOW.index);
+
+	      style2.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+	      style2.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+	      style2.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+	      style2.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+	      style2.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+	      style2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+	      style2.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER);
+
+	      // 生成另一个字体
+
+	      HSSFFont font2 = workbook.createFont();
+
+	      font2.setBoldweight(HSSFFont.BOLDWEIGHT_NORMAL);
+
+	      // 把字体应用到当前的样式
+
+	      style2.setFont(font2);
+
+	      // 声明一个画图的顶级管理器
+
+	      HSSFPatriarch patriarch = sheet.createDrawingPatriarch();
+
+	      // 定义注释的大小和位置,详见文档
+
+	      HSSFComment comment = patriarch.createComment(new HSSFClientAnchor(0, 0, 0, 0, (short) 4, 2, (short) 6, 5));
+
+	      // 设置注释内容
+
+	      comment.setString(new HSSFRichTextString("上海任大科技"));
+
+	      // 设置注释作者，当鼠标移动到单元格上是可以在状态栏中看到该内容.
+
+	      comment.setAuthor("fanglm");
+
+	 
+
+	      //产生表格标题行
+
+	      HSSFRow row = sheet.createRow(0);
+	      
+	      String[]  header = headers.split(",");
+
+	      for (int i = 0; i < header.length; i++) {
+
+	         HSSFCell cell = row.createCell(i);
+
+	         cell.setCellStyle(style);
+
+	         HSSFRichTextString text = new HSSFRichTextString(header[i]);
+
+	         cell.setCellValue(text);
+
+	      }
+
+	      //遍历集合数据，产生数据行
+
+	      int index = 0;
+	      
+	      String[] fooNames = fieldNames.split(",");
+//	      Iterator i = dataset.iterator();
+
+	      for (Iterator i = dataset.iterator(); i.hasNext(); ) {  
+//	      for(int k =0;k<=2000;k++){
+	    	  
+	    	  index++;
+
+	          row = sheet.createRow(index);
+	    	  
+	          Map record = (Map)i.next();
+	          for(int j = 0;j<fooNames.length;j++){
+	        	  
+	        	  HSSFCell cell = row.createCell(j);
+
+	              cell.setCellStyle(style2);
+	              
+	              try{
+	  	                Object value = record.get(fooNames[j]);
+
+	  	                //判断值的类型后进行强制类型转换
+
+	  	                String textValue = null;
+
+	  	                if (value instanceof Boolean) {
+
+	  	                   boolean bValue = (Boolean) value;
+
+	  	                   textValue = "是";
+
+	  	                   if (!bValue) {
+
+	  	                      textValue ="否";
+
+	  	                   }
+
+	  	                } else if (value instanceof Date) {
+
+	  	                   Date date = (Date) value;
+
+	  	                   SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+
+	  	                    textValue = sdf.format(date);
+
+	  	                }else{
+
+	  	                   //其它数据类型都当作字符串简单处理
+	  	                	if(value == null){
+	  	                		textValue = "";
+	  	                	}else{
+	  	                		textValue = value.toString();
+	  	                	}
+	  	                }
+
+	  	                //如果不是图片数据，就利用正则表达式判断textValue是否全部由数字组成
+
+	  	                if(textValue!=null){
+	  	                	/**
+	  	                   Pattern p = Pattern.compile("^\\d+(\\.\\d+)?$");  
+
+	  	                   Matcher matcher = p.matcher(textValue);
+
+	  	                   if(matcher.matches()){
+
+	  	                      //是数字当作double处理
+
+	  	                      cell.setCellValue(Double.parseDouble(textValue));
+
+	  	                   }else{**/
+
+	  	                      HSSFRichTextString richString = new HSSFRichTextString(textValue);
+
+//	  	                      HSSFFont font3 = workbook.createFont();
+
+//	  	                      font3.setColor(HSSFColor.BLUE.index);
+//
+//	  	                      richString.applyFont(font3);
+
+	  	                      cell.setCellValue(richString);
+
+//	  	                   }
+
+	  	                }
+
+	  	            } catch (SecurityException e) {
+
+	  	                e.printStackTrace();
+
+	  	            } catch (IllegalArgumentException e) {
+
+	  	                e.printStackTrace();
+
+	  	            }
+	  	         }
+	      }  
+	      
+	      return workbook;
+	     
+	   }
+  @SuppressWarnings("unchecked")
+public HSSFWorkbook appendData(String fieldNames,List dataset,int index,HSSFWorkbook book){
+	//遍历集合数据，产生数据行
+
+	  HSSFRow row  = null;
+      
+      String[] fooNames = fieldNames.split(",");
+
+      for (Iterator i = dataset.iterator(); i.hasNext(); ) {  
+    	  
+    	  index++;
+
+          row = book.getSheet("sheet1").createRow(index);
+    	  
+          Map record = (Map)i.next();
+          for(int j = 0;j<fooNames.length;j++){
+        	  
+        	  HSSFCell cell = row.createCell(j);
+              cell.setCellStyle(book.getCellStyleAt((short)2));
+              try{
+  	                Object value = record.get(fooNames[j]);
+
+  	                //判断值的类型后进行强制类型转换
+
+  	                String textValue = null;
+
+  	                if (value instanceof Boolean) {
+
+  	                   boolean bValue = (Boolean) value;
+
+  	                   textValue = "是";
+
+  	                   if (!bValue) {
+
+  	                      textValue ="否";
+
+  	                   }
+
+  	                }else{
+
+  	                   //其它数据类型都当作字符串简单处理
+  	                	if(value == null){
+  	                		textValue = "";
+  	                	}else{
+  	                		textValue = value.toString();
+  	                	}
+  	                }
+
+  	                //如果不是图片数据，就利用正则表达式判断textValue是否全部由数字组成
+
+  	                if(textValue!=null){
+
+  	                      HSSFRichTextString richString = new HSSFRichTextString(textValue);
+
+  	                      cell.setCellValue(richString);
+
+  	                }
+
+  	            } catch (SecurityException e) {
+
+  	                e.printStackTrace();
+
+  	            } catch (IllegalArgumentException e) {
+
+  	                e.printStackTrace();
+
+  	            }
+  	         }
+          
+      }  
+      return book;
+  }
+  
+  public void writeFile(HSSFWorkbook workbook,File file){
+	  try {
+    	  
+	    	 FileOutputStream outP = new FileOutputStream(file);
+	         workbook.write(outP);
+	
+	      } catch (IOException e) {
+
+	         e.printStackTrace();
+
+	      }
+
+  }
+   
+   /**
+    * ResultSet 存储过程导出excel方法
+    * @create time 2011-7-13 16:00
+    * @author fanglm
+    * @param title
+    * @param headers
+    * @param fieldNames
+    * @param dataset
+    * @param out
+    * @param pattern
+    * @param file
+    */
+   public void exportExcel(String title,String headers, String fieldNames,
+
+   	         ResultSet dataset, OutputStream out, String pattern,File file) {
+
+   	      // 声明一个工作薄
+
+   	      HSSFWorkbook workbook = new HSSFWorkbook();
+
+   	      // 生成一个表格
+
+   	      HSSFSheet sheet = workbook.createSheet(title);
+
+   	      // 设置表格默认列宽度为15个字节
+
+   	      sheet.setDefaultColumnWidth(15);
+
+   	      // 生成一个样式
+
+   	      HSSFCellStyle style = workbook.createCellStyle();
+
+   	      // 设置这些样式
+
+   	      style.setFillForegroundColor(HSSFColor.SKY_BLUE.index);
+
+   	      style.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+   	      style.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+   	      style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+   	      style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+   	      style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+   	      style.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+   	      // 生成一个字体
+
+   	      HSSFFont font = workbook.createFont();
+
+   	      font.setColor(HSSFColor.VIOLET.index);
+
+   	      font.setFontHeightInPoints((short) 12);
+
+   	      font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+
+   	      // 把字体应用到当前的样式
+
+   	      style.setFont(font);
+
+   	      // 生成并设置另一个样式
+
+   	      HSSFCellStyle style2 = workbook.createCellStyle();
+
+   	      style2.setFillForegroundColor(HSSFColor.LIGHT_YELLOW.index);
+
+   	      style2.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
+
+   	      style2.setBorderBottom(HSSFCellStyle.BORDER_THIN);
+
+   	      style2.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+
+   	      style2.setBorderRight(HSSFCellStyle.BORDER_THIN);
+
+   	      style2.setBorderTop(HSSFCellStyle.BORDER_THIN);
+
+   	      style2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+
+   	      style2.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER);
+
+   	      // 生成另一个字体
+
+   	      HSSFFont font2 = workbook.createFont();
+
+   	      font2.setBoldweight(HSSFFont.BOLDWEIGHT_NORMAL);
+
+   	      // 把字体应用到当前的样式
+
+   	      style2.setFont(font2);
+
+   	      // 声明一个画图的顶级管理器
+
+   	      HSSFPatriarch patriarch = sheet.createDrawingPatriarch();
+
+   	      // 定义注释的大小和位置,详见文档
+
+   	      HSSFComment comment = patriarch.createComment(new HSSFClientAnchor(0, 0, 0, 0, (short) 4, 2, (short) 6, 5));
+
+   	      // 设置注释内容
+
+   	      comment.setString(new HSSFRichTextString("上海任大科技"));
+
+   	      // 设置注释作者，当鼠标移动到单元格上是可以在状态栏中看到该内容.
+
+   	      comment.setAuthor("fanglm");
+
+   	 
+
+   	      //产生表格标题行
+
+   	      HSSFRow row = sheet.createRow(0);
+   	      
+   	      String[]  header = headers.split(",");
+
+   	      for (int i = 0; i < header.length; i++) {
+
+   	         HSSFCell cell = row.createCell(i);
+
+   	         cell.setCellStyle(style);
+
+   	         HSSFRichTextString text = new HSSFRichTextString(header[i]);
+
+   	         cell.setCellValue(text);
+
+   	      }
+
+   	      //遍历集合数据，产生数据行
+
+   	      int index = 0;
+   	      
+   	      String[] fooNames = fieldNames.split(",");
+   	      try{
+	   	      while(dataset.next()){
+	   	    	  index++;
+	   	          row = sheet.createRow(index);
+	   	          for(int j = 0;j<fooNames.length;j++){
+	   	        	  
+	        	    HSSFCell cell = row.createCell(j);
+	
+	                cell.setCellStyle(style2);
+	                Object value = dataset.getObject(fooNames[j]);
+	
+	                //判断值的类型后进行强制类型转换
+	
+	                String textValue = null;
+	
+	                if (value instanceof Boolean) {
+	
+	                   boolean bValue = (Boolean) value;
+	
+	                   textValue = "是";
+	
+	                   if (!bValue) {
+	
+	                      textValue ="否";
+	
+	                   }
+	
+	                } else if (value instanceof Date) {
+	
+	                   Date date = (Date) value;
+	
+	                   SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+	
+	                    textValue = sdf.format(date);
+	
+	                }else{
+	
+	                   //其它数据类型都当作字符串简单处理
+	                	if(value == null){
+	                		textValue = "";
+	                	}else{
+	                		textValue = value.toString();
+	                	}
+	                }
+	
+	                //如果不是图片数据，就利用正则表达式判断textValue是否全部由数字组成
+	
+	                if(textValue!=null){
+	                      HSSFRichTextString richString = new HSSFRichTextString(textValue);
+	                      cell.setCellValue(richString);
+	                }
+	
+	   	  	           
+	   	          }  
+	   	      }
+   	    	 FileOutputStream outP = new FileOutputStream(file);
+   	         workbook.write(outP);
+     	
+   	      } catch (Exception e) {
+
+   	         e.printStackTrace();
+
+   	      }
+
+   	   }
+   @SuppressWarnings("deprecation")
+public HSSFWorkbook sfOrderExportExcel(String title,String headers, String fieldNames,
+
+	         List dataset, OutputStream out, String pattern) {
+	   HSSFWorkbook wb = new HSSFWorkbook();
+		// 建立新的sheet对象（excel的表单）
+		HSSFSheet sheet = wb.createSheet("sheet1");
+		
+		sheet.addMergedRegion(new CellRangeAddress(1, 2, 3, 8));
+		sheet.addMergedRegion(new CellRangeAddress(4, 4, 3, 5));
+		sheet.addMergedRegion(new CellRangeAddress(2, 3, 10, 10));
+		sheet.addMergedRegion(new CellRangeAddress(2, 3, 11, 11));
+		sheet.addMergedRegion(new CellRangeAddress(4, 5, 10, 10));
+		sheet.addMergedRegion(new CellRangeAddress(4, 5, 11, 11));
+		
+		sheet.addMergedRegion(new CellRangeAddress(9, 9, 1, 2));
+		sheet.addMergedRegion(new CellRangeAddress(9, 9, 3, 4));
+		sheet.addMergedRegion(new CellRangeAddress(9, 9, 5, 6));
+		sheet.addMergedRegion(new CellRangeAddress(9, 9, 9, 10));
+		
+		
+		sheet.setColumnWidth(11,"需要返还托盘数量".getBytes().length*256);
+		//sheet.set
+		// 在sheet里创建第一行，参数为行索引(excel的行)，可以是0～65535之间的任何一个
+		HSSFRow row1 = sheet.createRow(1);
+	
+		// 创建单元格（excel的单元格，参数为列索引，可以是0～255之间的任何一个
+		HSSFCell cell = row1.createCell(3);
+		// 设置单元格内容
+		cell.setCellValue("物流订单（无锡工厂出发）");
+		
+		HSSFCellStyle cellStyle=wb.createCellStyle();  
+	
+		cellStyle.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		//cellStyle.setRightBorderColor(HSSFColor.BLACK.index);
+		//cellStyle.setBorderRight(HSSFCellStyle.BORDER_THIN);
+		
+		HSSFFont font = wb.createFont();
+		font.setFontHeightInPoints((short) 24);
+		font.setColor(HSSFColor.BLACK.index);
+		font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		font.setFontName("宋体");
+		//font.setCharSet(1);
+		// 把字体 应用到当前样式
+		cellStyle.setFont(font);
+		cell.setCellStyle(cellStyle);
+	   
+		Map map=(Map)dataset.get(0);
+		
+		HSSFCellStyle cellsty=wb.createCellStyle();  
+		HSSFFont fontred=wb.createFont();
+		fontred.setColor(HSSFColor.RED.index);
+		cellsty.setFont(fontred);
+		
+		
+		
+		HSSFRow row2 = sheet.createRow(4);
+		row2.createCell(2).setCellValue("分配时间");
+		HSSFCell fpsjCell=row2.createCell(3);
+		fpsjCell.setCellValue(ObjUtil.ifNull(map.get("FROM_LOAD_TIME")," ").toString());
+		fpsjCell.setCellStyle(cellsty);
+		
+		row2.createCell(6).setCellValue("品项");		
+		HSSFCell pmCell=row2.createCell(7);
+		pmCell.setCellValue(ObjUtil.ifNull(map.get("SKU_NAME")," ").toString());
+		pmCell.setCellStyle(cellsty);
+		
+		
+		
+		HSSFRow row3 = sheet.createRow(2);
+		HSSFCell cellOrder = row3.createCell(10);
+		HSSFRow row4 = sheet.createRow(3);
+		HSSFCell cellOrder1 = row4.createCell(10);
+		cellOrder.setCellValue("订单号");
+		
+		HSSFCellStyle cellStyle1=wb.createCellStyle();  		
+		cellStyle1.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		cellStyle1.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle1.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle1.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle1.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle1.setFillForegroundColor(IndexedColors.LIME.getIndex());
+		cellStyle1.setFillPattern(CellStyle.SOLID_FOREGROUND);
+		
+		HSSFFont font1 = wb.createFont();
+		font1.setFontHeightInPoints((short)14);
+		font1.setColor(HSSFColor.BLACK.index);
+		font1.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		font1.setFontName("宋体");
+		cellStyle1.setFont(font1);
+		
+		
+		HSSFCellStyle cellStyle2=wb.createCellStyle();  		
+		cellStyle2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		cellStyle2.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle2.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle2.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle2.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+		cellStyle2.setFillForegroundColor(IndexedColors.LIME.getIndex());
+		cellStyle2.setFillPattern(CellStyle.SOLID_FOREGROUND);
+		
+		HSSFFont font2 = wb.createFont();
+		font2.setFontHeightInPoints((short)14);
+		font2.setColor(HSSFColor.RED.index);
+		font2.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		font2.setFontName("宋体");
+		cellStyle2.setFont(font2);
+		
+		
+		cellOrder.setCellStyle(cellStyle1);
+		cellOrder1.setCellStyle(cellStyle1);
+		
+
+		HSSFCell cellOrderData = row3.createCell(11);
+		cellOrderData.setCellValue(ObjUtil.ifNull(map.get("CUSTOM_ODR_NO")," ").toString());
+		cellOrderData.setCellStyle(cellStyle2);
+		
+		HSSFCell cellOrderData1 = row4.createCell(11);
+		cellOrderData1.setCellStyle(cellStyle2);
+		
+		HSSFCell cellDate = row2.createCell(10);
+		HSSFRow row5=sheet.createRow(5);
+		HSSFCell cellDate1 = row5.createCell(10);
+		cellDate.setCellValue("出货日期");
+		cellDate.setCellStyle(cellStyle1);
+		cellDate1.setCellStyle(cellStyle1);
+		
+		
+		
+		HSSFCell cellDateD = row2.createCell(11);
+		HSSFCell cellDateD1 = row5.createCell(11);
+		cellDateD.setCellValue(ObjUtil.ifNull(map.get("PRE_LOAD_TIME")," ").toString());
+		cellDateD.setCellStyle(cellStyle2);
+		cellDateD1.setCellStyle(cellStyle2);
+		
+		sheet.addMergedRegion(new CellRangeAddress(8, 8, 1, 11));
+		HSSFRow row6=sheet.createRow(8);
+		HSSFCell cellTitle=row6.createCell(1);
+		cellTitle.setCellValue("直达");
+		
+		HSSFCellStyle cellStylet=wb.createCellStyle();  
+		cellStylet.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+		cellStylet.setFillPattern(CellStyle.SOLID_FOREGROUND);
+		cellStylet.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		cellStylet.setRightBorderColor(HSSFColor.BLACK.index);
+		cellStylet.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		cellStylet.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+		cellStylet.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+		cellStylet.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+		
+		HSSFFont fontt = wb.createFont();
+		fontt.setFontHeightInPoints((short) 12);
+		fontt.setColor(HSSFColor.BLACK.index);
+		fontt.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		fontt.setFontName("宋体");
+		cellStylet.setFont(fontt);
+		cellTitle.setCellStyle(cellStylet);
+		
+		for(int i=2;i<12;i++){
+			HSSFCell cellzz = row6.createCell(i);			
+			
+			HSSFCellStyle cellStylez=wb.createCellStyle();  
+			cellStylez.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+			cellStylez.setRightBorderColor(HSSFColor.BLACK.index);
+			cellStylez.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+			cellStylez.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+			cellStylez.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+			cellStylez.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+			
+			cellzz.setCellStyle(cellStylez);
+			
+		}
+		
+		
+		for(int i=0;i<dataset.size();i++){
+			
+			sheet.addMergedRegion(new CellRangeAddress(10+i, 10+i, 1, 2));
+			//sheet.addMergedRegion(new CellRangeAddress(10+i, 10+i, 3, 4));
+			//sheet.addMergedRegion(new CellRangeAddress(10+i, 10+i, 5, 6));
+			sheet.addMergedRegion(new CellRangeAddress(10+i, 10+i, 9, 10));
+			
+		}
+		
+		HSSFRow row7=sheet.createRow(9);
+		HSSFCell celladd=row7.createCell(1);
+		HSSFCell celladd1=row7.createCell(2);
+		celladd.setCellValue("目的地");
+		HSSFCellStyle cellst=wb.createCellStyle();
+		
+		cellst.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		cellst.setRightBorderColor(HSSFColor.BLACK.index);
+		cellst.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		cellst.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+		cellst.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+		cellst.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+		
+		celladd.setCellStyle(cellst);
+		celladd1.setCellStyle(cellst);
+		
+		HSSFCell cellnum=row7.createCell(3);
+		HSSFCell cellnum1=row7.createCell(4);
+		cellnum.setCellValue("出货量");
+		cellnum.setCellStyle(cellst);
+		cellnum1.setCellStyle(cellst);
+		
+		
+		HSSFCell cellcha=row7.createCell(5);
+		HSSFCell cellcha1=row7.createCell(6);
+		cellcha.setCellValue("修改为");
+		cellcha.setCellStyle(cellst);
+		cellcha1.setCellStyle(cellst);
+		
+		HSSFCell cellout=row7.createCell(7);
+		cellout.setCellValue("到货日期");
+		cellout.setCellStyle(cellst);
+		
+		HSSFCell cellcar=row7.createCell(8);
+		cellcar.setCellValue("车辆安排");
+		cellcar.setCellStyle(cellst);
+		
+		
+		HSSFCell cellnote=row7.createCell(9);
+		HSSFCell cellnote1=row7.createCell(10);
+		cellnote.setCellValue("备注");
+		cellnote.setCellStyle(cellst);
+		cellnote1.setCellStyle(cellst);
+		
+		HSSFCell cellback=row7.createCell(11);
+		cellback.setCellValue("需要返还托盘数量");
+		cellback.setCellStyle(cellst);
+		
+
+		HSSFCellStyle cellstd=wb.createCellStyle();
+		
+		cellstd.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		cellstd.setRightBorderColor(HSSFColor.BLACK.index);
+		cellstd.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+		cellstd.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+		cellstd.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+		cellstd.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);
+		
+		HSSFFont fontd = wb.createFont();
+		fontd.setFontHeightInPoints((short) 12);
+		fontd.setColor(HSSFColor.RED.index);
+		fontd.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		fontd.setFontName("宋体");
+		cellstd.setFont(fontd);
+		
+		for(int i=0;i<dataset.size();i++){
+			Map map1=(Map)dataset.get(i);
+			
+			HSSFRow rowdate=sheet.createRow(10+i);
+			HSSFCell cella=rowdate.createCell(1);
+			HSSFCell cellb=rowdate.createCell(2);
+			cella.setCellValue(ObjUtil.ifNull(map1.get("UNLOAD_NAME")," ").toString());
+			cella.setCellStyle(cellstd);
+			cellb.setCellStyle(cellstd);
+			
+			HSSFCell cellc=rowdate.createCell(3);
+			HSSFCell celld=rowdate.createCell(4);
+			cellc.setCellValue(ObjUtil.ifNull(map1.get("QNTY")," ").toString());
+			celld.setCellValue(ObjUtil.ifNull(map1.get("QNTY_EACH")," ")+"板".toString());
+			
+			HSSFCellStyle cellstc=wb.createCellStyle();	
+			cellstc.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+			cellstc.setRightBorderColor(HSSFColor.BLACK.index);
+			cellstc.setBorderRight(HSSFCellStyle.BORDER_DOUBLE);
+			cellstc.setBorderBottom(HSSFCellStyle.BORDER_DOUBLE);
+			cellstc.setBorderLeft(HSSFCellStyle.BORDER_DOUBLE);
+			cellstc.setBorderTop(HSSFCellStyle.BORDER_DOUBLE);
+			
+			HSSFFont fontstc = wb.createFont();
+			fontstc.setFontHeightInPoints((short) 12);
+			fontstc.setColor(HSSFColor.RED.index);
+			fontstc.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+			fontstc.setFontName("宋体");
+			cellstc.setFont(fontd);
+			
+			cellc.setCellStyle(cellstc);
+			celld.setCellStyle(cellstc);
+			
+			HSSFCell celle=rowdate.createCell(5);
+			HSSFCell cellf=rowdate.createCell(6);
+			cellf.setCellValue("板");
+			
+			HSSFCellStyle cellstf=wb.createCellStyle();	
+			cellstf.setAlignment(HSSFCellStyle.ALIGN_RIGHT);
+			cellstf.setRightBorderColor(HSSFColor.BLACK.index);
+			cellstf.setBorderRight(HSSFCellStyle.BORDER_MEDIUM);
+			cellstf.setBorderBottom(HSSFCellStyle.BORDER_MEDIUM);
+			cellstf.setBorderLeft(HSSFCellStyle.BORDER_MEDIUM);
+			cellstf.setBorderTop(HSSFCellStyle.BORDER_MEDIUM);	
+			
+			celle.setCellStyle(cellstc);
+			cellf.setCellStyle(cellstf);
+			
+			HSSFCell cellg=rowdate.createCell(7);
+			cellg.setCellValue(ObjUtil.ifNull(map1.get("PRE_UNLOAD_TIME")," ").toString());
+			cellg.setCellStyle(cellstd);		
+			HSSFCell cellh=rowdate.createCell(8);
+			cellh.setCellValue("低糖与原味同车*1");
+			cellh.setCellStyle(cellst);
+			
+			
+			HSSFCell celli=rowdate.createCell(9);
+			HSSFCell cellj=rowdate.createCell(10);
+			celli.setCellValue(ObjUtil.ifNull(map1.get("NOTES")," ").toString());
+			celli.setCellStyle(cellstd);
+			cellj.setCellStyle(cellst);
+			
+			HSSFCell cellk=rowdate.createCell(11);
+			cellk.setCellValue("0.00000000");
+			cellk.setCellStyle(cellst);
+			
+			
+		}
+		
+		
+		
+		
+	   return wb;
+	   
+	   
+   }
+   
+   
+   
+}

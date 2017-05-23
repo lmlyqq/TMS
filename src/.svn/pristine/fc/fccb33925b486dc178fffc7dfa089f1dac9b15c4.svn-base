@@ -1,0 +1,228 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.DamageViewDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+/**
+ * 客户服务 -->货损货差
+ * @author lijun
+ *
+ */
+@ClassForNameAble
+public class DamageView extends SGForm implements PanelFactory {
+	private DataSource DS;
+	private SGTable Table;
+	private SectionStack section;
+	private Window searchWin;
+	private SGPanel searchForm;
+	
+	/*public DamageView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(fid);
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		DS = DamageViewDS.getInstance("V_LOSS_DAMAGE_", "TRANS_LOSS_DAMAGE");
+		Table = new SGTable(DS,"100%","70%");
+		Table.setCanEdit(false);
+		Table.setShowFilterEditor(false);
+		
+		listInfo(Table);
+		createBtnWidget(toolStrip);
+		section = createSection(Table,null,true,true);
+		section.setHeight("92%");
+		VLayout layout = new VLayout();
+		layout.setWidth100();
+		layout.setHeight100();
+		layout.addMember(toolStrip);
+		layout.addMember(section);
+//		initVerify();
+		return layout;
+		
+		
+	}
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(16);
+		toolStrip.addSeparator();
+		
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin =  new SearchWin(DS, createSerchForm(searchForm), section.getSection(0)).getViewPanel();
+				} else {
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+		
+		IButton expButton = createBtn(StaticRef.EXPORT_BTN);
+	    expButton.addClickHandler(new ExportAction(Table, "addtime desc"));
+	    
+	    toolStrip.setMembersMargin(4);
+	    toolStrip.setMembers(searchButton,expButton);
+
+	}
+	private void listInfo(SGTable table){
+		ListGridField REFENENCE1=new ListGridField("REFENENCE1",Util.TI18N.REFENENCE1(),100);
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO",Util.TI18N.CUSTOM_ODR_NO(),100);
+		CUSTOM_ODR_NO.setHidden(true);
+		ListGridField CUSTOMER_ID_NAME = new ListGridField("CUSTOMER_ID_NAME",Util.TI18N.CUSTOMER_ID_NAME(),60);
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO",Util.TI18N.LOAD_NO(),80);
+		ListGridField SHPM_NO = new ListGridField("SHPM_NO",Util.TI18N.SHPM_NO(),80);
+		ListGridField LOAD_AREA_NAME2=new ListGridField("LOAD_AREA_NAME2","起点城市",100);
+		ListGridField UNLOAD_AREA_NAME2=new ListGridField("UNLOAD_AREA_NAME2","终点城市",100);
+		ListGridField SKU = new ListGridField("SKU",Util.TI18N.SKU(),60);
+		ListGridField SKU_NAME = new ListGridField("SKU_NAME",Util.TI18N.SKU_NAME(),75);
+		ListGridField SKU_SPEC = new ListGridField("SKU_SPEC",Util.TI18N.SKU_SPEC(),60);
+		ListGridField TRANS_UOM = new ListGridField("TRANS_UOM",Util.TI18N.TRANS_UOM(),60);
+		ListGridField QNTY = new ListGridField("QNTY",Util.TI18N.QNTY(),50);
+//		ListGridField TOT_GROSS_W=new ListGridField("GROSS_W",Util.TI18N.TOT_GROSS_W(),80);
+		ListGridField TOT_GROSS_W=new ListGridField("GROSS_W","货损重量",80);
+		Util.initFloatListField(QNTY, StaticRef.QNTY_FLOAT);
+		ListGridField LOSS_DAMAGE_TYP_NAME = new ListGridField("LOSS_DAMAGE_TYP_NAME",Util.TI18N.LOSS_DAMAGE_TYP_NAME(),80);
+		ListGridField REASON = new ListGridField("REASON",Util.TI18N.REASON(),80);
+		ListGridField AMOUNT = new ListGridField("AMOUNT",Util.TI18N.AMOUNT(),80);
+		Util.initFloatListField(AMOUNT, StaticRef.QNTY_FLOAT);
+		ListGridField SUPLR_ID_NAME=new ListGridField("SUPLR_NAME",Util.TI18N.SUPLR_NAME(),80);
+		ListGridField DUTYER = new ListGridField("DUTYER",Util.TI18N.DUTYER(),80);
+		ListGridField TEMPERATURE_ID=new ListGridField("REFENENCE4");
+		TEMPERATURE_ID.setHidden(true);
+		ListGridField TEMPERATURE=new ListGridField("TEMPERATURE_NAME",Util.TI18N.TEMPERATURE(),60);
+		ListGridField TOT_WGT=new ListGridField("TOT_WGT",Util.TI18N.TOT_GROSS_W(),80);
+		ListGridField TOT_QNTY=new ListGridField("TOT_QNTY","总件数",80);
+		ListGridField TOT_FEE=new ListGridField("TOT_FEE","总费用",80);
+		ListGridField BIZ_TYP=new ListGridField("BIZ_TYP");
+		BIZ_TYP.setHidden(true);
+		ListGridField BIZ_TYP_NAME=new ListGridField("BIZ_TYP_NAME",Util.TI18N.BIZ_TYP(),60);
+		
+		table.setFields(REFENENCE1,CUSTOM_ODR_NO,CUSTOMER_ID_NAME,LOAD_NO,SHPM_NO,BIZ_TYP,BIZ_TYP_NAME,TEMPERATURE_ID,TEMPERATURE,LOAD_AREA_NAME2,
+				UNLOAD_AREA_NAME2,SKU,SKU_NAME,SKU_SPEC,TRANS_UOM,QNTY,TOT_GROSS_W,LOSS_DAMAGE_TYP_NAME,REASON,AMOUNT,
+				TOT_WGT,TOT_QNTY,TOT_FEE,SUPLR_ID_NAME,DUTYER);
+		
+	}
+	@Override
+	public void createForm(DynamicForm form) {
+		// TODO Auto-generated method stub
+
+	}
+	public DynamicForm createSerchForm(SGPanel form){
+		form.setDataSource(DS);
+		form.setAutoFetchData(false);
+		form.setWidth100();
+		form.setCellPadding(2);
+		
+		SGCombo CUSTOMER_ID = new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER_ID());
+		CUSTOMER_ID.setVisible(false);
+		SGCombo CUSTOMER_NAME = new SGCombo("CUSTOMER_NAME",Util.TI18N.CUSTOMER_ID_NAME(),true);
+		Util.initComboValue(CUSTOMER_NAME, "BAS_CUSTOMER", "ID", "CUSTOMER_CNAME", " where CUSTOMER_FLAG='Y'");
+
+		SGText CUSTOM_ODR_NO = new SGText("CUSTOM_ODR_NO",Util.TI18N.CUSTOM_ODR_NO());
+		SGText SHPM_NO = new SGText("SHPM_NO",Util.TI18N.SHPM_NO());
+		SGText LOAD_NO = new SGText("LOAD_NO",Util.TI18N.LOAD_NO());
+		
+		SGText SKU = new SGText("SKU",Util.TI18N.SKU(),true);
+		SGText SKU_NAME = new SGText("SKU_NAME",Util.TI18N.SKU_NAME());
+//		SKU_ID.setTitle(ColorUtil.getRedTitle(Util.TI18N.SKU()));
+		SGText DUTYER = new SGText("DUTYER",Util.TI18N.DUTYER());
+		SGCombo LOSS_DAMAGE_TYP_NAME = new SGCombo("LOSS_DAMAGE_TYP_NAME",Util.TI18N.LOSS_DAMAGE_TYP_NAME());
+		Util.initCodesComboValue(LOSS_DAMAGE_TYP_NAME, "LOSS_DAMAGE_TYP");
+		
+		SGCombo SUPLR_ID=new SGCombo("SUPLR_ID",Util.TI18N.SUPLR_NAME());
+		Util.initComboValue(SUPLR_ID, "BAS_SUPPLIER", "ID", "SUPLR_CNAME"," WHERE ENABLE_FLAG = 'Y'", "");
+		SUPLR_ID.setColSpan(4);
+//		SGCombo SUPLR_NAME=new SGCombo("SUPLR_NAME",Util.TI18N.SUPLR_NAME());
+//		Util.initComboValue(SUPLR_NAME, "BAS_SUPPLIER", "ID", "SUPLR_CNAME"," WHERE ENABLE_FLAG = 'Y'", "");
+//		SUPLR_NAME.setColSpan(4);
+		
+		SGDateTime ADDTIME_FROM=new SGDateTime("ADDTIME_FROM",Util.TI18N.ORD_ADDTIME_FROM());
+		SGDateTime ADDTIME_TO=new SGDateTime("ADDTIME_TO","到");
+		
+		TextItem EXEC_ORG_ID=new TextItem("EXEC_ORG_ID");
+		EXEC_ORG_ID.setVisible(false);
+		SGText EXEC_ORG_ID_NAME=new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false,"50%","50%");
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		
+		SGCheck C_ORG_FLAG=new SGCheck("C_ORG_FLAG",Util.TI18N.C_ORG_FLAG());
+		C_ORG_FLAG.setDefaultValue(true);
+		
+		form.setItems(CUSTOMER_ID,CUSTOMER_NAME,CUSTOM_ODR_NO,SHPM_NO,LOAD_NO,SKU,SKU_NAME,DUTYER,LOSS_DAMAGE_TYP_NAME,
+				ADDTIME_FROM,ADDTIME_TO,SUPLR_ID,EXEC_ORG_ID,EXEC_ORG_ID_NAME,C_ORG_FLAG);
+		return form;
+		
+	}
+
+
+	@Override
+	public void initVerify() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null){
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		DamageView view = new DamageView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+}

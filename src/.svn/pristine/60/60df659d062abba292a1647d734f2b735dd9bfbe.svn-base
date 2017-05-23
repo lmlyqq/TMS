@@ -1,0 +1,47 @@
+package com.rd.client.ds.settlement;
+
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.fields.DataSourceTextField;
+import com.smartgwt.client.types.DSDataFormat;
+
+/**
+ * 结算管理--客户结算管理
+ * @author fanglm
+ *
+ */
+public class BillOrderHeaderDS extends DataSource{
+	private static BillOrderHeaderDS instance = null;
+
+	public static BillOrderHeaderDS getInstance(String id, String tableName) {
+		if (instance == null) {
+			instance = new BillOrderHeaderDS(id, tableName);
+		}
+		return instance;
+	}
+
+	public static BillOrderHeaderDS getInstance(String id) {
+		if (instance == null) {
+			instance = new BillOrderHeaderDS(id, id);
+		}
+		return instance;
+	}
+
+	public BillOrderHeaderDS(String id, String tableName) {
+
+		setID(id);
+		setDataFormat(DSDataFormat.JSON);
+		//setTableName(tableName);
+		setAttribute("tableName", tableName, false);
+		DataSourceTextField keyField = new DataSourceTextField("ID", "ID", 10,false);
+		keyField.setPrimaryKey(true);
+		keyField.setHidden(true);
+	
+		setFields(keyField);
+
+		setDataURL("settQueryServlet?is_curr_page=true&&ds_id=" + getID());
+		setClientOnly(false);
+		setShowPrompt(false);
+	}
+
+}
+

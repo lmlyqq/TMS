@@ -1,0 +1,50 @@
+package com.rd.client.ds.base;
+
+import com.rd.client.common.util.Util;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.fields.DataSourceTextField;
+import com.smartgwt.client.types.DSDataFormat;
+/**
+ * 基础资料->温控设备
+ * @author yuanlei
+ *
+ */
+public class BasTempEqDetailDS extends DataSource {
+
+    private static BasTempEqDetailDS instance = null;
+
+    /**
+     * 
+     * @author lml
+     * @param id 数据源的名称，默认用表名
+     * @param tableName 表名称（可为空，增删改时需要用到）
+     * @return
+     */
+    public static BasTempEqDetailDS getInstance(String id, String tableName) {
+        if (instance == null) {
+            instance = new BasTempEqDetailDS(id, tableName);
+        }
+        return instance;
+    }
+    public BasTempEqDetailDS(String id, String tableName) {
+
+        setID(id);
+        setDataFormat(DSDataFormat.JSON);
+        //setTableName(tableName);
+        setAttribute("tableName", tableName, false);
+        DataSourceTextField keyField = new DataSourceTextField("ID", "ID", 10, false);
+        keyField.setPrimaryKey(true);
+        keyField.setForeignKey("ID");
+        keyField.setHidden(true);
+		
+		DataSourceTextField PROP_CODE = new DataSourceTextField("EQUIP_NO", Util.TI18N.EQUIP_NO());
+		//DataSourceTextField NAME_C = new DataSourceTextField("NAME_C", Util.TI18N.PROP_NAMEC());
+		//DataSourceTextField NAME_E = new DataSourceTextField("NAME_E", Util.TI18N.PROP_NAMEE());
+		//DataSourceTextField BIZ_TYPE = new DataSourceTextField("BIZ_TYPE", Util.TI18N.BIZ_TYPE());
+        
+        setFields(keyField, PROP_CODE);
+        setDataURL("basQueryServlet?ds_id="+this.getID());
+        setClientOnly(false);
+        setShowPrompt(false);
+    }
+}

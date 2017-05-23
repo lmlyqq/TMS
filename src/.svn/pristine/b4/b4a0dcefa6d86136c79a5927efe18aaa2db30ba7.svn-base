@@ -1,0 +1,299 @@
+package com.rd.client.view.settlement;
+
+import java.util.ArrayList;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.BillRecDamageDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.BussWin;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.PickerIcon;
+import com.smartgwt.client.widgets.form.fields.events.FormItemClickHandler;
+import com.smartgwt.client.widgets.form.fields.events.FormItemIconClickEvent;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * BMS-应收管理-货损赔偿单
+ */
+@ClassForNameAble
+public class RecDamageView extends SGForm implements PanelFactory {
+   private DataSource ds;
+   private SGTable table;
+   private Window searchWin;
+   private SGPanel searchForm;
+   private SectionStack section;
+   public DynamicForm pageForm; 
+   private IButton confirmButton ;
+   private IButton cancelButton;
+   
+	//页面的整体布局
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();//获取默认客户
+		
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		ds = BillRecDamageDS.getInstance("BILL_REC_DAMAGE","BILL_REC_DAMAGE");
+		table=new SGTable(ds, "100%", "100%", false, false, false);
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		createListFields();	
+		
+		section= new SectionStack();
+		SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem.setItems(table);
+		listItem.setExpanded(true);
+		section.addSection(listItem);
+		pageForm = new SGPage(table,true).initPageBtn();
+		listItem.setControls(pageForm);
+		
+		createBtnWidget(toolStrip);
+		VLayout layout = new VLayout();
+		layout.setHeight100();
+		layout.setWidth100();
+		initVerify();
+		layout.addMember(toolStrip);
+		layout.addMember(section);
+
+		return layout;
+	}
+
+	
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setHeight("20");
+		toolStrip.setWidth("100%");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(12);
+		toolStrip.addSeparator();
+		
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN,SettPrivRef.DAMAGE);
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(ds,createSerchForm(searchForm), section.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		confirmButton= createUDFBtn("提交确认",StaticRef.CONFIRM_BTN,SettPrivRef.DAMAGE_P0_01);
+		confirmButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(table.getSelectedRecord()==null){
+					MSGUtil.sayError("请选择记录！");
+					return;
+				}
+				if(table.getSelectedRecord().getAttribute("STATUS").equals("20")){
+					MSGUtil.sayError("该记录已提交！");
+					return;
+				}
+				ArrayList<String> list= new ArrayList<String>();
+				list.add(table.getSelectedRecord().getAttribute("DAMAGE_NO"));
+				list.add(LoginCache.getLoginUser().getUSER_ID());
+				Util.async.execProcedure(list, "BMS_REC_DAMAGE_COMMIT(?,?,?)", new AsyncCallback<String>() {
+        			@Override
+					public void onFailure(Throwable caught) {
+							caught.printStackTrace();
+					}
+        			@Override
+        			public void onSuccess(String result) {
+        				if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							table.getSelectedRecord().setAttribute("STATUS", "20");
+						}
+        				else {
+        					MSGUtil.sayError(result.substring(2));         					
+        				}
+        				
+        			}
+        			
+        		});
+			}
+		});
+		
+		cancelButton = createUDFBtn("取消确认",StaticRef.CANCEL_BTN,SettPrivRef.DAMAGE_P0_02);
+		cancelButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(table.getSelectedRecord()==null){
+					MSGUtil.sayError("请选择记录！");
+					return;
+				}
+				if(table.getSelectedRecord().getAttribute("STATUS").equals("10")){
+					MSGUtil.sayError("该记录还未提交！");
+					return;
+				}
+				ArrayList<String> list= new ArrayList<String>();
+				list.add(table.getSelectedRecord().getAttribute("DAMAGE_NO"));
+				Util.async.execProcedure(list, "BMS_REC_DAMAGE_COMMIT(?,?)", new AsyncCallback<String>() {
+        			@Override
+					public void onFailure(Throwable caught) {
+							caught.printStackTrace();
+					}
+        			@Override
+        			public void onSuccess(String result) {
+        				if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							table.getSelectedRecord().setAttribute("STATUS", "10");
+						}
+        				else {
+        					MSGUtil.sayError(result.substring(2));         					
+        				}
+        				
+        			}
+        			
+        		});
+			}
+		});
+
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,confirmButton,cancelButton);
+		
+		
+		
+	}
+	
+	private void createListFields(){
+        
+		final ListGridField DAMAGE_NO = new ListGridField("DAMAGE_NO","赔偿单号",80);
+		ListGridField CUSTOMER_ID = new ListGridField("CUSTOMER_ID","客户名称",100);
+		Util.initComboValue(CUSTOMER_ID, "BAS_CUSTOMER", "ID", "CUSTOMER_CNAME", " where ENABLE_FLAG='Y' ", "");
+		ListGridField STATUS = new ListGridField("STATUS","审批状态",70);
+		Util.initComboValue(STATUS, "BAS_CODES", "CODE", "NAME_C", " where PROP_CODE='APPROVE_STS' ", "");
+		ListGridField BELONG_MONTH = new ListGridField("BELONG_MONTH","所属期",70);
+		ListGridField TOTAL_AMOUNT = new ListGridField("TOTAL_AMOUNT","赔偿总金额",80);
+		ListGridField COMPANY_AMOUNT = new ListGridField("COMPANY_AMOUNT","本公司承担金额",90);
+		ListGridField INSUR_AMOUNT = new ListGridField("INSUR_AMOUNT","保险公司承担金额",90);
+		ListGridField SUPLR_AMOUNT = new ListGridField("SUPLR_AMOUNT","承运商/司机承担金额",90);
+		ListGridField STAFF_AMOUNT = new ListGridField("STAFF_AMOUNT","本公司员工承担金额",90);
+		ListGridField DESCR = new ListGridField("DESCR","货损货差情况说明",120);
+
+		table.setFields(DAMAGE_NO,CUSTOMER_ID,STATUS,BELONG_MONTH,TOTAL_AMOUNT,COMPANY_AMOUNT
+				        ,INSUR_AMOUNT,SUPLR_AMOUNT,STAFF_AMOUNT,DESCR);
+
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				Record record=event.getRecord();
+				if(record!=null){
+					if(("10").equals(record.getAttribute("STATUS"))){
+						confirmButton.setDisabled(false);
+						cancelButton.setDisabled(true);
+					}
+					if(("20").equals(record.getAttribute("STATUS"))){
+						confirmButton.setDisabled(true);
+						cancelButton.setDisabled(false);
+					}
+					
+				}
+			}
+		});
+	}
+	
+
+	public DynamicForm createSerchForm(final SGPanel form) {
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);
+		form.setTitleSuffix("");
+				
+		SGText BUSS_NAME = new SGText("BUSS_NAME","客户");
+    	PickerIcon searchPicker = new PickerIcon(PickerIcon.SEARCH);  	
+		searchPicker.addFormItemClickHandler(new FormItemClickHandler() {			
+			@Override
+			public void onFormItemClick(FormItemIconClickEvent event) {
+				 new BussWin(form,"20%","50%").getViewPanel();		
+			}
+		});      
+		BUSS_NAME.setIcons(searchPicker);		
+		SGText BUSS_ID = new SGText("BUSS_ID","客户");
+		BUSS_ID.setVisible(false);		
+		
+		SGText BELONG_MONTH = new SGText("BELONG_MONTH","所属期");	
+		
+		SGText DAMAGE_NO = new SGText("DAMAGE_NO","货损赔偿单号");
+	
+		SGCombo STATUS = new SGCombo("STATUS","审批状态",true);
+		Util.initComboValue(STATUS, "BAS_CODES", "CODE", "NAME_C"," where PROP_CODE='APPROVE_STS' ");	
+        
+		form.setItems(BUSS_ID,BUSS_NAME,BELONG_MONTH,DAMAGE_NO,STATUS);
+		
+		return form;
+	}
+	
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+	@Override
+	public void initVerify() {
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin!=null){
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		RecDamageView view = new RecDamageView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		return getID();
+	}
+		
+	
+
+}

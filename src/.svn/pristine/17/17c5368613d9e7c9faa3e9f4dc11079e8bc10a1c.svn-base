@@ -1,0 +1,876 @@
+package com.rd.client.view.system;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.action.system.ListConfigModifyAction;
+import com.rd.client.action.system.ListConfigNewAction;
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.SysPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.system.ConfigNameDS;
+import com.rd.client.ds.system.ListConfigDS;
+import com.rd.client.ds.system.UserListDS;
+import com.rd.client.obj.system.SYS_USER;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.ListCfgWin;
+import com.rd.client.win.LstCfgSearchWin;
+import com.rd.client.win.UserWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.util.BooleanCallback;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.TransferImgButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.DoubleClickEvent;
+import com.smartgwt.client.widgets.events.DoubleClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.SelectItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangeEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangeHandler;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.layout.VStack;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 系统管理->列表配置
+ * @author yuanlei
+ *
+ */
+@ClassForNameAble
+public class ListConfigView extends SGForm implements PanelFactory {
+
+	 private DataSource listDS;    //已配置列表（左）
+	 private DataSource cacheDS;   //缓存配置列表（右）
+	 private DataSource cfgDS;     //配置名称列表
+ 	 private SGTable listTable;   
+	 private SGTable cacheTable;
+	 private SGTable cfgTable; 
+	 
+	 private String func_model;
+	 private String user_id;
+	 private String view_name;
+	 
+	 public SYS_USER userInfo;
+	 private Window searchWin = null;
+	 public SGPanel searchForm = new SGPanel();
+	 private SectionStack lstsectionStack;
+	 private SectionStack lstcacheStack;
+	 private String new_view_name;
+	 
+	 /*public ListConfigView(String id) {
+	     super(id);
+	 }*/
+	 
+	 public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+	    VLayout lay1 = new VLayout();
+	    lay1.setWidth100();
+	    VLayout lay2 = new VLayout();
+
+	    createTab1Form(lay1);
+	    createTab2Form(lay2);
+	    
+        final TabSet tabFolder = new TabSet();    
+        tabFolder.setWidth100();   
+        tabFolder.setHeight100();
+        if(isPrivilege(SysPrivRef.LISTCONFIG_P1)) {
+           Tab tab1 = new Tab("模块配置");
+           tab1.setPane(lay1);
+           tabFolder.addTab(tab1);
+        }
+        if(isPrivilege(SysPrivRef.LISTCONFIG_P2)) {
+           Tab tab2 = new Tab("配置查看");
+           tab2.setPane(lay2);
+           tabFolder.addTab(tab2);
+        }    
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		main.addMember(tabFolder);
+		
+		initAddBtn(true);
+		  
+		return main;
+	}
+	 
+	private void createTab1Form(VLayout vLay) {
+	    ToolStrip toolStrip = new ToolStrip();
+	    HLayout lay = new HLayout();
+	    
+	    listDS = ListConfigDS.getInstance("SYS_LIST_CONFIG", "SYS_LIST_FUNC");
+	    cacheDS = UserListDS.getInstance("SYS_CACHE_CONFIG", "SYS_LIST_CONFIG");
+	    
+	    listTable = new SGTable(listDS, "100%", "100%"); 
+	    listTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+	    listTable.setShowFilterEditor(false);
+	    
+	    listTable.addDoubleClickHandler(new DoubleClickHandler() {
+
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(save_map, true);
+			}
+	    	
+	    });
+	    
+	    lstsectionStack = new SectionStack();
+		final SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+	    listItem.setItems(listTable);
+	    listItem.setExpanded(true);
+	    lstsectionStack.addSection(listItem);
+	    
+	    createListArrow(listItem);
+
+	    lstsectionStack.setWidth100();
+	    lstsectionStack.setHeight100();
+	    
+		createListFields(listTable);
+		
+	    cacheTable = new SGTable(cacheDS, "100%", "96%");
+	    cacheTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+	    cacheTable.setCanDrag(true);
+	    cacheTable.setShowFilterEditor(false);
+	    lstcacheStack = new SectionStack();
+		final SectionStackSection cacheItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		cacheItem.setItems(cacheTable);
+		cacheItem.setExpanded(true);
+	    lstcacheStack.addSection(cacheItem);
+        createCacheArrow(cacheItem);
+	    lstcacheStack.setWidth("100%");
+	    lstcacheStack.setHeight100();
+	    
+		createUserListFields(cacheTable);
+		
+		lay.addMember(lstsectionStack);
+		
+		VStack midBtn = new VStack();  //中间部分按钮布局
+		midBtn.setHeight(74);
+		midBtn.setWidth(40);
+		midBtn.setLayoutAlign(Alignment.CENTER);   
+		TransferImgButton toLeft = new TransferImgButton(TransferImgButton.LEFT);   //向左箭头按钮
+		toLeft.setWidth(24);
+		toLeft.addClickHandler(new ClickHandler() {
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public void onClick(ClickEvent event) {
+				if(cacheTable.getSelection().length > 0) {
+					ListGridRecord[] alRecords = listTable.getRecords();
+					ArrayList list = new ArrayList(Arrays.asList(alRecords));
+					String fields = "";
+					StringBuffer sf = new StringBuffer();
+					for(int i = 0; i < alRecords.length; i++) {
+						sf.append(",");
+						sf.append(alRecords[i].getAttribute("FIELD_ID"));
+						//fields += "," + alRecords[i].getAttribute("FIELD_ID");
+					}
+					sf.append(",");
+					fields = sf.toString();
+					//fields += fields + ",";
+					ListGridRecord[] records = cacheTable.getSelection();
+					for(int i = 0; i < records.length; i++) {
+						if(fields.indexOf("," + records[i].getAttribute("FIELD_ID") + ",") < 0) {
+							records[i].setAttribute("SHOW_SEQ", i + 1);
+							records[i].setAttribute("SHOW_FLAG", Boolean.TRUE);
+							list.add(0,records[i]);
+						}
+					}
+					listTable.setData((ListGridRecord[])list.toArray(new ListGridRecord[list.size()]));
+					
+					initAddBtn(false);
+				}
+			}
+			
+		});
+		TransferImgButton toRight = new TransferImgButton(TransferImgButton.RIGHT);   //向左箭头按钮
+		toRight.setWidth(24);
+		toRight.addClickHandler(new ClickHandler() {
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public void onClick(ClickEvent event) {
+				ListGridRecord[] records = listTable.getSelection();
+				if(records != null && records.length > 0) {
+					ListGridRecord[] alRecords = listTable.getRecords();
+					ArrayList list = new ArrayList(Arrays.asList(alRecords));
+					ArrayList<Integer> rowList=new ArrayList<Integer>();
+					int count = 0;
+					for(int i=0;i<records.length;i++){
+						if("N".equalsIgnoreCase(records[i].getAttribute("MODIFY_FLAG"))
+								|| "FALSE".equalsIgnoreCase(records[i].getAttribute("MODIFY_FLAG"))){
+							rowList.add(listTable.getRecordIndex(records[i])+1);
+						}
+//						else{
+//							int row = listTable.getRecordIndex(records[i]) - count;
+//							list.remove(row);
+//							count ++;
+//						}
+					}
+					String msg="";
+					
+//					msg="行 ";
+//					for(int i=0;i<rowList.size()-1;i++){
+//						msg+=rowList.get(i)+" ,";
+//					}
+//					msg+=rowList.get(rowList.size())+" ";
+//					msg+="的字段不允许修改，未被添加";
+					
+					msg="字段不允许修改";
+					if(rowList.size()>0){
+						MSGUtil.sayError(msg);
+						return;
+					}
+					for(int i = 0; i < records.length; i++) {
+						int row = listTable.getRecordIndex(records[i]) - count;
+						list.remove(row);
+						count ++;
+					}
+					listTable.setData((ListGridRecord[])list.toArray(new ListGridRecord[list.size()]));
+					
+					initAddBtn(false);
+				}
+			}
+			
+		});
+		midBtn.setMembers(toLeft, toRight);
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		addSplitBar(lay, "60%");
+		HStack stack = new HStack();
+		stack.setMembers(midBtn, lstcacheStack);
+		stack.setVisible(false);
+		stack.setWidth("40%");
+		lay.addMember(stack);
+		
+		vLay.setMembers(toolStrip, lay);
+	}
+	
+	private void createTab2Form(VLayout lay) {
+	    ToolStrip toolStrip = new ToolStrip();
+	    VLayout vlay = new VLayout();
+	    
+		//创建按钮布局
+		createBtnWidget2(toolStrip);
+		lay.addMember(toolStrip);
+	    
+		final DynamicForm form = new DynamicForm();
+		form.setWidth100();
+		form.setHeight(25);
+		form.setNumCols(6);
+		form.setPadding(5);
+		
+		SelectItem cmbView = new SelectItem("VIEW_NAME", ColorUtil.getRedTitle(Util.TI18N.CONFIG_LIST_NAME()));
+		Util.initComboValue(cmbView, "BAS_CODES", "CODE", "NAME_C", " PROP_CODE = 'LIST_TYP'", " SHOW_SEQ ASC", "");
+		cmbView.setTitleOrientation(TitleOrientation.LEFT);
+		cmbView.addChangeHandler(new ChangeHandler() {
+
+			@Override
+			public void onChange(ChangeEvent event) {
+				Criteria criteria = new Criteria();
+				criteria.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+				criteria.addCriteria(form.getValuesAsCriteria());
+				cfgTable.setCriteria(criteria);
+				cfgTable.fetchData(criteria);
+			}
+			
+		});
+		form.setItems(cmbView);
+		vlay.addMember(form);
+		
+	    cfgDS = ConfigNameDS.getInstance("LIST_CONFIGNAME", "SYS_LIST_FUNC");
+		   
+	    cfgTable = new SGTable(cfgDS, "100%", "100%", false, true ,false) {
+	    	public DataSource getRelatedDataSource(ListGridRecord record) {
+	    	    cacheDS = ListConfigDS.getInstance("SYS_LIST_CONFIG", "SYS_LIST_FUNC");
+				
+	    		func_model = record.getAttributeAsString("FUNC_MODEL");
+	    		user_id = record.getAttributeAsString("USER_ID");
+	    		view_name = record.getAttributeAsString("VIEW_NAME");
+                return cacheDS;   
+            }
+	    	
+			protected Canvas getExpansionComponent(final ListGridRecord record) {    
+				  
+                VLayout layout = new VLayout(5);   
+                layout.setPadding(5);   
+  
+                SGTable listGrid = new SGTable(getRelatedDataSource(record),"100%","250",false,true,false);      
+                listGrid.setAutoSaveEdits(false);
+                listGrid.setShowRowNumbers(false);
+                
+                Criteria findValues = new Criteria();
+                findValues.addCriteria("OP_FLAG", "M");
+		        findValues.addCriteria("FUNC_MODEL", func_model);
+		        findValues.addCriteria("USER_ID", user_id);
+		        findValues.addCriteria("VIEW_NAME", view_name);
+		        
+				ListGridField LIST_SHOW_SEQ = new ListGridField("SHOW_SEQ",Util.TI18N.LIST_SHOW_SEQ(),35);
+				ListGridField LIST_COLUMN_FIELD = new ListGridField("FIELD_ID", Util.TI18N.LIST_COLUMN_FIELD(), 150); 
+				ListGridField LIST_COLUMN_CNAME = new ListGridField("FIELD_CNAME", Util.TI18N.LIST_COLUMN_CNAME(), 115); 
+				ListGridField LIST_COLUMN_WIDTH = new ListGridField("FIELD_WIDTH",Util.TI18N.LIST_COLUMN_WIDTH(),40);  
+				ListGridField LIST_SHOW_FLAG = new ListGridField("SHOW_FLAG",Util.TI18N.LIST_SHOW_FLAG(),42); 
+		         
+				listGrid.setFields(LIST_SHOW_SEQ, LIST_COLUMN_FIELD, LIST_COLUMN_CNAME, LIST_COLUMN_WIDTH, LIST_SHOW_FLAG);
+				listGrid.fetchData(findValues);
+                layout.addMember(listGrid);   
+                layout.setLayoutLeftMargin(38);
+  
+                return layout;   
+            }   
+	    };
+	    cfgTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+        cfgTable.setCanExpandRecords(true); 
+		ListGridField FUNC_MODEL = new ListGridField("FUNC_MODEL_NAME","功能模块",280);	
+		ListGridField USER_ID = new ListGridField("USER_ID","用户",105);	
+		cfgTable.setFields(FUNC_MODEL, USER_ID);
+		vlay.addMember(cfgTable);
+		
+		lay.setMembers(toolStrip, vlay);
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	private void createListFields(SGTable table) {
+		// TODO Auto-generated method stub6
+			
+		  ListGridField LIST_COLUMN_FIELD = new ListGridField("FIELD_ID", Util.TI18N.LIST_COLUMN_FIELD(), 145); 
+		  LIST_COLUMN_FIELD.setCanEdit(false);
+		  ListGridField LIST_COLUMN_CNAME = new ListGridField("FIELD_CNAME", Util.TI18N.LIST_COLUMN_CNAME(), 105); 
+		  LIST_COLUMN_CNAME.setCanEdit(false);
+		  ListGridField LIST_COLUMN_WIDTH = new ListGridField("FIELD_WIDTH",Util.TI18N.LIST_COLUMN_WIDTH(),40);  
+		  ListGridField LIST_SHOW_FLAG = new ListGridField("SHOW_FLAG",Util.TI18N.LIST_SHOW_FLAG(),50);
+		  LIST_SHOW_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  ListGridField MODIFY_FLAG=new ListGridField("MODIFY_FLAG","",50);
+		  MODIFY_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  MODIFY_FLAG.setHidden(true);
+		  table.setFields(LIST_COLUMN_FIELD, LIST_COLUMN_CNAME, LIST_COLUMN_WIDTH, LIST_SHOW_FLAG,MODIFY_FLAG);
+	}
+	
+	private void createUserListFields(SGTable table) {
+		// TODO Auto-generated method stub
+		  ListGridField LIST_COLUMN_ID = new ListGridField("FIELD_ID", Util.TI18N.LIST_COLUMN_FIELD(), 145);
+		  LIST_COLUMN_ID.setCanEdit(false);
+		  ListGridField LIST_COLUMN_CNAME = new ListGridField("FIELD_CNAME", Util.TI18N.LIST_COLUMN_CNAME(), 105);
+		  LIST_COLUMN_CNAME.setCanEdit(false);
+		  ListGridField COLUMN_WIDTH = new ListGridField("FIELD_WIDTH", Util.TI18N.LIST_COLUMN_WIDTH(), 40);
+		  LIST_COLUMN_CNAME.setCanEdit(false);
+		  table.setFields(LIST_COLUMN_ID, LIST_COLUMN_CNAME, COLUMN_WIDTH);
+    }
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setAlign(Alignment.RIGHT);
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(3);
+        toolStrip.setSeparatorSize(5);
+
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					HashMap<String, String> check_map = new HashMap<String, String>();
+					check_map.put("VIEW_NAME", Util.TI18N.CONFIG_LIST_NAME());
+					check_map.put("FUNC_MODEL", Util.TI18N.CONFIG_MODEL_NAME());
+					searchWin = new LstCfgSearchWin(listDS,createSerchForm(searchForm),lstsectionStack.getSection(0), check_map).getViewPanel();
+					initAddBtn(true);
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+        
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,SysPrivRef.LISTCONFIG_P1_01);
+        newButton.addClickHandler(new ListConfigNewAction(listTable, this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,SysPrivRef.LISTCONFIG_P1_02);
+        saveButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(listTable.OP_FLAG.equals("A")) {
+					new ListCfgWin(listTable, 1, new_view_name, getView()).getViewPanel();
+				}
+				else {
+					new ListConfigModifyAction(listTable, getView()).onClick(null);
+				}
+			}
+        });
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,SysPrivRef.LISTCONFIG_P1_03);
+        canButton.addClickHandler(new CancelAction(listTable, this));
+        
+        IButton cfgButton = createUDFBtn("复制生成", StaticRef.ICON_SAVE,SysPrivRef.LISTCONFIG_P1_05);
+        cfgButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				new ListCfgWin(listTable, 2, getView()).getViewPanel();
+			}
+        });
+        
+        IButton userButton = createUDFBtn("指定用户", StaticRef.ICON_SAVE,SysPrivRef.LISTCONFIG_P1_06);
+        userButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				new UserWin(listTable).getViewPanel();
+			}
+        	
+        });
+        if(!LoginCache.getLoginUser().getROLE_ID().equals(StaticRef.SUPER_ROLE)) {
+        	userButton.setDisabled(true);
+        }
+    
+        //主表按钮联动
+        add_map.put(SysPrivRef.LISTCONFIG_P1_01, newButton);
+        save_map.put(SysPrivRef.LISTCONFIG_P1_02, saveButton);
+        save_map.put(SysPrivRef.LISTCONFIG_P1_03, canButton);
+        
+        //enableOrDisables(add_map, true);
+        //enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, canButton, cfgButton, userButton);
+	}
+	
+	public void createBtnWidget2(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+        toolStrip.setAlign(Alignment.RIGHT);
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,SysPrivRef.LISTCONFIG_P2_01);
+        delButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				final ListGridRecord[] records = cfgTable.getSelection();
+				if(records != null && records.length > 0) {
+					SC.confirm(Util.MI18N.DELETE_CONFIRM(), new BooleanCallback() {
+						public void execute(Boolean value) {
+		                    if (value != null && value) {
+		    					String sel_func_model = "";
+		    					String sel_user_id = "";
+		    					ArrayList<String> sqlList = new ArrayList<String>();
+		    					for(int i = 0; i < records.length; i++) {
+		    						sel_func_model = ObjUtil.ifNull(records[i].getAttribute("FUNC_MODEL"),"");
+		    						sel_user_id = ObjUtil.ifNull(records[i].getAttribute("USER_ID"),"");
+		    						StringBuffer sf = new StringBuffer();
+			    					sf.append(" delete from SYS_LIST_FUNC");
+			    					sf.append(" where USER_ID = '");
+			    					sf.append(sel_user_id);
+			    					sf.append("' and FUNC_MODEL = '");
+			    					sf.append(sel_func_model);
+			    					sf.append("'");
+			    					sqlList.add(sf.toString());
+		    					}
+		    					Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+
+		    						@Override
+		    						public void onFailure(Throwable caught) {
+		    							MSGUtil.sayError(caught.getMessage());
+		    						}
+
+		    						@Override
+		    						public void onSuccess(String result) {
+		    							if(result.equals(StaticRef.SUCCESS_CODE)) {
+		    								MSGUtil.showOperSuccess();
+		    								Criteria criteria = cfgTable.getCriteria();
+		    								cfgTable.invalidateCache();
+		    								cfgTable.fetchData(criteria);		    								
+		    							}
+		    							else {
+		    								MSGUtil.sayError(result);
+		    							}
+		    						}
+		    						
+		    					});
+		                    }
+		                }
+		            });
+				}
+			}
+        	
+        });
+    
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(delButton);
+	}
+	
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public void initVerify() {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+		SGText txt_global = new SGText("FULL_INDEX", Util.TI18N.FUZZYQRY());
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(270);
+		txt_global.setColSpan(5);
+		txt_global.setEndRow(true);
+		
+		SGCombo view_name = new SGCombo("VIEW_NAME",ColorUtil.getRedTitle(Util.TI18N.CONFIG_LIST_NAME()));
+		Util.initComboValue(view_name, "BAS_CODES", "CODE", "NAME_C", " PROP_CODE = 'LIST_TYP'", " SHOW_SEQ ASC", "");
+		
+		SGCombo func_model = new SGCombo("FUNC_MODEL", ColorUtil.getRedTitle(Util.TI18N.CONFIG_MODEL_NAME()),true);
+		Util.initCodesComboValue(func_model, "FUN_MOD");
+		
+		SGText user_id = new SGText("USER_ID", ColorUtil.getRedTitle(Util.TI18N.USER_ID()), true);
+		user_id.setValue(LoginCache.getLoginUser().getUSER_ID());
+		user_id.setDisabled(true);
+		
+		searchForm.setItems(txt_global, func_model, view_name, user_id);
+		return searchForm;
+	}
+	
+
+	private void createListArrow(SectionStackSection listItem) {
+	    IButton upItem = new IButton();
+	    upItem.setIcon(StaticRef.ICON_UP);
+	    upItem.setTitle("");
+	    upItem.setWidth(24);
+	    upItem.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				ListGridRecord[] records = listTable.getRecords();	
+				ListGridRecord[] selectRec = listTable.getSelection();
+				ArrayList<Integer> rowList = new ArrayList<Integer>();
+				if(selectRec != null && selectRec.length > 0) {
+					int pre_row = -1, cur_row = 0;
+					for(int i = 0; i < selectRec.length; i++) {
+						cur_row = listTable.getRecordIndex(selectRec[i]);
+						if(cur_row == 0) {
+							SC.warn("无效操作!");
+							break;
+						}
+						if(pre_row != -1) {
+							if(cur_row - pre_row > 1) {
+								SC.warn("批量操作时选择的记录必须是连续的！");
+								break;
+							}
+						}
+						pre_row = cur_row;
+						rowList.add(cur_row);
+					}
+					if(rowList != null && rowList.size() > 0) {
+						int initRow = (int)rowList.get(0) - 1;
+						ListGridRecord pre_record = records[initRow];
+						String ID = pre_record.getAttribute("ID");
+						String COLUMN_ID = pre_record.getAttribute("COLUMN_ID");
+						String FIELD_ID = pre_record.getAttribute("FIELD_ID");
+						String FIELD_CNAME = pre_record.getAttribute("FIELD_CNAME");
+						String FIELD_WIDTH = pre_record.getAttribute("FIELD_WIDTH");
+						Boolean SHOW_FLAG = pre_record.getAttributeAsBoolean("SHOW_FLAG");
+						cur_row = 0;
+						int[] selRows = new int[rowList.size()];
+						for(int i = 0; i < rowList.size(); i++) {
+							cur_row = Integer.parseInt(rowList.get(i).toString());
+							selRows[i] = cur_row - 1;
+							records[cur_row-1].setAttribute("ID", records[cur_row].getAttribute("ID"));
+							records[cur_row-1].setAttribute("COLUMN_ID", records[cur_row].getAttribute("COLUMN_ID"));
+							records[cur_row-1].setAttribute("FIELD_ID", records[cur_row].getAttribute("FIELD_ID"));
+							records[cur_row-1].setAttribute("FIELD_CNAME", records[cur_row].getAttribute("FIELD_CNAME"));
+							records[cur_row-1].setAttribute("FIELD_WIDTH", records[cur_row].getAttribute("FIELD_WIDTH"));
+							records[cur_row-1].setAttribute("SHOW_FLAG", records[cur_row].getAttributeAsBoolean("SHOW_FLAG"));
+						}
+						records[initRow + rowList.size()].setAttribute("ID", ID);
+						records[initRow + rowList.size()].setAttribute("COLUMN_ID", COLUMN_ID);
+						records[initRow + rowList.size()].setAttribute("FIELD_ID", FIELD_ID);
+						records[initRow + rowList.size()].setAttribute("FIELD_CNAME", FIELD_CNAME);
+						records[initRow + rowList.size()].setAttribute("FIELD_WIDTH", FIELD_WIDTH);
+						records[initRow + rowList.size()].setAttribute("SHOW_FLAG", SHOW_FLAG);
+						
+						listTable.setData(records);
+						listTable.selectRecords(selRows);
+					}
+					initAddBtn(false);
+				}
+			}      	
+        });
+	    IButton downItem = new IButton();
+	    downItem.setIcon(StaticRef.ICON_DOWN);
+	    downItem.setTitle("");
+	    downItem.setWidth(24);
+	    downItem.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				ListGridRecord[] records = listTable.getRecords();	
+				ListGridRecord[] selectRec = listTable.getSelection();
+				ArrayList<Integer> rowList = new ArrayList<Integer>();
+				if(selectRec != null && selectRec.length > 0) {
+					int pre_row = -1, cur_row = 0;
+					for(int i = 0; i < selectRec.length; i++) {
+						cur_row = listTable.getRecordIndex(selectRec[i]);
+						if(cur_row == records.length - 1) {
+							SC.warn("无效操作!");
+							break;
+						}
+						if(pre_row != -1) {
+							if(cur_row - pre_row > 1) {
+								SC.warn("批量操作时选择的记录必须是连续的！");
+								break;
+							}
+						}
+						pre_row = cur_row;
+						rowList.add(cur_row);
+					}
+					if(rowList != null && rowList.size() > 0) {
+						int initRow = (int)rowList.get(rowList.size() - 1) + 1;
+						ListGridRecord pre_record = records[initRow];
+						String ID = pre_record.getAttribute("ID");
+						String COLUMN_ID = pre_record.getAttribute("COLUMN_ID");
+						String FIELD_ID = pre_record.getAttribute("FIELD_ID");
+						String FIELD_CNAME = pre_record.getAttribute("FIELD_CNAME");
+						String FIELD_WIDTH = pre_record.getAttribute("FIELD_WIDTH");
+						Boolean SHOW_FLAG = pre_record.getAttributeAsBoolean("SHOW_FLAG");
+						cur_row = 0;
+						int[] selRows = new int[rowList.size()];
+						for(int i = 0; i < rowList.size(); i++) {
+							cur_row = Integer.parseInt(rowList.get(i).toString());
+							selRows[i] = cur_row + 1;
+							records[initRow - i].setAttribute("ID", records[initRow - i - 1].getAttribute("ID"));
+							records[initRow - i].setAttribute("COLUMN_ID", records[initRow - i - 1].getAttribute("COLUMN_ID"));
+							records[initRow - i].setAttribute("FIELD_ID", records[initRow - i - 1].getAttribute("FIELD_ID"));
+							records[initRow - i].setAttribute("FIELD_CNAME", records[initRow - i - 1].getAttribute("FIELD_CNAME"));
+							records[initRow - i].setAttribute("FIELD_WIDTH", records[initRow - i - 1].getAttribute("FIELD_WIDTH"));
+							records[initRow - i].setAttribute("SHOW_FLAG", records[initRow - i - 1].getAttributeAsBoolean("SHOW_FLAG"));
+						}
+						records[initRow - rowList.size()].setAttribute("ID", ID);
+						records[initRow - rowList.size()].setAttribute("COLUMN_ID", COLUMN_ID);
+						records[initRow - rowList.size()].setAttribute("FIELD_ID", FIELD_ID);
+						records[initRow - rowList.size()].setAttribute("FIELD_CNAME", FIELD_CNAME);
+						records[initRow - rowList.size()].setAttribute("FIELD_WIDTH", FIELD_WIDTH);
+						records[initRow - rowList.size()].setAttribute("SHOW_FLAG", SHOW_FLAG);
+						
+						listTable.setData(records);
+						listTable.selectRecords(selRows);
+					}
+					initAddBtn(false);
+				}
+			}      	
+        });
+	    final SGPanel form = new SGPanel();
+	    form.setBackgroundColor("");
+	    form.setTitleOrientation(TitleOrientation.LEFT);
+	    form.setTitleWidth(66);
+	    form.setNumCols(6);
+	    form.setWidth(400);
+	    form.setTitleSuffix("");
+		SGText func_model = new SGText("FUNC_MODEL","<font style=\"color: black;font-size:9pt;\">" + Util.TI18N.CONFIG_MODEL_NAME() + "</font>");
+		func_model.setTitleOrientation(TitleOrientation.LEFT);
+		func_model.setDisabled(true);
+		SGText view_name = new SGText("VIEW_NAME","<font style=\"color: black;font-size:9pt;\">" + Util.TI18N.CONFIG_LIST_NAME() + "</font>");
+		view_name.setTitleOrientation(TitleOrientation.LEFT);
+		view_name.setDisabled(true);
+		form.setItems(func_model, view_name);
+	    listItem.setControls(upItem, downItem, form);
+	}
+	
+	private void createCacheArrow(SectionStackSection cacheItem) {
+	    final DynamicForm form = new DynamicForm();
+	    form.setWidth(200);
+	    form.setTitleSuffix("");
+	    IButton upItem = new IButton();
+	    upItem.setIcon(StaticRef.ICON_UP);
+	    upItem.setTitle("");
+	    upItem.setWidth(24);
+	    upItem.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				ListGridRecord[] records = cacheTable.getRecords();	
+				ListGridRecord[] selectRec = cacheTable.getSelection();
+				ArrayList<Integer> rowList = new ArrayList<Integer>();
+				if(selectRec != null && selectRec.length > 0) {
+					int pre_row = -1, cur_row = 0;
+					for(int i = 0; i < selectRec.length; i++) {
+						cur_row = cacheTable.getRecordIndex(selectRec[i]);
+						if(cur_row == 0) {
+							SC.warn("无效操作!");
+							return;
+						}
+						if(pre_row != -1) {
+							if(cur_row - pre_row > 1) {
+								SC.warn("批量操作时选择的记录必须是连续的！");
+								return;
+							}
+						}
+						pre_row = cur_row;
+						rowList.add(cur_row);
+					}
+					if(rowList != null && rowList.size() > 0) {
+						int initRow = (int)rowList.get(0) - 1;
+						ListGridRecord pre_record = records[initRow];
+						String ID = pre_record.getAttribute("ID");
+						String FIELD_ID = pre_record.getAttribute("FIELD_ID");
+						String FIELD_CNAME = pre_record.getAttribute("FIELD_CNAME");
+						String FIELD_WIDTH = pre_record.getAttribute("FIELD_WIDTH");
+						cur_row = 0;
+						int[] selRows = new int[rowList.size()];
+						for(int i = 0; i < rowList.size(); i++) {
+							cur_row = Integer.parseInt(rowList.get(i).toString());
+							selRows[i] = cur_row - 1;
+							records[cur_row-1].setAttribute("ID", records[cur_row].getAttribute("ID"));
+							records[cur_row-1].setAttribute("FIELD_ID", records[cur_row].getAttribute("FIELD_ID"));
+							records[cur_row-1].setAttribute("FIELD_CNAME", records[cur_row].getAttribute("FIELD_CNAME"));
+							records[cur_row-1].setAttribute("FIELD_WIDTH", records[cur_row].getAttribute("FIELD_WIDTH"));
+						}
+						records[initRow + rowList.size()].setAttribute("ID", ID);
+						records[initRow + rowList.size()].setAttribute("FIELD_ID", FIELD_ID);
+						records[initRow + rowList.size()].setAttribute("FIELD_CNAME", FIELD_CNAME);
+						records[initRow + rowList.size()].setAttribute("FIELD_WIDTH", FIELD_WIDTH);
+						
+						cacheTable.setData(records);
+						cacheTable.selectRecords(selRows);
+					}
+				}
+			}      	
+        });
+	    IButton downItem = new IButton();
+	    downItem.setIcon(StaticRef.ICON_DOWN);
+	    downItem.setTitle("");
+	    downItem.setWidth(24);
+	    downItem.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				ListGridRecord[] records = cacheTable.getRecords();	
+				ListGridRecord[] selectRec = cacheTable.getSelection();
+				ArrayList<Integer> rowList = new ArrayList<Integer>();
+				if(selectRec != null && selectRec.length > 0) {
+					int pre_row = -1, cur_row = 0;
+					for(int i = 0; i < selectRec.length; i++) {
+						cur_row = cacheTable.getRecordIndex(selectRec[i]);
+						if(cur_row == records.length - 1) {
+							SC.warn("无效操作!");
+							return;
+						}
+						if(pre_row != -1) {
+							if(cur_row - pre_row > 1) {
+								SC.warn("批量操作时选择的记录必须是连续的！");
+								return;
+							}
+						}
+						pre_row = cur_row;
+						rowList.add(cur_row);
+					}
+					if(rowList != null && rowList.size() > 0) {
+						int initRow = (int)rowList.get(rowList.size() - 1) + 1;
+						ListGridRecord pre_record = records[initRow];
+						String ID = pre_record.getAttribute("ID");
+						String FIELD_ID = pre_record.getAttribute("FIELD_ID");
+						String FIELD_CNAME = pre_record.getAttribute("FIELD_CNAME");
+						String FIELD_WIDTH = pre_record.getAttribute("FIELD_WIDTH");
+						cur_row = 0;
+						int[] selRows = new int[rowList.size()];
+						for(int i = 0; i < rowList.size(); i++) {
+							cur_row = Integer.parseInt(rowList.get(i).toString());
+							selRows[i] = cur_row + 1;
+							records[initRow - i].setAttribute("ID", records[initRow - i - 1].getAttribute("ID"));
+							records[initRow - i].setAttribute("FIELD_ID", records[initRow - i - 1].getAttribute("FIELD_ID"));
+							records[initRow - i].setAttribute("FIELD_CNAME", records[initRow - i - 1].getAttribute("FIELD_CNAME"));
+							records[initRow - i].setAttribute("FIELD_WIDTH", records[initRow - i - 1].getAttribute("FIELD_WIDTH"));
+						}
+						records[initRow - rowList.size()].setAttribute("ID", ID);
+						records[initRow - rowList.size()].setAttribute("FIELD_ID", FIELD_ID);
+						records[initRow - rowList.size()].setAttribute("FIELD_CNAME", FIELD_CNAME);
+						records[initRow - rowList.size()].setAttribute("FIELD_WIDTH", FIELD_WIDTH);
+						
+						cacheTable.setData(records);
+						cacheTable.selectRecords(selRows);
+					}
+				}
+			}      	
+        });
+		SGCombo view_name = new SGCombo("VIEW_NAME", "<font style=\"color: black;font-size:9pt;\">" + Util.TI18N.CONFIG_LIST_NAME() + "</font>",true);
+		view_name.setTitleOrientation(TitleOrientation.LEFT);
+		view_name.addChangedHandler(new ChangedHandler() {
+
+			@Override
+			public void onChanged(ChangedEvent event) {
+				if(ObjUtil.isNotNull(event.getValue())) {
+					new_view_name = event.getValue().toString();
+					Criteria crit = form.getValuesAsCriteria();
+					crit.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+					cacheTable.fetchData(crit);
+				}
+			}
+			
+		});
+		Util.initComboValue(view_name, "BAS_CODES", "CODE", "NAME_C", " PROP_CODE = 'LIST_TYP'", " SHOW_SEQ ASC", "");
+		form.setItems(view_name);
+	    cacheItem.setControls(upItem, downItem, form);
+	}
+	
+	public void initAddBtn(boolean flag) {
+        enableOrDisables(add_map, flag);
+        enableOrDisables(save_map, !flag);
+	}
+	
+	private ListConfigView getView() {
+		return this;
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		ListConfigView view = new ListConfigView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

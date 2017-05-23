@@ -1,0 +1,829 @@
+package com.rd.client.view.tms;
+
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.action.tms.AuditReportAction;
+import com.rd.client.action.tms.CancelAuditReportAction;
+import com.rd.client.action.tms.VehTypeCancelReportAction;
+import com.rd.client.action.tms.VehTypeReportAction;
+import com.rd.client.action.tms.VehicleCancelReportAction;
+import com.rd.client.action.tms.VehicleReportAction;
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.ReportedDS;
+import com.rd.client.ds.tms.VehTypeDS;
+import com.rd.client.ds.tms.VehicleDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.ChangeEvent;
+import com.smartgwt.client.widgets.grid.events.ChangeHandler;
+import com.smartgwt.client.widgets.grid.events.EditorExitEvent;
+import com.smartgwt.client.widgets.grid.events.EditorExitHandler;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ *  运输管理->车辆上报
+ * @author yuanlei 
+ * @create time 2012-06-12 17:20
+ *
+ */
+@ClassForNameAble
+public class VehicleReportView extends SGForm implements PanelFactory {
+	
+	private SGTable vehTypeTable;//可用车型
+	private SGTable vehicleTable;//可用车辆
+	private SGTable reportedTable;  //已报车辆车型
+	private Window searchWin;
+	private Window searchWin2;
+	private Window searchWin3;
+	public SGPanel searchForm = new SGPanel();
+	public SGPanel searchForm2 = new SGPanel();
+	public SGPanel searchForm3 = new SGPanel();
+	private DataSource reportDs;
+	private DataSource vehTypeDs;
+	private DataSource vehicleDs;
+	
+	//车型按钮
+	private IButton saveBtn;
+	private IButton delBtn;
+	private IButton newBtn;
+	private IButton cancelBtn;
+	private IButton reportBtn;
+	private IButton canReportBtn;	
+	//车辆按钮
+	private IButton saveVehBtn;
+	private IButton delVehBtn;
+	private IButton newVehBtn;
+	private IButton cancelVehBtn;
+	private IButton reportVehBtn;
+	private IButton canReportVehBtn;
+	//已报车辆按钮
+	private IButton auditBtn;
+	private IButton canAuditBtn;
+	
+	private SectionStack vehTypeSection;	
+	private SectionStack vehicleSection;
+	private SectionStack reportSection;	
+	
+	//按钮权限	
+	public HashMap<String,IButton> add_veh; //新增、
+	public HashMap<String,IButton> save_veh; //保存、取消按钮
+	public HashMap<String, IButton> del_veh; //删除按钮
+	
+	public int pageNum = 0;
+	
+	/*public VehicleReportView(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		
+		VLayout main = new VLayout();
+		main.setHeight100();
+		main.setWidth100();
+		vehTypeDs = VehTypeDS.getInstance("V_VEH_REPORT1","TRANS_VEH_REPORT");
+		vehicleDs = VehicleDS.getInstance("V_VEH_REPORT2","TRANS_VEH_REPORT");
+		reportDs = ReportedDS.getInstance("V_VEH_REPORT3","TRANS_VEH_REPORT");
+		
+		reportedTable = new SGTable(reportDs);
+		reportedTable.setShowRowNumbers(true);
+		reportedTable.setShowFilterEditor(true);
+		reportedTable.setCanEdit(false);
+		
+		vehicleTable = new SGTable(vehicleDs, "100%", "100%");
+		vehicleTable.setShowRowNumbers(true);
+		vehicleTable.setShowFilterEditor(true);
+		vehicleTable.setCanEdit(true);
+		
+		vehTypeTable = new SGTable(vehTypeDs, "100%", "100%");
+		vehTypeTable.setShowRowNumbers(true);
+		vehTypeTable.setShowFilterEditor(true);
+		vehTypeTable.setCanEdit(true);
+	
+		// 按钮布局
+		
+		TabSet bottoTabSet = new TabSet();
+		bottoTabSet.setWidth100();
+		bottoTabSet.setHeight100();
+		bottoTabSet.setMargin(1);
+		
+		if(isPrivilege(SettPrivRef.SUPLRFEE_P0_01)){
+			Tab tab = new Tab("已报车型车辆");
+			tab.setPane(createReportedPage());
+			bottoTabSet.addTab(tab);
+		}
+		if(isPrivilege(SettPrivRef.SUPLRFEE_P2)) {
+			Tab tab2 = new Tab("可用车型");
+			tab2.setPane(createVehTypePage());
+			bottoTabSet.addTab(tab2);
+		}
+		if(isPrivilege(SettPrivRef.SUPLRFEE_P3)) {
+			Tab tab1 = new Tab("可用车辆");
+		  	tab1.setPane(createVehiclePage());
+			bottoTabSet.addTab(tab1);
+		}
+		main.addMember(bottoTabSet);
+		
+		initVerify();
+		initBtn();
+		
+		return main;
+	}
+	
+	/**
+	 * 创建车辆类型页签按钮
+	 * @author yuanlei
+	 * @param toolStrip
+	 */
+	public void createVehTypeBtn(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(3);
+		toolStrip.setSeparatorSize(5);
+
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+
+		toolStrip.addMember(searchButton);
+		toolStrip.addSeparator();
+
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if (searchWin == null) {
+					searchWin = new SearchWin(vehTypeDs, //600 ,380
+							createSearchForm(searchForm), vehTypeSection.getSection(0)).getViewPanel();
+					searchWin.setHeight(350);
+				} else {
+					searchWin.show();
+				}
+			}
+
+		});
+		
+		newBtn = createBtn(StaticRef.CREATE_BTN,TrsPrivRef.VEHREPORT_P2_01);
+		newBtn.addClickHandler(new NewAction(vehTypeTable, cache_map, this));
+		
+		saveBtn = createBtn(StaticRef.SAVE_BTN,TrsPrivRef.VEHREPORT_P2_02);
+		saveBtn.addClickHandler(new SaveAction(vehTypeTable,check_map, this));
+
+		// 删除按钮
+		delBtn = createBtn(StaticRef.DELETE_BTN,TrsPrivRef.VEHREPORT_P2_03);
+		delBtn.addClickHandler(new DeleteAction(vehTypeTable));
+		
+		cancelBtn = createBtn(StaticRef.CANCEL_BTN,TrsPrivRef.VEHREPORT_P2_04);
+		cancelBtn.addClickHandler(new CancelAction(vehTypeTable,this));
+		
+		reportBtn = createUDFBtn("上报", StaticRef.CONFIRM_BTN,TrsPrivRef.VEHREPORT_P2_05);
+		reportBtn.addClickHandler(new VehTypeReportAction(vehTypeTable, this));
+		
+		canReportBtn = createUDFBtn("取消上报", StaticRef.CANCEL_BTN,TrsPrivRef.VEHREPORT_P2_06);	
+		canReportBtn.addClickHandler(new VehTypeCancelReportAction(vehTypeTable, this));
+		
+        add_map.put(TrsPrivRef.VEHREPORT_P2_01, newBtn);
+        del_map.put(TrsPrivRef.VEHREPORT_P2_03, delBtn);
+        save_map.put(TrsPrivRef.VEHREPORT_P2_02, saveBtn);
+        save_map.put(TrsPrivRef.VEHREPORT_P2_04, cancelBtn);	
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,newBtn,saveBtn,delBtn,cancelBtn,reportBtn,canReportBtn);
+	}
+	
+	/**
+	 * 创建车辆页签按钮
+	 * @author yuanlei
+	 * @param toolStrip
+	 */
+	public void createVehicleBtn(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(3);
+		toolStrip.setSeparatorSize(5);
+
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+
+		toolStrip.addMember(searchButton);
+		toolStrip.addSeparator();
+
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if (searchWin2 == null) {
+					searchWin2 = new SearchWin(vehicleDs, //600 ,380
+							createSearchForm(searchForm2), vehicleSection.getSection(0)).getViewPanel();
+					searchWin2.setHeight(350);
+				} else {
+					searchWin2.show();
+				}
+			}
+
+		});
+		
+		newVehBtn = createBtn(StaticRef.CREATE_BTN,TrsPrivRef.VEHREPORT_P3_01);
+		newVehBtn.addClickHandler(new NewAction(vehicleTable, cache_map, this));
+		
+		saveVehBtn = createBtn(StaticRef.SAVE_BTN,TrsPrivRef.VEHREPORT_P3_02);
+		saveVehBtn.addClickHandler(new SaveAction(vehicleTable,check_map, this));
+
+		// 删除按钮
+		delVehBtn = createBtn(StaticRef.DELETE_BTN,TrsPrivRef.VEHREPORT_P3_03);
+		delVehBtn.addClickHandler(new DeleteAction(vehicleTable));
+		
+		cancelVehBtn = createBtn(StaticRef.CANCEL_BTN,TrsPrivRef.VEHREPORT_P3_04);
+		cancelVehBtn.addClickHandler(new CancelAction(vehicleTable,this));
+		
+		reportVehBtn = createUDFBtn("上报", StaticRef.CONFIRM_BTN,TrsPrivRef.VEHREPORT_P3_05);
+		reportVehBtn.addClickHandler(new VehicleReportAction(vehicleTable, this));
+		
+		canReportVehBtn = createUDFBtn("取消上报", StaticRef.CANCEL_BTN,TrsPrivRef.VEHREPORT_P3_06);
+		canReportVehBtn.addClickHandler(new VehicleCancelReportAction(vehicleTable, this));
+		
+		add_veh = new HashMap<String,IButton>(); //新增、
+		save_veh = new HashMap<String, IButton>(); //保存、取消按钮
+		del_veh = new HashMap<String, IButton>(); //删除按钮
+        add_veh.put(TrsPrivRef.VEHREPORT_P3_01, newVehBtn);
+        del_veh.put(TrsPrivRef.VEHREPORT_P3_03, delVehBtn);
+        save_veh.put(TrsPrivRef.VEHREPORT_P3_02, saveVehBtn);
+        save_veh.put(TrsPrivRef.VEHREPORT_P3_04, cancelVehBtn);	
+		
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,newVehBtn,saveVehBtn,delVehBtn,cancelVehBtn,reportVehBtn,canReportVehBtn);
+	}
+
+	/**
+	 * 创建已报车辆车型页签按钮
+	 * @author yuanlei
+	 * @param toolStrip
+	 */
+	public void createReportBtn(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(3);
+		toolStrip.setSeparatorSize(5);
+
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+
+		toolStrip.addMember(searchButton);
+		toolStrip.addSeparator();
+
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+
+				if (searchWin3 == null) {
+					searchWin3 = new SearchWin(reportDs, //600 ,380
+							createSearchForm(searchForm3), reportSection.getSection(0)).getViewPanel();
+					searchWin3.setHeight(350);
+				} else {
+					searchWin3.show();
+				}
+			}
+
+		});
+		
+		auditBtn = createUDFBtn("审核", StaticRef.CONFIRM_BTN,TrsPrivRef.VEHREPORT_P1_01);
+		auditBtn.addClickHandler(new AuditReportAction(reportedTable, this));
+		
+		canAuditBtn = createUDFBtn("取消审核", StaticRef.CANCEL_BTN,TrsPrivRef.VEHREPORT_P1_02);	
+		canAuditBtn.addClickHandler(new CancelAuditReportAction(reportedTable, this));
+		
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,auditBtn,canAuditBtn);
+	}
+	public DynamicForm createSearchForm(SGPanel form){
+		SGCombo SUPLR_ID =new SGCombo("SUPLR_ID", Util.TI18N.SUPLR_NAME(),true);//供应商
+		Util.initSupplier(SUPLR_ID, "");
+		
+		SGCombo VEHICLE_TYPE=new SGCombo("VEH_TYP",Util.TI18N.VEHICLE_TYPE());
+		Util.initComboValue(VEHICLE_TYPE, "BAS_VEHICLE_TYPE", "ID", "VEHICLE_TYPE", "", "");
+		
+		SGCombo REPORT_STATUS=new SGCombo("REPORT_STATUS",Util.TI18N.REPORT_STATUS());
+		//Util.initCodesComboValue(REPORT_STATUS, "REPORT_STATUS");
+		Util.initComboValue(REPORT_STATUS, "BAS_CODES", "CODE", "NAME_C", " where prop_code = 'REPORT_STATUS'", " order by show_seq asc","");
+		
+		SGText PLATE_NO = new SGText("PLATE_NO",Util.TI18N.PLATE_NO(), true);
+		
+		SGCombo AUDIT_STATUS=new SGCombo("AUDIT_STATUS",Util.TI18N.AUDIT_STATUS());
+		//Util.initCodesComboValue(AUDIT_STATUS, "AUDIT_STAT");
+		Util.initComboValue(AUDIT_STATUS, "BAS_CODES", "CODE", "NAME_C", " where prop_code = 'AUDIT_STAT'", " order by show_seq asc","");
+		
+		form.setItems(SUPLR_ID,VEHICLE_TYPE,REPORT_STATUS,PLATE_NO,AUDIT_STATUS);
+		
+		return form;
+	}
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+	
+	/**
+	 * 可用车型列表
+	 * @author yuanl
+	 */
+	private void createVehTypTable(){
+		
+		final ListGridField SUPLR_ID = new ListGridField("SUPLR_ID", Util.TI18N.SUPLR_NAME(), 120);
+		Util.initComboValue(SUPLR_ID, "BAS_SUPPLIER", "ID", "SUPLR_CNAME", "", "");
+		SUPLR_ID.addChangeHandler(new ChangeHandler() {
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public void onChange(ChangeEvent event) {				
+				int row = event.getRowNum();
+				Map<String, String> result = (LinkedHashMap<String, String>)SUPLR_ID.getAttributeAsMap("valueMap");
+				String suplr_name = Util.iff(result.get(event.getValue()),"").toString();
+				vehTypeTable.setEditValue(row, "SUPLR_NAME", suplr_name);
+			}
+			
+		});
+		
+		ListGridField VEH_NUM = new ListGridField("VEH_NUM", Util.TI18N.VEH_NUM(), 60);
+		
+		ListGridField VEH_TYPE = new ListGridField("VEH_TYP", Util.TI18N.VEHICLE_TYPE(), 120);
+		Util.initComboValue(VEH_TYPE, "BAS_VEHICLE_TYPE", "ID", "VEHICLE_TYPE", "", "");
+		VEH_TYPE.addEditorExitHandler(new EditorExitHandler() {
+			@Override
+			public void onEditorExit(EditorExitEvent event) {
+				final int row = event.getRowNum();
+				if(!ObjUtil.isNotNull(event.getNewValue())){
+					return;
+				}
+				final String type = ObjUtil.ifObjNull(event.getNewValue(),"").toString();
+				Util.db_async.getRecord("MAX_WEIGHT,MAX_VOLUME", "BAS_VEHICLE_TYPE", 
+						" where id = '" + type + "'", null, new AsyncCallback<ArrayList<HashMap<String,String>>>() {
+					
+					@Override
+					public void onSuccess(ArrayList<HashMap<String, String>> result) {
+						int size = result.size();
+						if(size < 1){
+							return;
+						}else if(size == 1){
+							vehTypeTable.setEditValue(row, "GROSS_W", result.get(0).get("MAX_WEIGHT"));
+							vehTypeTable.setEditValue(row, "VOLUME", result.get(0).get("MAX_VOLUME"));
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+			
+		});
+		
+		ListGridField GROSS_W = new ListGridField("GROSS_W", Util.TI18N.MAX_WEIGHT(), 90);
+		ListGridField VOLUME = new ListGridField("VOLUME", Util.TI18N.MAX_VOLUME(), 90);
+		
+		ListGridField REPORT_STATUS = new ListGridField("REPORT_STATUS_NAME", Util.TI18N.REPORT_STATUS(), 90);
+		REPORT_STATUS.setCanEdit(false);
+		ListGridField REPORTER = new ListGridField("REPORTER", Util.TI18N.REPORTER(), 70);
+		REPORTER.setCanEdit(false);
+		ListGridField REPORT_TIME = new ListGridField("REPORT_TIME", Util.TI18N.REPORT_TIME(), 120);
+		REPORT_TIME.setCanEdit(false);
+		ListGridField NOTES = new ListGridField("NOTES", Util.TI18N.NOTES(), 240);
+		
+		vehTypeTable.setFields(SUPLR_ID, VEH_TYPE, GROSS_W, VOLUME, VEH_NUM, REPORT_STATUS, REPORTER, REPORT_TIME, NOTES);
+		vehTypeTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(add_map, true);
+				enableOrDisables(del_map, true);
+				enableOrDisables(save_map, false);
+				if(StaticRef.REPORTED_NAME.equals(event.getRecord().getAttributeAsString("REPORT_STATUS_NAME"))){
+					setTyeBtnStatus(false);
+				}
+				else {
+					setTyeBtnStatus(true);
+				}
+			}
+		});
+		vehTypeTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+				enableOrDisables(save_map, true);
+				reportBtn.setDisabled(true);
+				canReportBtn.setDisabled(true);
+				return;
+			}
+		});
+		
+	}
+	
+	/**
+	 * 可用车辆列表
+	 * @author yuanlei
+	 */
+	private void createVehicleTable(){
+		
+		final ListGridField SUPLR_ID = new ListGridField("SUPLR_ID", Util.TI18N.SUPLR_NAME(), 120);
+		Util.initComboValue(SUPLR_ID, "BAS_SUPPLIER", "ID", "SUPLR_CNAME", "", "");
+		SUPLR_ID.addChangeHandler(new ChangeHandler() {
+
+			@Override
+			public void onChange(ChangeEvent event) {
+				int row = event.getRowNum();
+				String suplr_name = SUPLR_ID.getDisplayField();
+				vehicleTable.setEditValue(row, "SUPLR_NAME", suplr_name);
+			}
+			
+		});
+		
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO", Util.TI18N.PLATE_NO(), 100);
+		PLATE_NO.addEditorExitHandler(new EditorExitHandler() {
+			@Override
+			public void onEditorExit(EditorExitEvent event) {
+				final int row = event.getRowNum();
+				if(!ObjUtil.isNotNull(event.getNewValue())){
+					return;
+				}
+				final String plate_no = ObjUtil.ifObjNull(event.getNewValue(),"").toString();
+				Util.db_async.getRecord("VEHICLE_TYP_ID,MAX_WEIGHT,MAX_VOLUME", "BAS_VEHICLE", 
+						" where plate_no = '" + plate_no + "'", null, new AsyncCallback<ArrayList<HashMap<String,String>>>() {
+					
+					@Override
+					public void onSuccess(ArrayList<HashMap<String, String>> result) {
+						int size = result.size();
+						if(size < 1){
+							return;
+						}else if(size == 1){
+							vehicleTable.setEditValue(row, "VEH_TYP", result.get(0).get("VEHICLE_TYP_ID"));
+							vehicleTable.setEditValue(row, "GROSS_W", result.get(0).get("MAX_WEIGHT"));
+							vehicleTable.setEditValue(row, "VOLUME", result.get(0).get("MAX_VOLUME"));
+							vehicleTable.setEditValue(row, "VEH_NUM", "1");
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+			
+		});
+		
+		ListGridField VEH_TYPE = new ListGridField("VEH_TYP", Util.TI18N.VEHICLE_TYPE(), 120);
+		Util.initComboValue(VEH_TYPE, "BAS_VEHICLE_TYPE", "ID", "VEHICLE_TYPE", "", "");
+		VEH_TYPE.addEditorExitHandler(new EditorExitHandler() {
+			@Override
+			public void onEditorExit(EditorExitEvent event) {
+				final int row = event.getRowNum();
+				if(!ObjUtil.isNotNull(event.getNewValue())){
+					return;
+				}
+				final String type = ObjUtil.ifObjNull(event.getNewValue(),"").toString();
+				Util.db_async.getRecord("MAX_WEIGHT,MAX_VOLUME", "BAS_VEHICLE_TYPE", 
+						" where vehicle_type = '" + type + "'", null, new AsyncCallback<ArrayList<HashMap<String,String>>>() {
+					
+					@Override
+					public void onSuccess(ArrayList<HashMap<String, String>> result) {
+						int size = result.size();
+						if(size < 1){
+							return;
+						}else if(size == 1){
+							vehicleTable.setEditValue(row, "GROSS_W", result.get(0).get("MAX_WEIGHT"));
+							vehicleTable.setEditValue(row, "VOLUME", result.get(0).get("MAX_VOLUME"));
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+			
+		});
+		
+		ListGridField GROSS_W = new ListGridField("GROSS_W", Util.TI18N.MAX_WEIGHT(), 90);
+		ListGridField VOLUME = new ListGridField("VOLUME", Util.TI18N.MAX_VOLUME(), 90);
+		
+		ListGridField VEHICLE_STAT = new ListGridField("VEHICLE_STAT", Util.TI18N.VEHICLE_STAT(), 90);
+		VEHICLE_STAT.setCanEdit(false);
+		
+		ListGridField REPORT_STATUS = new ListGridField("REPORT_STATUS_NAME", Util.TI18N.REPORT_STATUS(), 90);
+		REPORT_STATUS.setCanEdit(false);
+		
+		ListGridField REPORTER = new ListGridField("REPORTER", Util.TI18N.REPORTER(), 70);
+		Util.initCodesComboValue(REPORT_STATUS, "REPORT_STATUS");
+		REPORTER.setCanEdit(false);
+		
+		ListGridField REPORT_TIME = new ListGridField("REPORT_TIME", Util.TI18N.REPORT_TIME(), 120);
+		REPORT_TIME.setCanEdit(false);
+		
+		ListGridField NOTES = new ListGridField("NOTES", Util.TI18N.NOTES(), 240);
+		
+		vehicleTable.setFields(SUPLR_ID, PLATE_NO, VEH_TYPE, GROSS_W, VOLUME, VEHICLE_STAT, REPORT_STATUS, REPORTER, REPORT_TIME, NOTES);
+		vehicleTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(add_veh, true);
+				enableOrDisables(del_veh, true);
+				enableOrDisables(save_veh, false);
+				if("已上报".equals(event.getRecord().getAttributeAsString("REPORT_STATUS_NAME"))){
+					setVehBtnStatus(false);
+				}
+				else {
+					setVehBtnStatus(true);
+				}
+			}
+		});
+		vehicleTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_veh, false);
+				enableOrDisables(del_veh, false);
+				enableOrDisables(save_veh, true);
+				reportVehBtn.setDisabled(true);
+				canReportVehBtn.setDisabled(true);
+				return;
+			}
+		});
+		
+	}
+	
+	private void createReportedTable(){
+		
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_NAME", Util.TI18N.SUPLR_NAME(), 120);
+		
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO", Util.TI18N.PLATE_NO(), 90);
+		
+		ListGridField VEH_TYPE = new ListGridField("VEH_TYP_NAME", Util.TI18N.VEHICLE_TYPE(), 120);
+		
+		ListGridField GROSS_W = new ListGridField("GROSS_W", Util.TI18N.MAX_WEIGHT(), 90);
+		ListGridField VOLUME = new ListGridField("VOLUME", Util.TI18N.MAX_VOLUME(), 90);
+		
+		ListGridField VEH_NUM = new ListGridField("VEH_NUM", Util.TI18N.VEH_NUM(), 70);
+		
+		ListGridField AUDIT_STATUS = new ListGridField("AUDIT_STATUS_NAME", Util.TI18N.AUDIT_STATUS(), 90);
+		
+		ListGridField AUDITER = new ListGridField("AUDITER", Util.TI18N.AUDITER(), 70);
+		ListGridField AUDIT_TIME = new ListGridField("AUDIT_TIME", Util.TI18N.AUDIT_TIME(), 120);
+		ListGridField NOTES = new ListGridField("NOTES", Util.TI18N.NOTES(), 140);
+		
+		reportedTable.setFields(SUPLR_NAME, PLATE_NO, VEH_TYPE, GROSS_W, VOLUME, VEH_NUM, AUDIT_STATUS, AUDITER, AUDIT_TIME, NOTES);
+		reportedTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				if("已审核".equals(event.getRecord().getAttributeAsString("AUDIT_STATUS_NAME"))){
+					setBtnStatus(false);
+				}
+				else {
+					setBtnStatus(true);
+				}
+			}
+		});
+	}
+	
+	/**
+	 * 可用车型页签
+	 * @author yuanlei
+	 * @return
+	 */
+	private VLayout createVehTypePage(){
+		
+		VLayout vlay = new VLayout();
+		vlay.setHeight100();
+		vlay.setWidth100();
+		
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		createVehTypeBtn(toolStrip);
+		
+		vlay.addMember(toolStrip);
+		
+		createVehTypTable();
+		
+		// 主布局		
+		vehTypeSection = new SectionStack();
+		SectionStackSection listItem2 = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem2.setItems(vehTypeTable);
+		listItem2.setExpanded(true);
+		vehTypeSection.addSection(listItem2);
+		DynamicForm vehTypeForm = new SGPage(vehTypeTable, true).initPageBtn();
+		listItem2.setControls(vehTypeForm);
+		vehTypeSection.setWidth100();
+		vehTypeSection.setHeight100();
+		vlay.addMember(vehTypeSection);
+		
+		return vlay;
+	}
+	
+	/**
+	 * 可用车辆页签
+	 * @author yuanlei
+	 * @return
+	 */
+	private VLayout createVehiclePage(){
+		
+		VLayout vlay = new VLayout();
+		vlay.setHeight100();
+		vlay.setWidth100();
+		
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		createVehicleBtn(toolStrip);
+		
+		vlay.addMember(toolStrip);
+		
+		createVehicleTable();
+		
+		vehicleSection = new SectionStack();
+		SectionStackSection listItem3 = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem3.setItems(vehicleTable);
+		listItem3.setExpanded(true);
+		vehicleSection.addSection(listItem3);
+		DynamicForm vehicleForm = new SGPage(vehicleTable, false).initPageBtn();
+		listItem3.setControls(vehicleForm);
+		vehicleSection.setWidth("100%");
+		vlay.addMember(vehicleSection);
+		
+		return vlay;
+	}
+	
+	/**
+	 * 已报车辆车型页签
+	 * @author yuanlei
+	 * @return
+	 */
+	private VLayout createReportedPage(){
+		
+		VLayout vlay = new VLayout();
+		vlay.setHeight100();
+		vlay.setWidth100();
+		
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		createReportBtn(toolStrip);
+		
+		vlay.addMember(toolStrip);
+		
+		createReportedTable();
+		
+		reportSection = new SectionStack();
+		SectionStackSection listItem3 = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem3.setItems(reportedTable);
+		listItem3.setExpanded(true);
+		reportSection.addSection(listItem3);
+		DynamicForm reportForm = new SGPage(reportedTable, false).initPageBtn();
+		listItem3.setControls(reportForm);
+		reportSection.setWidth("100%");
+		vlay.addMember(reportSection);
+		
+		return vlay;
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		if (searchWin2 != null) {
+			searchWin2.destroy();
+			searchForm2.destroy();
+		}
+		if (searchWin3 != null) {
+			searchWin3.destroy();
+			searchForm3.destroy();
+		}
+	}
+	
+	/**
+	 * 设置按钮初始状态
+	 * @author yuanlei
+	 * @param typ
+	 */
+	public void initBtn(){
+		
+		auditBtn.setDisabled(true);
+		canAuditBtn.setDisabled(true);
+		
+		enableOrDisables(add_map, true);
+		enableOrDisables(save_map, false);
+		enableOrDisables(del_map, false);
+		reportBtn.setDisabled(true);
+		canReportBtn.setDisabled(true);
+		
+		enableOrDisables(add_veh, true);
+		enableOrDisables(save_veh, false);
+		enableOrDisables(del_veh, false);
+		reportVehBtn.setDisabled(true);
+		canReportVehBtn.setDisabled(true);
+	}
+	
+	public VehicleReportView getThis(){
+		return this;
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		;
+	}
+	
+	public void setBtnStatus(boolean b1){
+		if(isPrivilege(	TrsPrivRef.VEHREPORT_P1_01)){
+			auditBtn.setDisabled(!b1);
+		}
+		if(isPrivilege(TrsPrivRef.VEHREPORT_P3_05)){
+			canAuditBtn.setDisabled(b1);
+		}
+	}
+	
+	public void setVehBtnStatus(boolean b1){
+		if(isPrivilege(TrsPrivRef.VEHREPORT_P3_05)){
+			reportVehBtn.setDisabled(!b1);
+		}
+		if(isPrivilege(TrsPrivRef.VEHREPORT_P3_05)){
+			canReportVehBtn.setDisabled(b1);
+		}
+	}
+	
+	public void setTyeBtnStatus(boolean b1){
+		if(isPrivilege(TrsPrivRef.VEHREPORT_P2_05)){
+			reportBtn.setDisabled(!b1);
+		}
+		if(isPrivilege(TrsPrivRef.VEHREPORT_P2_05)){
+			canReportBtn.setDisabled(b1);
+		}
+	}
+	
+	@Override
+	public void initVerify() {
+		check_map.put("TABLE", "TRANS_VEH_REPORT");		
+		check_map.put("REPORT_STATUS", StaticRef.CHK_NOTNULL + Util.TI18N.REPORT_STATUS());
+		check_map.put("VEH_NUM", StaticRef.CHK_NOTNULL + Util.TI18N.VEH_NUM());	
+		check_map.put("SUPLR_ID", StaticRef.CHK_NOTNULL + Util.TI18N.SUPLR_NAME());	
+		
+		cache_map.put("REPORT_STATUS", "UNREPORT");
+		cache_map.put("AUDIT_STATUS", "10");
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		VehicleReportView view = new VehicleReportView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

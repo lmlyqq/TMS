@@ -1,0 +1,545 @@
+package com.rd.server.util;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.Types;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.FormulaError;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.util.ObjUtil;
+
+
+/**
+ * Excel 导入
+ * @author Lang
+ *
+ */
+public class InputExcel {
+	private InputStream is;	
+	private String typeName;	//导入类型
+	private Map<Integer, String> keyMap;	//字段表，对应数据库中的字段
+	private Map<String, String> keyNameMap;	//字段表，字段的中文名
+	private String addwho;	//当前用户
+	private List<Map<String, String>> resultList;	//数据集合
+	private Row prevRow;	//上一行
+	private int firstRow;	//第一行索引
+	private final int COLUMN_NAME_ROWS = 2; //列名称占用几行
+	private final int PARNET_LINE_CHECK_COLUMN = 0; //第几列用于判断父行
+	private static final String NULL_MSG = "未读取到任何数据!".intern();
+	private DecimalFormat df = new DecimalFormat("#.###");
+	private String tabName;
+	private String SpName;
+	private String TMPID;
+	
+	
+	public InputExcel(InputStream is, String typeName, String addwho){
+		this.is = is;
+		this.typeName = typeName;
+		this.addwho = addwho;
+		this.resultList = new ArrayList<Map<String, String>>();
+		this.keyMap = new HashMap<Integer, String>();
+		this.keyNameMap = new HashMap<String, String>();
+	}
+	
+	public InputExcel(InputStream is, String typeName, String addwho,String tabName,String SpName){
+		this.is = is;
+		this.typeName = typeName;
+		this.addwho = addwho;
+		this.resultList = new ArrayList<Map<String, String>>();
+		this.keyMap = new HashMap<Integer, String>();
+		this.keyNameMap = new HashMap<String, String>();
+		this.tabName=tabName;
+		this.SpName=SpName;
+		this.TMPID=String.valueOf(System.currentTimeMillis());  
+	}
+	
+	public static String input(InputStream is, 
+			String typeName, String addwho)throws IOException{
+		InputExcel ie = new InputExcel(is, typeName, addwho);
+		return ie.input();
+	}
+	
+	public static String input(InputStream is, 
+			String typeName, String addwho,String tabName,String SpName)throws IOException{
+		InputExcel ie = new InputExcel(is, typeName, addwho,tabName,SpName);
+		return ie.input1();
+	}
+	
+	
+	public String input() throws IOException{
+		
+		long start = System.currentTimeMillis();
+		if(this.typeName == null || 
+				this.typeName.trim().length() == 0)
+			throw new NullPointerException("导入类型不能为空!");
+		Workbook workbook = null;
+		try {
+			workbook = WorkbookFactory.create(this.is);
+		} catch (InvalidFormatException e) {
+			throw new IOException(e);
+		}
+		//获取工作薄第一个表
+		Sheet sheet = workbook.getSheetAt(0);
+		//获取表的最后一行索引
+		int rows = sheet.getLastRowNum();
+		//获取表的第一行索引
+		int firstRowIndex = sheet.getFirstRowNum();
+		//最后一行索引为0,返回空数据消息
+		if(rows == 0) throw new NullPointerException(NULL_MSG);
+		//读取列名称,列中文名称两行
+		handleHeadRow(sheet.getRow(firstRowIndex), sheet.getRow(firstRowIndex+1));
+		//获取数据开始行的索引
+		firstRow = firstRowIndex+COLUMN_NAME_ROWS;
+		//从列名称下一行开始读取所有数据
+		for (int i = firstRow; i <= rows; i++) 
+			handleRow(sheet.getRow(i));
+		//关闭流
+		this.is.close();
+		//保存数据到临时表
+		String result = save(start);
+		//调用存储过程导入数据
+		if(StaticRef.SUCCESS_CODE.equals(result)){
+			result = execProcedure(start);
+			System.out.println("执行结果: "+ result);
+		}
+		System.out.println("处理用时:"+(System.currentTimeMillis()-start) +"毫秒");
+		return result;
+	}
+	
+//新建的导入方法
+	public String input1() throws IOException{
+		
+		long start = System.currentTimeMillis();
+		if(this.typeName == null || 
+				this.typeName.trim().length() == 0)
+			throw new NullPointerException("导入类型不能为空!");
+		Workbook workbook = null;
+		try {
+			workbook = WorkbookFactory.create(this.is);
+		} catch (InvalidFormatException e) {
+			throw new IOException(e);
+		}
+		//获取工作薄第一个表
+		Sheet sheet = workbook.getSheetAt(0);
+		//获取表的最后一行索引
+		int rows = sheet.getLastRowNum();
+		//获取表的第一行索引
+		int firstRowIndex = sheet.getFirstRowNum();
+		//最后一行索引为0,返回空数据消息
+		if(rows == 0) throw new NullPointerException(NULL_MSG);
+		//读取列名称,列中文名称两行
+		handleHeadRow(sheet.getRow(firstRowIndex), sheet.getRow(firstRowIndex+1));
+		//获取数据开始行的索引
+		firstRow = firstRowIndex+COLUMN_NAME_ROWS;
+		//从列名称下一行开始读取所有数据
+		for (int i = firstRow; i <= rows; i++) 
+			handleRow1(sheet.getRow(i));
+		//关闭流
+		this.is.close();
+		//保存数据到临时表
+		String result = save1(start);
+		//调用存储过程导入数据
+		if(StaticRef.SUCCESS_CODE.equals(result)){
+			result = execProcedure1(start);
+			System.out.println("执行结果: "+ result);
+		}
+		System.out.println("处理用时:"+(System.currentTimeMillis()-start) +"毫秒");
+		return result;
+	}
+	
+	/**
+	 * 处理表头,获取各字段值
+	 * @author Lang
+	 * @param firstRow
+	 * @param twoRow
+	 */
+	private void handleHeadRow(Row firstRow, Row twoRow){
+		if(firstRow == null || twoRow == null) 
+			throw new NullPointerException(NULL_MSG);
+		int cells = firstRow.getLastCellNum();
+		for (int i = 0; i < cells; i++) {
+			Cell firstCell = firstRow.getCell(i);
+			Cell twoCell = twoRow.getCell(i);
+			String firstValue = getValue(firstCell);
+			this.keyMap.put(i, firstValue);
+			this.keyNameMap.put(firstValue, getValue(twoCell));
+		}
+	}
+	
+	/**
+	 * 处理数据行
+	 * @author Lang
+	 * @param row
+	 */
+	private void handleRow(Row row){
+		if(row == null) return;
+		Map<String, String> rowMap = new HashMap<String, String>();
+		int cells = row.getLastCellNum();
+		int nullNum = 0;	//记录空单元格
+		boolean flag = false;	//子行标识
+		for (int i = 0; i < cells; i++) {
+			Cell cell = row.getCell(i);
+			String cellValue = getValue(cell);
+			if(cellValue == null || cellValue.trim().length() == 0){
+				if(i == PARNET_LINE_CHECK_COLUMN && 
+						(row.getRowNum() == firstRow || 
+								this.prevRow == null))
+					return;
+				if(i == PARNET_LINE_CHECK_COLUMN) flag = true; //单元格为空时，如果前列是父行检查列，将标识置为true
+				if(this.prevRow == null) this.prevRow = row;	//如果上一行为空，将当前行赋给上一行
+				if(flag && i == PARNET_LINE_CHECK_COLUMN) cellValue = getValue(this.prevRow.getCell(i));	//如果当前行为子行且单元格为空，读取上一行数据
+				nullNum++;
+			}
+			if(this.keyMap.get(i) == null || this.keyMap.get(i).length() == 0)
+				throw new NullPointerException("第["+(i+1)+"]列,列名称不能为空！");
+			rowMap.put(this.keyMap.get(i), cellValue);
+		}
+		if(nullNum == cells) return;
+		if(flag) 
+			rowMap.put("parentLine", String.valueOf(this.prevRow.getRowNum()-1));
+		else 
+			this.prevRow = row;	
+		if(!rowMap.isEmpty()){
+			if(!(addwho == null || addwho.trim().length() == 0))
+				rowMap.put("ADDWHO", addwho);
+			this.resultList.add(rowMap);
+		}	
+	}
+	
+	private void handleRow1(Row row){
+		if(row == null) return;
+		Map<String, String> rowMap = new HashMap<String, String>();
+		int cells = row.getLastCellNum();
+		int nullNum = 0;	//记录空单元格
+		boolean flag = false;	//子行标识
+		for (int i = 0; i < cells; i++) {
+			Cell cell = row.getCell(i);
+			String cellValue = getValue(cell);
+			if(tabName.equals("TMP_ORDER_IMPORT")){
+				if(cellValue == null || cellValue.trim().length() == 0){
+	
+						if(i == PARNET_LINE_CHECK_COLUMN 
+								&&(row.getRowNum() == firstRow 
+										|| this.prevRow == null))
+							return;
+					if(i == PARNET_LINE_CHECK_COLUMN) flag = true; //单元格为空时，如果前列是父行检查列，将标识置为true
+					if(this.prevRow == null) this.prevRow = row;	//如果上一行为空，将当前行赋给上一行
+					//if(flag && i == PARNET_LINE_CHECK_COLUMN) cellValue = getValue(this.prevRow.getCell(i));	//如果当前行为子行且单元格为空，读取上一行数据
+					nullNum++;
+				}
+			}
+			if(this.keyMap.get(i) == null || this.keyMap.get(i).length() == 0)
+				throw new NullPointerException("第["+(i+1)+"]列,列名称不能为空！");
+			rowMap.put(this.keyMap.get(i), cellValue);
+		}
+		if(nullNum == cells){ 
+			return;
+		}
+//		if(flag) 
+//			rowMap.put("parentLine", String.valueOf(this.prevRow.getRowNum()-1));
+//		else 
+//			this.prevRow = row;	
+		if(!rowMap.isEmpty()){
+//			if(!(addwho == null || addwho.trim().length() == 0))
+//				rowMap.put("ADDWHO", addwho);
+			this.resultList.add(rowMap);
+		}	
+	}
+	
+	
+	
+	
+	private String save(long currentTime){
+		return saveData(currentTime);
+	}
+	
+	private String save1(long currentTime){
+		return saveData1(currentTime);
+	}
+	/**
+	 * 保存数据到临时表
+	 * @author Lang
+	 * @return
+	 */
+	private String saveData(long currentTime){
+		if(this.resultList.isEmpty()) throw new NullPointerException(NULL_MSG);
+		List<String> sqlList = new ArrayList<String>();
+//		sqlList.add("delete from t_input_excel_temp where type_name = '"+this.typeName+"' and custom_odr_no = '"+currentTime+"'");	//先删除临时表里的数据再插入
+		int i = 1;
+		for (Map<String, String> map : this.resultList) {
+			String parentLine = map.remove("parentLine");
+			for (Map.Entry<String, String> entry : map.entrySet()) {
+				StringBuilder sbInsert = new StringBuilder("insert into t_input_excel_temp(TYPE_NAME, COLUMN_NAME, COLUMN_CNAME, VALUE, LINE, PARENTLINE, CUSTOM_ODR_NO) VALUES('".intern());
+				sbInsert.append(this.typeName);
+				sbInsert.append("', '");
+				sbInsert.append(entry.getKey());
+				sbInsert.append("', '");
+				sbInsert.append(getMapValue(this.keyNameMap.get(entry.getKey())));
+				sbInsert.append("', '");
+				sbInsert.append(entry.getValue().replaceAll("'", "''"));
+				sbInsert.append("', ");
+				sbInsert.append(i);
+				sbInsert.append(", ");
+				sbInsert.append(parentLine==null?0:parentLine);
+				sbInsert.append(",'");
+				sbInsert.append(currentTime);
+				sbInsert.append("')");
+				sqlList.add(sbInsert.toString());
+			}
+			i++;
+		}
+		return executeSQLList(sqlList);
+	}
+	//新建保存方法
+	
+	private String saveData1(long currentTime){
+		if(this.resultList.isEmpty()) throw new NullPointerException(NULL_MSG);
+		
+		List<String> sqlList = new ArrayList<String>();
+		HashMap<String,String> colmap=new HashMap<String, String>();
+	
+		String colsql="select excel_name,field_name from sys_import_config  where table_name = '"+tabName+"'";
+		
+		Connection conn = null;
+		
+		Statement stmt = null;
+		
+		ResultSet rSet=null;
+		
+		try {
+			conn = LoginContent.getInstance().getConnection();
+	        stmt = conn.createStatement();
+	        if(stmt != null && colsql != null && colsql.length()> 0) {
+	        	rSet=stmt.executeQuery(colsql);
+	        	while(rSet.next()){
+	        		colmap.put(rSet.getString("excel_name"),rSet.getString("field_name"));	
+	        	}		        		        			  
+	        }
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		finally {
+			try {
+		        if(stmt != null) {
+	        		stmt.close();
+	        	}
+			    if (conn != null) {
+			    	conn.close();
+			    }
+			    if (rSet != null) {
+			    	rSet.close();
+			}
+		}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		
+		int no=1;
+		
+		for (Map<String, String> map : this.resultList) {
+			
+			List<String> list1=new ArrayList<String>();
+			List<String> list2=new ArrayList<String>();
+			List<String> list3=new ArrayList<String>();
+			for (Map.Entry<String, String> entry : map.entrySet()) {
+				list1.add(entry.getKey());
+				list2.add(entry.getValue());
+			}
+			
+			for(int i=0;i<list1.size();i++){			
+				list3.add(colmap.get(list1.get(i)));						
+			}
+			
+			StringBuffer sql=new StringBuffer("insert into "+tabName+" ("+list3.get(0)+"");
+			for(int i=1;i<list3.size();i++){
+				sql.append(","+list3.get(i));
+			}
+			sql.append(",USER_ID,TMPID,LINENO,ADDTIME) VALUES ('"+ObjUtil.ifNull(list2.get(0),"")+"'");
+			for(int i=1;i<list2.size();i++){
+				sql.append(",'"+list2.get(i)+"'");
+			}
+			sql.append(",'"+addwho+"','"+TMPID+"','"+no+"',sysdate)");
+					
+			sqlList.add(sql.toString());
+			
+			no=no+1;
+		}
+		return executeSQLList(sqlList);
+	}
+	/**
+	 * 批量执行SQL
+	 * @author Lang
+	 * @param sqlList
+	 * @return
+	 */
+	private String executeSQLList(List<String> sqlList){
+		Connection conn = null;
+		Statement stmt = null;
+		String resultStr = StaticRef.SUCCESS_CODE;
+		try {
+			conn = LoginContent.getInstance().getConnection();
+			conn.setAutoCommit(false);
+	        stmt = conn.createStatement();
+	        if(stmt != null && sqlList != null && sqlList.size() > 0) {
+	        	for(int i = 0; i < sqlList.size(); i++) {
+	        		stmt.addBatch(sqlList.get(i).toString());
+	        	}
+	        	stmt.executeBatch();
+		    	conn.commit();
+	        }
+		}catch(Exception e) {
+			e.printStackTrace();
+			resultStr = StaticRef.FAILURE_CODE + e.getMessage();
+			return resultStr;
+		}
+		finally {
+			try {
+		        if(stmt != null) {
+	        		stmt.close();
+	        	}
+			    if (conn != null) {
+			    	conn.close();
+			    }
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return resultStr;
+	}
+	/**
+	 * 执行存储过程
+	 * @author Lang
+	 * @return
+	 */
+	public String execProcedure(long currentTime) {
+		String result = StaticRef.SUCCESS_CODE; 
+		String proName = "P_INPUT_EXCEL(?,?,?)";
+		String sql = "{call " + proName + "}";
+		Connection conn = null;
+		CallableStatement cs = null;
+		try{
+			conn = LoginContent.getInstance().getConnection();
+			cs = conn.prepareCall(sql);
+			cs.setString(1, this.typeName);
+			cs.setString(2, String.valueOf(currentTime));
+			cs.registerOutParameter(3, Types.VARCHAR);
+			cs.execute();
+			result = cs.getString(3);
+		}catch (Exception ee) {
+			try{
+				result = "01" + ee.getMessage();
+				return result;
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+			ee.printStackTrace();
+		}
+		finally {
+			try {
+				if(cs != null) {
+					cs.close();
+				}
+				if(conn != null) {
+					conn.close();
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+	
+	public String execProcedure1(long currentTime) {
+		String result = StaticRef.SUCCESS_CODE; 
+		String proName = SpName+"(?,?,?,?)";
+		String sql = "{call " + proName + "}";
+		Connection conn = null;
+		CallableStatement cs = null;
+		try{
+			conn = LoginContent.getInstance().getConnection();
+			cs = conn.prepareCall(sql);
+			cs.setString(1,TMPID);
+			cs.setString(2,addwho );
+			cs.setString(3, "CN");
+			cs.registerOutParameter(4, Types.VARCHAR);
+			cs.execute();
+			result = cs.getString(4);
+		}catch (Exception ee) {
+			try{
+				result = "01" + ee.getMessage();
+				return result;
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+			ee.printStackTrace();
+		}
+		finally {
+			try {
+				if(cs != null) {
+					cs.close();
+				}
+				if(conn != null) {
+					conn.close();
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+	
+	
+	/**
+	 * 根据不同类型取值
+	 * @author Lang
+	 * @param cell
+	 * @return
+	 */
+	private String getValue(Cell cell){
+		if(cell == null) return "";
+		try {
+			switch (cell.getCellType()) {
+			case Cell.CELL_TYPE_STRING:
+				return cell.getStringCellValue();
+			case Cell.CELL_TYPE_NUMERIC:
+				return df.format(cell.getNumericCellValue());
+			case Cell.CELL_TYPE_FORMULA:
+				return cell.getCellFormula();
+			case Cell.CELL_TYPE_ERROR:
+				return FormulaError.forInt(cell.getErrorCellValue()).getString();
+			case Cell.CELL_TYPE_BOOLEAN:
+				return String.valueOf(cell.getBooleanCellValue());
+			case Cell.CELL_TYPE_BLANK:
+				return "";
+			default:
+				return cell.getStringCellValue();
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("读取单元格的值失败, 数据行["+(cell.getRowIndex()-1)+"]列["+(cell.getColumnIndex()+1)+"]错误: "+e.getMessage());
+		}
+		
+	}
+	
+	private String getMapValue(String value){
+		return value == null ? "" : value;
+	}
+}

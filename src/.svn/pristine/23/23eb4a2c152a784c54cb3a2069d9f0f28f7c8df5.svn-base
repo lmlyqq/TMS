@@ -1,0 +1,330 @@
+package com.rd.client.view.settlement;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.ShopRouteManifestDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+@ClassForNameAble
+public class ShopRouteManifestView extends SGForm implements PanelFactory {
+
+	private DataSource ds;
+	private SGTable table;
+	private SectionStack sectionStack;
+	private Window searchWin = null;
+	public SGPanel searchForm = new SGPanel();
+	private IButton confirmAcc;
+	private IButton cancelAcc;
+	
+	/*public ShopRouteManifestView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+		ToolStrip toolStrip = new ToolStrip(); // 按钮布局
+		toolStrip.setAlign(Alignment.RIGHT);
+		ds = ShopRouteManifestDS.getInstance("T_SETTLEMENT_MANIFEST", "T_SETTLEMENT_MANIFEST");
+		
+		table = new SGTable(ds, "100%", "100%",true,true,false);
+		table.setShowHover(true);
+		table.setShowFilterEditor(false);
+		createListFields();
+		table.setCanEdit(false);
+		sectionStack = createSection(table, null, true, true);;
+		
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		main.addMember(sectionStack);
+		
+		initVerify();
+		return main;
+	}
+	
+	private void createListFields(){
+		table.setShowRowNumbers(true);
+		 
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO", Util.TI18N.LOAD_NO(), 120);
+		ListGridField CUSTOMER_NAME = new ListGridField("CUSTOMER_NAME", Util.TI18N.CUSTOMER_NAME(), 120);
+		ListGridField GEN_METHOD = new ListGridField("GEN_METHOD", "月结帐号", 120);
+		ListGridField ROUTE_ID = new ListGridField("ROUTE_ID", Util.TI18N.ROUTE_ID());
+		ROUTE_ID.setHidden(true);
+		ListGridField ROUTE_NAME = new ListGridField("ROUTE_NAME", Util.TI18N.ROUTE_NAME());
+		ListGridField TOTL_DISTANCE = new ListGridField("TOTL_DISTANCE", "里程", 100);
+		ListGridField TOTAL_AMOUNT = new ListGridField("TOTAL_AMOUNT", "金额", 100);
+		ListGridField RECEIPT_FLAG = new ListGridField("RECEIPT_FLAG", "已收款", 60);
+		RECEIPT_FLAG.setType(ListGridFieldType.BOOLEAN);
+		ListGridField DEPART_TIME = new ListGridField("DEPART_TIME", Util.TI18N.LOAD_TIME(), 160);
+		
+		table.setFields(LOAD_NO, CUSTOMER_NAME, GEN_METHOD, ROUTE_ID, ROUTE_NAME, TOTL_DISTANCE, TOTAL_AMOUNT, RECEIPT_FLAG, DEPART_TIME);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(3);
+        toolStrip.setSeparatorSize(5);
+        toolStrip.setMembersMargin(4);
+        
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN, SettPrivRef.SHOP_ROUTE_MANIFEST);
+        
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchWin = new SearchWin(ds,
+							createSerchForm(searchForm),sectionStack.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+        
+        confirmAcc = createUDFBtn("确认收款",StaticRef.ICON_SAVE,SettPrivRef.SHOP_ROUTE_MANIFEST_P1_01);
+		confirmAcc.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				final ListGridRecord selRecord = table.getSelectedRecord();
+				if(selRecord == null){
+					MSGUtil.sayWarning("请先选中一条记录!");
+					return;
+				}
+				ArrayList<String> sqlList = new ArrayList<String>();
+				String id = selRecord.getAttribute("ID");
+				String userId = LoginCache.getLoginUser().getUSER_ID();
+				String sql = "update t_settlement_manifest set receipt_flag = 'Y', edittime = sysdate, editwho = '"+ 
+								userId+"' where id = '"+ id + "'";
+				sqlList.add(sql);
+				String checkSql = "select count(1) from t_settlement_manifest where id = '"+id+"' and receipt_flag='Y'";
+				Util.async.excuteSQLListCheckUn1(sqlList, checkSql, 
+						new AsyncCallback<String>() {
+					
+					@Override
+					public void onSuccess(String result) {
+						if("uniquene".equals(result)){
+							MSGUtil.sayWarning("调度单已收款, 不能确认收款!");
+							return;
+						}else if(result.startsWith(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							Criteria c = table.getCriteria();
+							c = c == null ? new Criteria() : c;
+							c.addCriteria("OP_FLAG", "M");
+							table.invalidateCache();
+							table.fetchData(c, new DSCallback() {
+								
+								@Override
+								public void execute(DSResponse response, Object rawData, DSRequest request) {
+									table.draw();
+									table.selectRecord(selRecord);
+								}
+							});
+						}else{
+							MSGUtil.showOperError();
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError(caught.getMessage());
+						
+					}
+				});
+			}
+		});
+		
+		cancelAcc = createUDFBtn("取消收款",StaticRef.ICON_CANCEL,SettPrivRef.SHOP_ROUTE_MANIFEST_P1_02);
+		cancelAcc.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				final ListGridRecord selRecord = table.getSelectedRecord();
+				if(selRecord == null){
+					MSGUtil.sayWarning("请先选中一条记录!");
+					return;
+				}
+				ArrayList<String> sqlList = new ArrayList<String>();
+				String id = selRecord.getAttribute("ID");
+				String userId = LoginCache.getLoginUser().getUSER_ID();
+				String sql = "update t_settlement_manifest set receipt_flag = 'N', edittime = sysdate, editwho = '"+ 
+								userId+"' where id = '"+ id + "'";
+				sqlList.add(sql);
+				String checkSql = "select count(1) from t_settlement_manifest where id = '"+id+"' and receipt_flag='N'";
+				Util.async.excuteSQLListCheckUn1(sqlList, checkSql, 
+						new AsyncCallback<String>() {
+					
+					@Override
+					public void onSuccess(String result) {
+						if("uniquene".equals(result)){
+							MSGUtil.sayWarning("调度单未收款, 不能取消收款!");
+							return;
+						}else if(result.startsWith(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							Criteria c = table.getCriteria();
+							c = c == null ? new Criteria() : c;
+							c.addCriteria("OP_FLAG", "M");
+							table.invalidateCache();
+							table.fetchData(c, new DSCallback() {
+								
+								@Override
+								public void execute(DSResponse response, Object rawData, DSRequest request) {
+									table.draw();
+									table.selectRecord(selRecord);
+									
+								}
+							});
+						}else{
+							MSGUtil.showOperError();
+						}
+					}
+					
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError(caught.getMessage());
+						
+					}
+				});
+			}
+		});
+		
+		IButton expButton = createBtn(StaticRef.EXPORT_BTN,SettPrivRef.SHOP_ROUTE_MANIFEST_P1_03);
+		expButton.addClickHandler(new ExportAction(table));
+		
+		toolStrip.setMembers(searchButton, confirmAcc, cancelAcc, expButton);
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+		}
+		
+	}
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+		
+		final TextItem CUSTOMER_ID=new TextItem("CUSTOMER_ID");
+		CUSTOMER_ID.setVisible(false);
+		
+		final ComboBoxItem CUSTOMER_NAME=new ComboBoxItem("CUSTOMER_NAME",Util.TI18N.CUSTOMER());
+		CUSTOMER_NAME.setStartRow(true);
+		CUSTOMER_NAME.setWidth(120);
+		CUSTOMER_NAME.setColSpan(2);
+		CUSTOMER_NAME.setTitleAlign(Alignment.LEFT);
+		CUSTOMER_NAME.setTitleOrientation(TitleOrientation.TOP);
+		Util.initCustomerByQuery(CUSTOMER_NAME, CUSTOMER_ID);
+		CUSTOMER_NAME.setAutoFetchData(true);
+		
+		SGText LOAD_NO = new SGText("LOAD_NO",Util.TI18N.LOAD_NO(), true);
+		LOAD_NO.setTitleOrientation(TitleOrientation.TOP);
+		
+		SGCombo ROUTE_ID = new SGCombo("ROUTE_ID", Util.TI18N.ROUTE_NAME());	//线路
+		if(LoginCache.getLoginUser().getROLE_ID().equals(StaticRef.SUPER_ROLE)) { 
+			Util.initComboValue(ROUTE_ID, "BAS_ROUTE_HEAD", "ID", "ROUTE_NAME", "", " order by show_seq asc");
+		}
+		else {
+			Util.initComboValue(ROUTE_ID, "BAS_ROUTE_HEAD", "ID", "ROUTE_NAME", " where exec_org_id = '" + LoginCache.getLoginUser().getDEFAULT_ORG_ID() + "'", " order by show_seq asc");
+		}
+		
+		SGDateTime DEPART_TIME_FROM = new SGDateTime("DEPART_TIME_FROM", Util.TI18N.DEPART_TM_FROM());//发运时间 从  到  
+		SGDateTime DEPART_TIME_TO = new SGDateTime("DEPART_TIME_TO", "到");
+		
+		SGCombo RECEIPT_FLAG = new SGCombo("RECEIPT_FLAG", Util.TI18N.COLLECTE_STATE());
+		LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
+		map.put("", "");
+		map.put("N", "未收款");
+		map.put("Y", "已收款");
+		RECEIPT_FLAG.setValueMap(map);
+		
+		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID", "");
+		EXEC_ORG_ID.setVisible(false);
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		TextItem EXEC_ORG_ID_NAME = new TextItem("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID_NAME.setWidth(130);
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		EXEC_ORG_ID_NAME.setColSpan(2);
+		EXEC_ORG_ID_NAME.setStartRow(true);
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		EXEC_ORG_ID_NAME.setTitleOrientation(TitleOrientation.TOP);
+		
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());	
+		C_ORG_FLAG.setValue(true);//包含下级机构
+		C_ORG_FLAG.setColSpan(2);
+		
+        form.setItems(CUSTOMER_ID,CUSTOMER_NAME,ROUTE_ID,RECEIPT_FLAG, LOAD_NO, DEPART_TIME_FROM, DEPART_TIME_TO,EXEC_ORG_ID,EXEC_ORG_ID_NAME,C_ORG_FLAG);
+        
+        return form;
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		ShopRouteManifestView view = new ShopRouteManifestView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+}

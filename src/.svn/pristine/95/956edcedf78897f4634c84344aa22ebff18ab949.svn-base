@@ -1,0 +1,50 @@
+package com.rd.client;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.SysParam;
+
+public interface DBServiceAsync {
+	void isExistRecord(String tableName, String condition, AsyncCallback<Boolean> callback);
+	void getBizCodes(AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>> callback);
+	void getStatCodes(AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>> callback);
+	void getClientProp(AsyncCallback<LinkedHashMap<String, String>> callback);
+	void getUserOrg(String user_id,AsyncCallback<HashMap<String, String>> callback);
+	void saveUser(ArrayList<String> map, String proName,String passwd,String salt,
+			AsyncCallback<String> callback);
+	void getRolePrivilege(String role_id,String str,
+			AsyncCallback<HashMap<String, String>> callback);
+	void insertLog(String action_descr, String action_result, String sql, String link, String user_name, String org_name, AsyncCallback<Void> callback);
+	void getClientIP(AsyncCallback<String> callback);
+	void getPageInfo(AsyncCallback<ArrayList<String>> callback);
+	void QTY_CONVER(ArrayList<String> valList,
+			AsyncCallback<ArrayList<String>> callback);
+	void getSysParam(AsyncCallback<LinkedHashMap<String, SysParam>> callback);
+	void getDftCustomer(AsyncCallback<HashMap<String, String>> callback);
+    void getSHMPNOSum(LinkedHashMap<String, String> crit, AsyncCallback<LinkedHashMap<String, String>> callback);
+//    void getSingleRecord(String flds, String table, String where, AsyncCallback<HashMap<String, String>> callback);
+	void getImageNames(String path, AsyncCallback<ArrayList<String>> callback);
+    void getSingleRecord(String flds, String table, String where, HashMap<String, String> map, AsyncCallback<HashMap<String, String>> callback);
+    void getRecord(String flds, String table, String where, HashMap<String, String> map, AsyncCallback<ArrayList<HashMap<String, String>>> callback);
+	void isDelete(String path, AsyncCallback<Boolean> callback);
+	
+    void getUserPrivilege(AsyncCallback<LinkedHashMap<String, String>> callback);  //获取用户权限
+    
+    void getListCfg(AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>> callback);
+	void execCountSql(String sql,
+			AsyncCallback<HashMap<String, String>> callback);
+	void getIdSeq(String tableName, AsyncCallback<String> callback);
+	void getRecordCount(String sql, AsyncCallback<String> callback);
+	void getPost(String load_no,String param,String login_user, AsyncCallback<HashMap<String, String>> callback);
+	void deletePro(String id, String tableName, String userid,
+			AsyncCallback<String> callback);
+	void getRangeDetail(String range_id,
+			AsyncCallback<HashMap<String, String>> callback);
+	void getOrgAreaInfo(String org_id, String condition,
+			AsyncCallback<HashMap<String, String>> callback);
+//	void deletePro(String id, String tableName,
+//			AsyncCallback<String> callback);
+}

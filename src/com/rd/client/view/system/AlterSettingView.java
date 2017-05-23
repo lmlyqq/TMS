@@ -1,0 +1,488 @@
+package com.rd.client.view.system;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.system.DeleteAlterAction;
+import com.rd.client.action.system.SaveAlterDetailAction;
+import com.rd.client.action.system.SaveAlterDetailAction1;
+import com.rd.client.common.action.CancelFormAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.NewFormAction;
+import com.rd.client.common.action.SaveFormAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.SysPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.system.AlterSettDS;
+import com.rd.client.ds.system.AlterSettMailDS;
+import com.rd.client.ds.system.AlterSettSmsDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.DoubleClickEvent;
+import com.smartgwt.client.widgets.events.DoubleClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 预警设置
+ */
+@ClassForNameAble
+public class AlterSettingView extends SGForm implements PanelFactory {
+    private DataSource ds;
+    private DataSource mailDS;
+    private DataSource smsDS;
+    private SGTable table;
+    private Window searchWin;
+	private SGPanel searchForm;
+	private SGPanel mainForm;
+	private SGTable mailTable;
+	private SGTable smsTable;
+	private SectionStackSection ListItem;
+	private SectionStack SectionStack;
+	public DynamicForm pageForm;    
+	private IButton detailNewB;
+	private IButton detailSaveB;
+	private IButton detailDelB;
+	private IButton detailCanB;
+	
+	private IButton detailNewB1;
+	private IButton detailSaveB1;
+	private IButton detailDelB1;
+	private IButton detailCanB1;
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		
+		ds = AlterSettDS.getInstance("SYS_WARN_SETTING","SYS_WARN_SETTING");
+		mailDS=AlterSettMailDS.getInstance("SYS_WARN_MAIL","SYS_WARN_MAIL");
+		smsDS=AlterSettSmsDS.getInstance("SYS_WARN_SMS","SYS_WARN_SMS");
+		VLayout main = new VLayout();
+		
+		table = new SGTable(ds,"100%","100%");
+		table.setCanEdit(false);	
+		table.setShowFilterEditor(false);
+		createListFields(table);
+		
+		ListItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		ListItem.setItems(table);
+		ListItem.setExpanded(true);
+		pageForm=new SGPage(table,true).initPageBtn();
+		ListItem.setControls(pageForm);
+		
+		SectionStack=new SectionStack();
+		SectionStack.addSection(ListItem);
+		SectionStack.setWidth("30%");		
+		
+		initVerify();
+		HLayout layout1 = new HLayout();
+		layout1.setHeight("50%");
+		layout1.setWidth100();		
+		layout1.addMember(SectionStack);
+				
+		TabSet tab=new TabSet();
+		tab.setWidth("70%");
+		tab.setHeight("100%");
+		Tab mainInfo = new Tab(Util.TI18N.MAININFO());
+		mainInfo.setPane(createMainInfo());
+		tab.addTab(mainInfo);
+		layout1.addMember(tab);
+		
+		HLayout layout2 = new HLayout();
+		layout2.setHeight("40%");
+		layout2.setWidth100();		
+		
+		mailTable=new SGTable(mailDS);
+		mailTable.setShowFilterEditor(false);	
+		layout2.addMember(createMailTab(mailTable));
+		
+		smsTable=new SGTable(smsDS);
+		smsTable.setCanEdit(true);
+		smsTable.setShowFilterEditor(false);
+		layout2.addMember(createSmsTab(smsTable));
+		
+		ToolStrip toolstrip = new ToolStrip();
+		toolstrip.setAlign(Alignment.RIGHT);
+		createBtnWidget(toolstrip);
+		
+		main.addMember(toolstrip);
+		main.addMember(layout1);
+		main.addMember(layout2);
+		
+		return main;
+	}
+	
+	private void createListFields(final SGTable table){		
+		ListGridField WARN_TYPE = new ListGridField("WARN_TYPE","预警类型",100);
+		Util.initCodesComboValue(WARN_TYPE,"WARN_TYP");
+		ListGridField WARN_DESCR = new ListGridField("WARN_DESCR","预警描述",110);
+		table.setFields(WARN_TYPE,WARN_DESCR);
+		
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+            	Record selectedRecord  = event.getRecord();
+            	mainForm.editRecord(selectedRecord);
+            	mainForm.setValue("OP_FLAG", StaticRef.MOD_FLAG);
+                initSaveBtn();
+                
+                if(table.getSelectedRecord()!=null){
+                	 Criteria criter=new Criteria();
+                	 criter.setAttribute("OP_FLAG","M");
+                     criter.setAttribute("SETT_ID",table.getSelectedRecord().getAttribute("ID") );                 
+                     mailTable.discardAllEdits();
+                     mailTable.invalidateCache();
+                     mailTable.setFilterEditorCriteria(criter);
+                     mailTable.fetchData(criter, new DSCallback() {
+            			@Override
+            			public void execute(DSResponse response, Object rawData,
+            					DSRequest request) {
+            				 Criteria criter1=new Criteria();
+                        	 criter1.setAttribute("OP_FLAG","M");
+                             criter1.setAttribute("SETT_ID",table.getSelectedRecord().getAttribute("ID") );
+                             smsTable.invalidateCache();
+                             smsTable.fetchData(criter1);           				
+            			}           			
+            		});
+                }             
+            }
+        });
+		
+		table.addDoubleClickHandler(new DoubleClickHandler(){
+
+			 @Override
+			  public void onDoubleClick(DoubleClickEvent event) {					
+				 initAddBtn();
+			 }				
+		});		
+	}
+
+	private SGPanel createMainInfo(){
+		mainForm=new SGPanel();	
+		mainForm.setWidth("20%");
+		SGCombo WARN_TYPE = new SGCombo("WARN_TYPE","预警类型",true);
+		Util.initCodesComboValue(WARN_TYPE,"WARN_TYP");
+		SGText WARN_DESCR = new SGText("WARN_DESCR","预警描述");
+		mainForm.setFields(WARN_TYPE,WARN_DESCR);
+		return mainForm;
+	}
+	
+
+	private VLayout createMailTab(final SGTable table1){
+		VLayout lay=new VLayout();
+		lay.setWidth("45%");
+		lay.setIsGroup(true);
+		lay.setGroupTitle("邮箱");
+		lay.setMargin(1);
+		table1.setCanEdit(true);
+		ListGridField EMAIL = new ListGridField("EMAIL","邮箱",100);
+		ListGridField USERNAME = new ListGridField("USERNAME","姓名",110);
+		ListGridField ACTIVE_FLAG = new ListGridField("ACTIVE_FLAG","激活",110);
+		ACTIVE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		table1.setFields(EMAIL,USERNAME,ACTIVE_FLAG);
+		lay.addMember(table1);
+		
+
+		table1.addDoubleClickHandler(new DoubleClickHandler() {
+			
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+			
+				initAddButton1();
+			}
+		});
+		
+		ToolStrip toolStrip=new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.setWidth("100%");
+	    toolStrip.setHeight("20");
+	    toolStrip.setPadding(2);
+	    toolStrip.setSeparatorSize(12);
+	    toolStrip.addSeparator();
+		
+	    detailNewB1 = createBtn(StaticRef.CREATE_BTN,SysPrivRef.SYSWARNSETTING_P0_06);
+	    //detailNewB1.addClickHandler(new NewAction(table1));
+	    detailNewB1.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+
+				if(table.getSelectedRecord()==null){
+					MSGUtil.sayError("请选择记录");
+					return;
+				}
+				table1.startEditingNew();
+				table1.OP_FLAG = "A";
+				detailNewB1.setDisabled(true);
+				detailSaveB1.setDisabled(false);
+				detailDelB1.setDisabled(true);
+				detailCanB1.setDisabled(false);
+			}
+		});
+
+        
+	    detailSaveB1 = createBtn(StaticRef.SAVE_BTN,SysPrivRef.SYSWARNSETTING_P0_07);
+	    detailSaveB1.addClickHandler(new SaveAlterDetailAction1(table1,table,null,this));
+        
+	    detailDelB1 = createBtn(StaticRef.DELETE_BTN,SysPrivRef.SYSWARNSETTING_P0_08);
+	    detailDelB1.addClickHandler(new DeleteAction(table1));
+        
+	    detailCanB1 = createBtn(StaticRef.CANCEL_BTN,SysPrivRef.SYSWARNSETTING_P0_09);
+	    detailCanB1.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				table1.discardAllEdits();
+				detailNewB1.setDisabled(false);
+				detailSaveB1.setDisabled(true);
+				detailDelB1.setDisabled(false);
+				detailCanB1.setDisabled(true);
+			}
+		});
+	    initSaveButton1();
+	    toolStrip.setMembers(detailNewB1, detailSaveB1, detailDelB1, detailCanB1);
+	    lay.addMember(toolStrip);
+		
+		
+		return lay;
+	}
+	private VLayout createSmsTab(final SGTable table1){		
+		VLayout lay=new VLayout();
+		lay.setWidth("45%");
+		lay.setIsGroup(true);
+		lay.setGroupTitle("短信");
+		lay.setMargin(1);
+		ListGridField MOBILE = new ListGridField("MOBILE","电话",100);
+		ListGridField USERNAME = new ListGridField("USERNAME","姓名",110);
+		ListGridField ACTIVE_FLAG = new ListGridField("ACTIVE_FLAG","激活",110);
+		ACTIVE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		table1.setFields(MOBILE,USERNAME,ACTIVE_FLAG);
+		lay.addMember(table1);
+				
+		table1.addDoubleClickHandler(new DoubleClickHandler() {
+			
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+			
+				initAddButton();
+			}
+		});
+		
+		ToolStrip toolStrip=new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.setWidth("100%");
+	    toolStrip.setHeight("20");
+	    toolStrip.setPadding(2);
+	    toolStrip.setSeparatorSize(12);
+	    toolStrip.addSeparator();
+		
+	    detailNewB = createBtn(StaticRef.CREATE_BTN,SysPrivRef.SYSWARNSETTING_P0_10);
+	   // detailNewB.addClickHandler(new NewAction(table1));
+	    detailNewB.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(table.getSelectedRecord()==null){
+					MSGUtil.sayError("请选择记录");
+					return;
+				}
+				table1.startEditingNew();
+				table1.OP_FLAG = "A";
+				table1.setEditValue(table1.getRecords().length, "ACTIVE_FLAG", "true");
+				detailNewB.setDisabled(true);
+				detailSaveB.setDisabled(false);
+				detailDelB.setDisabled(true);
+				detailCanB.setDisabled(false);
+			}
+		});
+
+        
+	    detailSaveB = createBtn(StaticRef.SAVE_BTN,SysPrivRef.SYSWARNSETTING_P0_11);
+	    detailSaveB.addClickHandler(new SaveAlterDetailAction(table1,table,null,this));
+        
+	    detailDelB = createBtn(StaticRef.DELETE_BTN,SysPrivRef.SYSWARNSETTING_P0_12);
+	    detailDelB.addClickHandler(new DeleteAction(table1));
+        
+	    detailCanB = createBtn(StaticRef.CANCEL_BTN,SysPrivRef.SYSWARNSETTING_P0_13);
+	    detailCanB.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				table1.discardAllEdits();
+				detailNewB.setDisabled(false);
+				detailSaveB.setDisabled(true);
+				detailDelB.setDisabled(false);
+				detailCanB.setDisabled(true);
+			}
+		});
+	    initSaveButton();
+	    toolStrip.setMembers(detailNewB, detailSaveB, detailDelB, detailCanB);
+	    lay.addMember(toolStrip);
+		return lay;
+	}
+	
+	public void initVerify() {
+		
+		check_map.put("TABLE", "SYS_WARN_SETTING");
+		check_map.put("WARN_TYPE", StaticRef.CHK_UNIQUE+"预警类型");
+		
+	}
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		    
+		toolStrip.setWidth("100%");
+	    toolStrip.setHeight("20");
+	    toolStrip.setPadding(2);
+	    toolStrip.setSeparatorSize(12);
+	    toolStrip.addSeparator();
+	         
+	    IButton searchButton = createBtn(StaticRef.FETCH_BTN,SysPrivRef.SYSWARNSETTING_P0_01);
+	    searchButton.addClickHandler(new ClickHandler() {
+				
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(ds, createSerchForm(searchForm),SectionStack.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+			}
+			
+	    });
+	        		
+	    IButton newButton = createBtn(StaticRef.CREATE_BTN,SysPrivRef.SYSWARNSETTING_P0_02);
+	    newButton.addClickHandler(new NewFormAction(mainForm,cache_map,this));
+	        
+	    IButton saveButton = createBtn(StaticRef.SAVE_BTN,SysPrivRef.SYSWARNSETTING_P0_03);
+	    saveButton.addClickHandler(new SaveFormAction(table,mainForm,check_map,this));
+	        
+	    IButton delButton = createBtn(StaticRef.DELETE_BTN,SysPrivRef.SYSWARNSETTING_P0_04);
+	    delButton.addClickHandler(new DeleteAlterAction(table,mainForm,mailTable,smsTable));
+	        
+	    IButton canButton = createBtn(StaticRef.CANCEL_BTN,SysPrivRef.SYSWARNSETTING_P0_05);
+	    canButton.addClickHandler(new CancelFormAction(table,mainForm,this));
+	        
+	        
+	    add_map.put(SysPrivRef.SYSWARNSETTING_P0_02, newButton);
+	    del_map.put(SysPrivRef.SYSWARNSETTING_P0_03, delButton);
+	    save_map.put(SysPrivRef.SYSWARNSETTING_P0_04, saveButton);
+	    save_map.put(SysPrivRef.SYSWARNSETTING_P0_05, canButton);
+	    this.enableOrDisables(add_map, true);
+	    enableOrDisables(del_map, false);
+	    this.enableOrDisables(save_map, false);
+	    toolStrip.setMembersMargin(4);
+	    toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton);
+
+		
+	}
+	
+	//查询二级视图
+	public DynamicForm createSerchForm(SGPanel form) {
+		
+		//模糊查询
+		TextItem FULL_INDEX = new TextItem("FULL_INDEX",Util.TI18N.FUZZYQRY()); 
+		FULL_INDEX.setTitleOrientation(TitleOrientation.LEFT);
+		FULL_INDEX.setWidth(352);
+		FULL_INDEX.setColSpan(5);
+		FULL_INDEX.setEndRow(true);
+		FULL_INDEX.setTitleOrientation(TitleOrientation.TOP);		
+		//激活
+		SGCheck ENABLE_FLAG = new SGCheck("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG());
+		ENABLE_FLAG.setValue(true);
+		ENABLE_FLAG.setEndRow(true);
+
+		form.setItems(FULL_INDEX,ENABLE_FLAG);
+		return form;
+	}
+
+	public void initAddButton(){	
+		detailNewB.setDisabled(true);
+		detailSaveB.setDisabled(false);
+		detailDelB.setDisabled(true);
+		detailCanB.setDisabled(false);	
+	}
+	
+	public void initSaveButton(){	
+		detailNewB.setDisabled(false);
+		detailSaveB.setDisabled(true);
+		detailDelB.setDisabled(false);
+		detailCanB.setDisabled(true);	
+	}
+	public void initAddButton1(){	
+		detailNewB1.setDisabled(true);
+		detailSaveB1.setDisabled(false);
+		detailDelB1.setDisabled(true);
+		detailCanB1.setDisabled(false);	
+	}
+	
+	public void initSaveButton1(){	
+		detailNewB1.setDisabled(false);
+		detailSaveB1.setDisabled(true);
+		detailDelB1.setDisabled(false);
+		detailCanB1.setDisabled(true);	
+	}
+	
+	
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+
+
+	@Override
+	public void onDestroy() {
+		if(searchWin!=null){
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		table.destroy();
+	}
+
+	
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		AlterSettingView view = new AlterSettingView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		return getID();
+	}
+
+}

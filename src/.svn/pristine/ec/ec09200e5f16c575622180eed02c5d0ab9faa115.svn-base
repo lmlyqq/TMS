@@ -1,0 +1,268 @@
+package com.rd.client.view.base;
+
+
+import java.util.HashMap;
+
+import com.rd.client.action.base.range.SaveRangeAction;
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.SysPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.common.widgets.TreeTable;
+import com.rd.client.ds.base.BasTempEqDetailDS;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+import com.smartgwt.client.widgets.tree.TreeNode;
+
+/**
+ * 基础资料->温控设备
+ * @author lml
+ *
+ */
+public class BasTempEqView extends SGForm {
+
+	private DataSource mainDS;
+	private SGTable rangeTable;
+	private TreeTable areaTable;
+	private SectionStack stack;
+	private Window searchWin;
+	private SGPanel searchForm;
+	//private HashMap<String, String> detail_ck_map;
+	private HashMap<String, IButton> save_detail_map;
+	public TreeNode selectNode;
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	public BasTempEqView(String id) {
+	    super(id);
+	}
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		//初始化主界面、按钮布局、Section布局
+		VLayout main = new VLayout();
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		//detail_ck_map = new HashMap<String, String>();
+		
+		//创建表格和数据源
+		mainDS = BasTempEqDetailDS.getInstance("BAS_TEMPEQ", "BAS_TEMPEQ");
+		rangeTable = new SGTable(mainDS, "100%", "45%", true, true, false);
+		rangeTable.setCanEdit(true);
+		rangeTable.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		rangeTable.setShowFilterEditor(false);
+		
+		rangeTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				
+				enableOrDisables(add_map, true);
+				enableOrDisables(del_map, true);
+				enableOrDisables(save_map, false);
+			
+			}
+		});
+		rangeTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+				enableOrDisables(save_map, true);
+				
+			}
+		});
+		
+		DataSource dataSource = new DataSource();
+		areaTable = new TreeTable(dataSource,"100%","100%");		
+   	
+		getConfigList();
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		Canvas[] widget = new Canvas[2];
+		String[] title = new String[2];
+		widget[0] = rangeTable;
+		widget[1] = areaTable;
+		title[0] = "温控信息";
+		title[1] = "范围信息";
+		/*searchItem.setIcon(StaticRef.ICON_SEARCH);
+		searchItem.setWidth(70);
+		searchItem.setColSpan(1);
+		searchItem.setStartRow(false);
+		searchItem.setEndRow(false);*/
+		stack = createUDFSection(widget, title, true, true);
+		//创建分页
+		//new PageUtil(stack.getSection(0), rangeTable, searchItem);
+        
+        main.setWidth100();
+        main.setHeight100();
+		main.addMember(toolStrip);
+		main.addMember(stack);
+		
+		initVerify();
+		
+		return main;
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,SysPrivRef.DICTIONARY);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(mainDS, createSerchForm(searchForm), stack.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.RANGE_P0_01);
+        newButton.addClickHandler(new NewAction(rangeTable, cache_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,null);
+        saveButton.addClickHandler(new SaveAction(rangeTable, check_map, this, 1));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.RANGE_P0_03);
+        delButton.addClickHandler(new DeleteAction(rangeTable));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.RANGE_P0_04);
+        canButton.addClickHandler(new CancelAction(rangeTable,this));
+        
+        IButton savSubButton = createUDFBtn(Util.BI18N.SAVEDETAIL(), StaticRef.ICON_SAVE,BasPrivRef.RANGE_P0_05);
+        savSubButton.addClickHandler(new SaveRangeAction(rangeTable,areaTable));
+        
+        IButton canSubButton = createUDFBtn(Util.BI18N.CANCELDETAIL(), StaticRef.ICON_CANCEL,BasPrivRef.RANGE_P0_06); 
+        //canSubButton.addClickHandler(new CancelAction(areaTable,this));
+        
+        //主表按钮联动
+        add_map.put(BasPrivRef.RANGE_P0_01, newButton);
+        del_map.put(BasPrivRef.RANGE_P0_03, delButton);
+        save_map.put(BasPrivRef.RANGE_P0_02, saveButton);
+        save_map.put(BasPrivRef.RANGE_P0_04, canButton);
+        
+        enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        enableOrDisables(save_map, false);
+        //从表按钮联动
+        save_detail_map = new HashMap<String, IButton>();
+        save_detail_map.put(BasPrivRef.RANGE_P0_05, savSubButton);
+        save_detail_map.put(BasPrivRef.RANGE_P0_06, canSubButton);
+        enableOrDisables(save_detail_map, true);
+        
+            
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton);
+	}
+	
+	private void getConfigList() {	
+		ListGridField EQUIP_NO = new ListGridField("EQUIP_NO",Util.TI18N.EQUIP_NO(),100);
+		ListGridField PURCHASE_DATE = new ListGridField("PURCHASE_DATE",Util.TI18N.PURCHASE_DATE(),120);
+		Util.initDate(rangeTable, PURCHASE_DATE);
+		ListGridField ACTIVE_FLAG = new ListGridField("ACTIVE_FLAG",Util.TI18N.ACTIVE_FLAG(),100);
+		ACTIVE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		ListGridField STATUS = new ListGridField("STATUS",Util.TI18N.STATUS(),100);
+		ListGridField TRS_ID = new ListGridField("TRS_ID",Util.TI18N.TRS_ID(),100);
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),100);
+	    rangeTable.setFields(EQUIP_NO,PURCHASE_DATE,ACTIVE_FLAG,STATUS,TRS_ID,PLATE_NO);
+	
+	}
+		
+	public DynamicForm createSerchForm(SGPanel form) {
+		form.setDataSource(mainDS);
+		form.setAutoFetchData(false);
+		form.setAlign(Alignment.LEFT);
+		/*form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);
+		*/
+		TextItem txt_global = new TextItem("FULL_INDEX", "模糊查询");
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(323);
+		txt_global.setColSpan(5);
+		txt_global.setEndRow(true);
+		
+		
+		SGText txt_name = new SGText("EQUIP_NO", Util.TI18N.EQUIP_NO());
+		//ComboBoxItem txt_type = new ComboBoxItem("FROM_AREA_NAME", Util.TI18N.AREA_ID_NAME());
+		//Util.initArea(txt_type, null);
+		//txt_type.setTitleOrientation(TitleOrientation.TOP);
+		
+		form.setItems(txt_name);
+		
+		return form;
+	}
+	
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		rangeTable.destroy();
+		areaTable.destroy();
+		stack.destroy();
+	}
+
+	@Override
+	public void initVerify() {
+		check_map.put("TABLE", "BAS_TEMPEQ");
+		check_map.put("PURCHASE_DATE", StaticRef.CHK_DATE + Util.TI18N.PURCHASE_DATE());
+		check_map.put("EQUIP_NO", StaticRef.CHK_NOTNULL + Util.TI18N.EQUIP_NO());
+		check_map.put("EQUIP_NO", StaticRef.CHK_UNIQUE + Util.TI18N.EQUIP_NO());
+		//check_map.put("PURCHASE_DATE", StaticRef.CHK_NOTNULL + Util.TI18N.PURCHASE_DATE());
+		
+		//detail_ck_map.put("TABLE", "BAS_RANGE_DETAIL");
+		//detail_ck_map.put("RANGE_AREA_NAME", StaticRef.CHK_NOTNULL + Util.TI18N.AREA_ID_NAME());
+	}
+		
+	
+}

@@ -1,0 +1,260 @@
+package com.rd.client.action.tms.track;
+
+import java.util.HashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.view.tms.PickLoadView;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+/**
+ * 运输管理--运输执行--提货装车--完成装货按钮
+ * @author fanglm
+ *
+ */
+public class FinishedLoadAction implements ClickHandler {
+	
+	private PickLoadView view;
+	public Record item;
+	private boolean isCustomer = false; 
+	private String tab_flag;
+	
+	public FinishedLoadAction(PickLoadView view,boolean isCust){
+		this.view = view;
+		this.isCustomer = isCust;
+	}
+
+	//执行确认
+	private void doConfirm(final String start_load_time,final String end_load_time){
+		final String LOAD_NOTES = ObjUtil.ifObjNull(view.panel1.getItem("LOAD_NOTES").getValue()," ").toString();//异常描述
+		final String UDF3 = ObjUtil.ifObjNull(view.panel1.getItem("UDF3").getValue()," ").toString();//开门温度
+		final String UDF4 = ObjUtil.ifObjNull(view.panel1.getItem("UDF4").getValue()," ").toString();//关门温度
+		final Integer VEH_POS = 1;
+		tab_flag=view.TabSet.getSelectedTab().getID();
+		//检查车位是否为空
+//		if(ObjUtil.isNotNull(view.panel1.getItem("VEH_POS").getValue())){
+//			if(!ObjUtil.isNotNull(view.panel1.getItem("VEH_POS").getValue().toString().trim())){
+//				MSGUtil.sayError("车位不允许为空");
+//				return;
+//			}
+//		}else{
+//			MSGUtil.sayError("车位不允许为空");
+//			return;
+//		}
+//		
+//		try {
+//			VEH_POS=Integer.valueOf(ObjUtil.ifObjNull(view.panel1.getItem("VEH_POS").getValue().toString().trim(),"1").toString());
+//		} catch (Exception e) {
+//			MSGUtil.sayError("车位号必须是整数");
+//			return;
+//		}
+//		if((int)VEH_POS<=0){
+//			MSGUtil.sayError("车位号必须大于0");
+//			return;
+//		}else if (VEH_POS.toString().length()>4){
+//			MSGUtil.sayError("车位号必须小于10000");
+//			return;
+//		}
+		
+		HashMap<String, String> shpm_no_list = new HashMap<String, String>(); // 作业单号
+		HashMap<String, String> shpm_row_list = new HashMap<String, String>(); //明细行号
+		HashMap<String, String> load_qnty_list = new HashMap<String, String>(); //发货数量
+		HashMap<String, String> unld_qnty_list = new HashMap<String, String>(); //收货适量
+		HashMap<String, String> unld_vol_list = new HashMap<String, String>(); //收货体积
+		HashMap<String, String> unld_gwgt_list = new HashMap<String, String>();//收货毛重
+		ListGridRecord[] shpm_list;
+		String load_no=" ";
+		
+		//选择作业单时的操作
+		switch (Integer.parseInt(tab_flag.substring(0,1))){
+		case 0:
+			StringBuffer sb = new StringBuffer();
+			shpm_list = view.shpmTable.getSelection();
+			if(shpm_list.length == 0){
+				MSGUtil.sayError("未选择作业单，不能执行【完成装货】！");
+				return ;
+			}
+			for(int i=0 ; i<shpm_list.length ; i++){
+				String status = shpm_list[i].getAttribute("STATUS");
+				if(Integer.parseInt(StaticRef.SHPM_DIPATCH) <= Integer.parseInt(status)
+					&& Integer.parseInt(StaticRef.SHPM_UNLOAD) > Integer.parseInt(status)){
+					shpm_no_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(shpm_list[i].getAttribute("SHPM_NO")," ").toString());
+				}
+				else{
+					sb.append(shpm_list[i].getAttribute("SHPM_NO"));
+					sb.append(",");
+				}
+			}
+			if(sb.length() > 0 && !isCustomer){
+				MSGUtil.sayError("作业单:"+ sb.substring(0,sb.length()-1) + "已装车,不能执行【完成装货】操作！");
+				return;
+			}
+			if(shpm_list.length == 1 && view.shpmlstTable != null){ //一条作业单签收可能存在货损货差
+				ListGridRecord[] item_list  = view.shpmlstTable.getRecords();
+				for(int i=0 ; i<item_list.length ; i++){
+				    item = view.shpmlstTable.getEditedRecord(i);
+					if(shpm_list[0].getAttribute("SHPM_NO").equals(item.getAttribute("SHPM_NO"))){
+						shpm_row_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(item.getAttribute("SHPM_ROW")," ").toString());
+						load_qnty_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(ObjUtil.ifObjNull(
+								view.shpmlstTable.getEditedCell(item, "LD_QNTY"),
+								item.getAttribute("LD_QNTY"))," ").toString());
+						unld_qnty_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(ObjUtil.ifObjNull(
+								view.shpmlstTable.getEditedCell(item, "UNLD_QNTY"),
+								item.getAttribute("UNLD_QNTY"))," ").toString());
+						unld_vol_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(ObjUtil.ifObjNull(
+								view.shpmlstTable.getEditedCell(item, "UNLD_VOL"),
+								item.getAttribute("UNLD_VOL"))," ").toString());
+						unld_gwgt_list.put(String.valueOf(i+1), ObjUtil.ifObjNull(ObjUtil.ifObjNull(
+								view.shpmlstTable.getEditedCell(item, "UNLD_GWGT"),
+								item.getAttribute("UNLD_GWGT"))," ").toString());
+					}else{
+						shpm_row_list.put("1", " ");
+						load_qnty_list.put("1", " ");
+						unld_qnty_list.put("1", " ");
+						unld_vol_list.put("1", " ");
+						unld_gwgt_list.put("1", " ");
+					}
+				}
+			}else{ //同时选中多条作业单是视为完好签收
+				shpm_row_list.put("1", " ");
+				load_qnty_list.put("1", " ");
+				unld_qnty_list.put("1", " ");
+				unld_vol_list.put("1", " ");
+				unld_gwgt_list.put("1", " ");
+				}
+				load_no  = view.loadReocrd[0].getAttribute("LOAD_NO"); //选中记录调度单号
+				OPShpm(load_no,start_load_time,end_load_time,LOAD_NOTES,UDF3,UDF4,VEH_POS,shpm_no_list,shpm_row_list,load_qnty_list,unld_qnty_list,unld_vol_list,unld_gwgt_list);
+			break;
+		case 1:
+			shpm_list = view.loadTable.getSelection();
+			if(shpm_list.length == 0){
+				MSGUtil.sayError("未选择调度单，不能执行【完成装货】！");
+				return ;
+			}
+			load_no=view.loadTable.getSelectedRecord().getAttribute("LOAD_NO");
+			shpm_no_list.put("1", " ");
+			shpm_row_list.put("1", " ");
+			load_qnty_list.put("1", " ");
+			unld_qnty_list.put("1", " ");
+			unld_vol_list.put("1", " ");
+			unld_gwgt_list.put("1", " ");
+			OPShpm(load_no,start_load_time,end_load_time,LOAD_NOTES,UDF3,UDF4,VEH_POS,shpm_no_list,shpm_row_list,load_qnty_list,unld_qnty_list,unld_vol_list,unld_gwgt_list);
+			break;
+		default :
+			break;
+		}
+	}
+	//存储过程
+	private void OPShpm(String load_no,final String start_load_time,final String end_load_time,final String LOAD_NOTES,final String UDF3,final String UDF4,
+			final Integer VEH_POS,HashMap<String,String> shpm_no_list,HashMap<String,String> shpm_row_list,HashMap<String,String> load_qnty_list,
+			HashMap<String,String>unld_qnty_list,HashMap<String,String> unld_vol_list,HashMap<String,String> unld_gwgt_list){
+		String login_user = LoginCache.getLoginUser().getUSER_ID();
+		HashMap<String, Object> listMap = new HashMap<String, Object>();
+		listMap.put("1", load_no);
+		listMap.put("2", shpm_no_list);
+		listMap.put("3", start_load_time);
+		listMap.put("4", end_load_time);
+		listMap.put("5", UDF3);
+		listMap.put("6", UDF4);
+		listMap.put("7", Integer.parseInt(VEH_POS.toString()));
+		listMap.put("8", LOAD_NOTES);
+		listMap.put("9", shpm_row_list );
+		listMap.put("10", load_qnty_list);
+		listMap.put("11",unld_qnty_list);
+		listMap.put("12",unld_vol_list);
+		listMap.put("13",unld_gwgt_list);
+		listMap.put("14",login_user);
+		
+		String json = Util.mapToJson(listMap);
+		Util.async.execProcedure(json, "SP_SHPM_LOAD_FINISH(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", new AsyncCallback<String>() {
+			
+			@Override
+			public void onSuccess(String result) {
+				if(StaticRef.SUCCESS_CODE.equals(result.substring(0, 2))){ 
+					MSGUtil.showOperSuccess();
+					switch (Integer.parseInt(tab_flag.substring(0,1))) {
+					case 0:
+						if(view.shpmTable != null){
+							ListGridRecord[] shpm_list = view.shpmTable.getSelection();
+							for(int i=0;i<shpm_list.length;i++){
+								
+								shpm_list[i].setAttribute("LOAD_STAT",StaticRef.LOADED_NAME);
+								shpm_list[i].setAttribute("START_LOAD_TIME",start_load_time);
+								shpm_list[i].setAttribute("END_LOAD_TIME", end_load_time);
+								shpm_list[i].setAttribute("UDF3",  ObjUtil.ifObjNull(view.panel1.getItem("UDF3").getValue()," ").toString());
+								shpm_list[i].setAttribute("UDF4",  ObjUtil.ifObjNull(view.panel1.getItem("UDF4").getValue()," ").toString());
+//								shpm_list[i].setAttribute("VEH_POS", Integer.valueOf(ObjUtil.ifObjNull(view.panel1.getItem("VEH_POS").getValue().toString().trim(), "1").toString()));
+								shpm_list[i].setAttribute("LOAD_NOTES",  ObjUtil.ifObjNull(view.panel1.getItem("LOAD_NOTES").getValue()," ").toString());
+							}
+							view.shpmTable.redraw();
+							
+						}
+						break;
+					case 1:
+						if(view.loadTable != null){
+							ListGridRecord[] load_list=view.loadTable.getSelection();
+							for(Record rec : load_list){
+								rec.setAttribute("LOAD_STAT",StaticRef.LOADED);
+								rec.setAttribute("LOAD_STAT_NAME", StaticRef.LOADED_NAME);
+								rec.setAttribute("START_LOAD_TIME",start_load_time);
+								rec.setAttribute("END_LOAD_TIME", end_load_time);
+								rec.setAttribute("UDF3",  ObjUtil.ifObjNull(view.panel1.getItem("UDF3").getValue()," ").toString());
+								rec.setAttribute("UDF4",  ObjUtil.ifObjNull(view.panel1.getItem("UDF4").getValue()," ").toString());
+//								rec.setAttribute("VEH_POS", Integer.valueOf(ObjUtil.ifObjNull(view.panel1.getItem("VEH_POS").getValue().toString().trim(), "1").toString()));
+								rec.setAttribute("LOAD_NOTES",  ObjUtil.ifObjNull(view.panel1.getItem("LOAD_NOTES").getValue()," ").toString());
+							}
+							view.loadTable.redraw();
+						}
+						break;
+					default :
+						break;
+					}
+					
+					view.finishButton.disable();
+					view.cancelLoadButton.enable();
+				
+				}else{
+					MSGUtil.sayError(result);
+				}
+				
+			}
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				// TODO Auto-generated method stub
+				SC.say("服务器连接已中断，请重新登录!");
+			}
+		});
+		
+	}
+	
+	@Override
+	public void onClick(ClickEvent event) {
+		
+		final Object START_LOAD_TIME = view.panel1.getValue("START_LOAD_TIME"); //实际签收时间
+		if(!ObjUtil.isNotNull(START_LOAD_TIME)){
+			MSGUtil.sayError("开始装货时间不能为空！");
+			return;
+		} 
+		
+		final Object END_LOAD_TIME = view.panel1.getValue("END_LOAD_TIME"); //实际签收时间
+		if(!ObjUtil.isNotNull(END_LOAD_TIME)){
+			MSGUtil.sayError("完成装货时间不能为空！");
+			return;
+		}
+//		if(!DateUtil.isAfter(START_LOAD_TIME.toString(), END_LOAD_TIME.toString())){
+//			MSGUtil.sayError("发运时间不能小于开始装车时间");
+//			return;
+//		}
+		doConfirm(START_LOAD_TIME.toString(), END_LOAD_TIME.toString());
+	}
+
+}

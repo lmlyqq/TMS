@@ -1,0 +1,12 @@
+package com.rd.client.view.base;
+
+import com.smartgwt.client.widgets.Canvas;
+
+public interface PanelFactory {
+
+    Canvas create();
+
+    String getID();
+
+    String getDescription();
+}

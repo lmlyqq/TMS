@@ -1,0 +1,196 @@
+package com.rd.client.view.system;
+
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.SysPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.system.SmsModelDS;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 系统管理->短信设置
+ * @author yuanlei
+ * @create time 2011-01-12 20:08
+ *
+ */
+
+public class SmsModelView extends SGForm{
+	
+	 private DataSource ds;
+	 private SGTable table;
+	 private SectionStack section;
+	 
+	 private Window searchWin;//lijun 添加
+	 private SGPanel searchForm;//lijun 添加
+	 
+	 public SmsModelView(String id) {
+		 super(id);
+	 }
+	 
+	 public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+	    ToolStrip toolStrip = new ToolStrip();
+	    toolStrip.setAlign(Alignment.RIGHT);
+	    ds = SmsModelDS.getInstance("SMS_MODEL", "SMS_MODEL");
+		   
+		table = new SGTable(ds, "100%", "100%", true, true , false); 
+		table.setCanEdit(true);
+		table.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		createListFields(table);
+		
+		section = createSection(table, null, true, true);
+	    
+		createBtnWidget(toolStrip);
+		
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		main.addMember(toolStrip);
+		main.addMember(section);
+	    
+		initVerify();
+		return main;
+	}
+	 //设定需要校验的字段
+	 public void initVerify() {
+			
+	 }
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+    //布局列表信息按钮
+	private void createListFields(SGTable table) {
+		
+		table.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(del_map, true);
+			}
+		});
+		  table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+				enableOrDisables(save_map, true);
+				
+			}
+		});
+		  ListGridField MODEL_TYP = new ListGridField("MODEL_TYP", "功能节点", 120); 
+		  Util.initCodesComboValue(MODEL_TYP,"TRANSACTION_TYP");
+		  ListGridField CONTENT = new ListGridField("CONTENT", "模板内容", 400);
+		  ListGridField ENABLE_FLAG = new ListGridField("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG(),80);  
+		  ENABLE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  table.setFields(MODEL_TYP, CONTENT, ENABLE_FLAG);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+        
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,SysPrivRef.PARAM);
+        searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(ds, createSerchForm(searchForm), section.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+        		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,SysPrivRef.SMS_P0_01);
+        newButton.addClickHandler(new NewAction(table,check_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,SysPrivRef.SMS_P0_02);
+        saveButton.addClickHandler(new SaveAction(table,check_map,this));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,SysPrivRef.SMS_P0_03);
+        delButton.addClickHandler(new DeleteAction(table));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,SysPrivRef.SMS_P0_04);
+        canButton.addClickHandler(new CancelAction(table,this));
+        
+        add_map.put(SysPrivRef.SMS_P0_01, newButton);
+        del_map.put(SysPrivRef.SMS_P0_03, delButton);
+        save_map.put(SysPrivRef.SMS_P0_02, saveButton);
+        save_map.put(SysPrivRef.SMS_P0_04, canButton);
+        enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton);
+	}
+	
+	public DynamicForm createSerchForm(SGPanel form) {
+		
+		//1第一行：模糊查询
+		TextItem txt_global = new TextItem("FULL_INDEX", Util.TI18N.FUZZYQRY());
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(323);
+		txt_global.setColSpan(6);
+		txt_global.setEndRow(true);
+		
+		
+		//2第二行：配置参数，使用下拉列表（ComboBoxItem）
+		SGText txt_model = new SGText("SMS_MODEL", Util.TI18N.SMS_MODEL(),true);
+		//描述
+		SGText txt_content = new SGText("CONTENT",Util.TI18N.SMS_CONTENT());
+		
+		//3第三行
+		SGCheck chk_enable = new SGCheck("ENABLE_FLAG", Util.TI18N.ENABLE_FLAG());
+		chk_enable.setValue(true);
+		
+		form.setItems(txt_global, txt_model, txt_content, chk_enable);
+		
+		return form;
+	}
+	
+	@Override
+	public void onDestroy() {
+		table.destroy();
+	}
+}

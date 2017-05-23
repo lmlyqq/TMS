@@ -1,0 +1,385 @@
+package com.rd.client.view.base;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.CancelFormAction;
+import com.rd.client.common.action.DeleteFormAction;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.action.NewFormAction;
+import com.rd.client.common.action.SaveFormAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGLText;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.BasReceAccountDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.DoubleClickEvent;
+import com.smartgwt.client.widgets.events.DoubleClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+/**
+ * 基础资料->收款账号管理
+ * @author lml
+ *
+ */
+@ClassForNameAble
+public class BasReceAccountView extends SGForm implements PanelFactory {
+
+	 private DataSource ds;
+	 private SGTable table;
+	// private DynamicForm pack_form;             //包装FORM布局
+	 private DynamicForm main_form;             //主信息页签布局
+	// private DynamicForm extra_form;            //附件信息页签布局
+	 private SectionStack section;
+	 private Window searchWin = null;
+	// private static ButtonItem searchItem;
+	 private DynamicForm searchForm;
+	 
+	 /*public BasReceAccountView(String id) {
+		 super(id);
+	 }*/
+	 
+	 public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		//setValuesManager(form_groups);
+		
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+
+	    ToolStrip toolStrip = new ToolStrip();  //按钮布局
+	    toolStrip.setAlign(Alignment.RIGHT);
+	    ds = BasReceAccountDS.getInstance("BAS_RECE_ACCOUNT");
+		
+		//主布局
+		HStack stack = new HStack();
+		stack.setWidth("99%");
+		stack.setHeight100();
+		
+		//STACK的左边列表
+		table = new SGTable(ds, "100%", "100%", true, true, false); 
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		section = new SectionStack();
+		final SectionStackSection listItem = new SectionStackSection("列表信息");
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+		listItem.setControls(new SGPage(table, true).initPageBtn());
+	    section.addSection(listItem);
+	    section.setWidth("100%");
+	    
+
+
+		getConfigList();
+		stack.addMember(section);
+		addSplitBar(stack);
+		
+		
+		//STACK的右边布局v_lay
+        VLayout v_lay = new VLayout();
+        v_lay.setWidth("80%");
+        v_lay.setHeight100();
+        v_lay.setBackgroundColor(ColorUtil.BG_COLOR);
+        v_lay.setVisible(false);
+     
+		
+		//右表
+        TabSet leftTabSet = new TabSet();  
+        leftTabSet.setWidth("100%");   
+        leftTabSet.setHeight("100%"); 
+        leftTabSet.setMargin(0);
+        
+        
+	    Tab tab1 = new Tab("主信息");
+	    main_form = new SGPanel();
+	    main_form.setWidth("45%");
+		createMainForm(main_form);
+	    HLayout form_lay = new HLayout();
+	    form_lay.setWidth("45%");
+	    form_lay.setHeight100();
+	    form_lay.setBackgroundColor(ColorUtil.BG_COLOR);
+	    form_lay.addMember(main_form);
+	    tab1.setPane(form_lay);
+	    leftTabSet.addTab(tab1);
+         
+        v_lay.setMembers(leftTabSet); 
+		//form_groups.addMember(pack_form);
+        
+		stack.addMember(v_lay);
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		main.addMember(stack);
+        table.addDoubleClickHandler(new DoubleClickHandler() {
+
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+				
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+		        enableOrDisables(save_map, true);
+		        
+				if(isMax) {
+					expend();
+				}
+			}
+			
+		});
+		initVerify();
+		
+		table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				initAddBtn();
+			}
+			
+		});
+		  
+		return main;
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+
+	 
+	private void getConfigList() {
+		
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			public void onSelectionChanged(SelectionEvent event) {
+            	Record selectedRecord  = event.getRecord();
+            	main_form.editRecord(selectedRecord);
+            	main_form.setValue("OP_FLAG", StaticRef.MOD_FLAG);
+                //enableOrDisables(del_map, true);
+                initSaveBtn();
+            }
+        });
+		
+        ListGridField ACCOUNT = new ListGridField("ACCOUNT", "收款账号", 150);
+        //ACCOUNT.setTitle(ColorUtil.getRedTitle("收款账号"));
+        ListGridField RECEIVER = new ListGridField("RECEIVER", "收款人", 80);
+       // RECEIVER.setTitle(ColorUtil.getRedTitle("收款人"));
+        ListGridField ACTIVE_FLAG = new ListGridField("ACTIVE_FLAG", "激活", 50);
+        ACTIVE_FLAG.setType(ListGridFieldType.BOOLEAN);
+        ListGridField BANK = new ListGridField("BANK", "开户行", 150);
+        ListGridField BANK_POINT = new ListGridField("BANK_POINT", "开户网点", 120);
+        ListGridField SUPLR_ID = new ListGridField("SUPLR_ID_NAME", "承运商", 120);
+        ListGridField CONTACT = new ListGridField("CONTACT", "联系人", 80);
+        ListGridField CONT_TEL = new ListGridField("CONT_TEL", "联系电话", 80);
+       // ListGridField OIL_AMOUNT = new ListGridField("OIL_AMOUNT", Util.TI18N.OIL_AMOUNT(), 80);
+       // ListGridField OIL_ADDRESS = new ListGridField("OIL_ADDRESS", Util.TI18N.OIL_ADDRESS(), 80);
+       // ListGridField NOTES = new ListGridField("NOTES", Util.TI18N.NOTES(), 80);
+        //ListGridField qty5Field = new ListGridField("QTY5", Util.TI18N.PACK_QTY(), 80);
+        table.setFields(ACCOUNT, RECEIVER,BANK, BANK_POINT, SUPLR_ID, CONTACT
+        		, CONT_TEL,ACTIVE_FLAG);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.PACK);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new DynamicForm();
+					searchWin = new SearchWin(ds,
+							createSerchForm(searchForm),section.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.ACCOUNT_P0_01);
+        newButton.addClickHandler(new NewFormAction(main_form,cache_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.ACCOUNT_P0_02);
+        saveButton.addClickHandler(new SaveFormAction(table, main_form, check_map, this));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.ACCOUNT_P0_03);
+        delButton.addClickHandler(new DeleteFormAction(table, main_form));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.ACCOUNT_P0_04);
+        canButton.addClickHandler(new CancelFormAction(table, main_form,this));
+        
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN,BasPrivRef.ACCOUNT_P0_05);
+        expButton.addClickHandler(new ExportAction(table,"ADDTIME"));
+    
+        add_map.put(BasPrivRef.ACCOUNT_P0_01, newButton);
+        del_map.put(BasPrivRef.ACCOUNT_P0_03, delButton);
+        save_map.put(BasPrivRef.ACCOUNT_P0_02, saveButton);
+        save_map.put(BasPrivRef.ACCOUNT_P0_04, canButton);
+        this.enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        this.enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton, expButton);
+	}
+	
+	public void initVerify() {
+		
+		check_map.put("TABLE", "BAS_RECE_ACCOUNT");
+		check_map.put("ACCOUNT", StaticRef.CHK_UNIQUE + "收款账号");	
+		check_map.put("RECEIVER", StaticRef.CHK_NOTNULL + "收款人");
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);
+		form.setTitleSuffix("");
+		
+		//TextItem txt_global = new TextItem("FULL_INDEX", Util.TI18N.FUZZYQRY());
+		TextItem ACCOUNT = new TextItem("ACCOUNT", "收款账号");
+		TextItem RECEIVER = new TextItem("RECEIVER", "收款人");
+		ACCOUNT.setTitleOrientation(TitleOrientation.TOP);
+		RECEIVER.setTitleOrientation(TitleOrientation.TOP);
+		//txt_global.setTitleOrientation(TitleOrientation.TOP);
+		
+		//SGDateTime ODR_TIME_FROM =new  SGDateTime("ODR_TIME_FROM", Util.TI18N.ODR_TIME_FROM(),true);
+		//SGDateTime ODR_TIME_TO = new  SGDateTime("ODR_TIME_TO", "到");
+		//ODR_TIME_FROM.setColSpan(1);
+		//String PreYesDate=Util.getYesPreDay();
+		//ODR_TIME_FROM.setDefaultValue(PreYesDate);
+		//ODR_TIME_TO.setDefaultValue(Util.getCurTime());
+		//txt_global.setWidth(300);
+		//txt_global.setColSpan(5);
+		//txt_global.setEndRow(true);
+        form.setItems(ACCOUNT,RECEIVER);
+        
+        return form;
+	}
+	
+	private void createMainForm(DynamicForm form) {
+		SGLText ACCOUNT = new SGLText("ACCOUNT",ColorUtil.getRedTitle("收款账号"),true);      
+		//ACCOUNT.setTitle(ColorUtil.getRedTitle("收款账号"));
+		//ACCOUNT.setWidth(240);
+		//ACCOUNT.setColSpan(2);
+		//PLATENO.setDisabled(true);
+        
+		final SGText RECEIVER = new SGText("RECEIVER",ColorUtil.getRedTitle("收款人"));
+		//RECEIVER.setTitle(ColorUtil.getRedTitle("收款人"));
+		//RECEIVER.setColSpan(1);
+		//TRS_ID.setTitle(Util.TI18N.TRS_ID());
+		//TRS_ID.setDisabled(true);
+		
+		final SGCheck ACTIVE_FLAG = new SGCheck("ACTIVE_FLAG","激活");
+		ACTIVE_FLAG.setDefaultValue(true);
+		//ACTIVE_FLAG.setColSpan(2);
+        //DRIVER.setTitle(ColorUtil.getRedTitle(Util.TI18N.DRIVER1()));
+    
+		SGCombo SUPLR_ID = new SGCombo("SUPLR_ID","承运商",true);
+		Util.initComboValue(SUPLR_ID, "BAS_SUPPLIER", "ID", "SUPLR_CNAME"," WHERE ENABLE_FLAG = 'Y'", "");
+		//SUPLR_ID.setTitle("承运商");
+		//SUPLR_ID.setColSpan(1);
+
+        final SGLText BANK = new SGLText("BANK","开户行",true);
+        //BANK.setColSpan(2);
+        //BANK.setWidth(240);
+        //BANK.setTitle(ColorUtil.getRedTitle("开户行"));
+      
+        
+        final SGLText BANK_POINT = new SGLText("BANK_POINT", "开户网点");	//客户属性
+        //BANK_POINT.setWidth(240);
+        // BANK_POINT.setColSpan(4);
+        //OIL_NAME.setTitle(ColorUtil.getRedTitle(Util.TI18N.OIL_NAME()));
+        //Util.initCodesComboValue(OIL_NAME,"FUEL");
+        
+         SGText CONTACT = new SGText("CONTACT","联系人");
+         //CONTACT.setColSpan(1);
+       // CONTACT.setTitle(ColorUtil.getRedTitle("联系人"));
+        
+       
+
+        SGText CONT_TEL = new SGText("CONT_TEL", "联系电话");
+        //CONT_TEL.setColSpan(2);
+        //SGText OIL_AMOUNT = new SGText("OIL_AMOUNT", Util.TI18N.OIL_AMOUNT(),true);
+        
+        //SGText OIL_ADDRESS = new SGText("OIL_ADDRESS", Util.TI18N.OIL_ADDRESS());
+       
+        
+       // SGText NOTES = new SGText("NOTES",Util.TI18N.NOTES());
+       // NOTES.setColSpan(2);
+        
+       form.setItems(ACCOUNT,RECEIVER,ACTIVE_FLAG,BANK,BANK_POINT,SUPLR_ID,CONTACT,CONT_TEL);
+        
+	}
+	
+
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+			//searchItem = null;
+		}
+		//table.destroy();
+		//main_form.destroy();
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		BasReceAccountView view = new BasReceAccountView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

@@ -1,0 +1,602 @@
+package com.rd.client.view.settlement;
+
+import java.util.ArrayList;
+import java.util.Map;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.PayReqBillDS;
+import com.rd.client.ds.settlement.PayReqdetailsDS;
+import com.rd.client.win.SearchWin;
+import com.rd.client.win.SuplrWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.Autofit;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.PickerIcon;
+import com.smartgwt.client.widgets.form.fields.events.FormItemClickHandler;
+import com.smartgwt.client.widgets.form.fields.events.FormItemIconClickEvent;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 费用管理---结算管理---应付请款单
+ */
+public class PayReqBillView extends SGForm{
+   private DataSource ds;
+   private DataSource detailsDS;
+   private SGTable table;
+   private Window searchWin;
+   private SGPanel searchForm;
+   private SectionStack section;
+   private ListGrid countryGrid;
+   public DynamicForm pageForm; 
+   private IButton confimButton;
+   private IButton saveButton;
+   private IButton canConfimButton;
+   public PayReqBillView(String id) {
+	   super(id);
+   }
+   
+	//页面的整体布局
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();//获取默认客户
+		
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		ds = PayReqBillDS.getInstance("V_PAY_REQUEST","BILL_PAY_REQUEST");
+		detailsDS=PayReqdetailsDS.getInstance("V_PAY_REQDETAILS","BILL_PAY_REQDETAILS");
+		table=new SGTable(ds, "100%", "100%", false, false, false) {
+			
+        	//明细表
+			protected Canvas getExpansionComponent(final ListGridRecord record) {    				  
+                VLayout layout = new VLayout();              
+    	        countryGrid = new ListGrid() {  
+    	        	 @Override  
+    	             protected String getBaseStyle(ListGridRecord record, int rowNum, int colNum) {  
+    	                 if (getFieldName(colNum).equals("DIFF_FEE")) {  
+    	                     if (!("0".equals(record.getAttribute("DIFF_FEE")))) {  
+    	                         return "myHighGridCell";       
+    	                     } else {  
+    	                         return super.getBaseStyle(record, rowNum, colNum);  
+    	                     }  
+    	                 } else {  
+    	                     return super.getBaseStyle(record, rowNum, colNum);  
+    	                 }  
+    	             }  
+		        };
+                countryGrid.setDataSource(detailsDS);
+                countryGrid.setWidth("100%");
+                countryGrid.setHeight(60);
+                countryGrid.setCanEdit(true);
+                countryGrid.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+                countryGrid.setAutoFitData(Autofit.VERTICAL);
+               
+                Criteria findValues = new Criteria();
+                findValues.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+		        findValues.addCriteria("REQ_NO", record.getAttributeAsString("REQ_NO"));
+
+		        
+		        ListGridField LOAD_NO = new ListGridField("LOAD_NO","调度单号", 120);
+		        LOAD_NO.setCanEdit(false);
+		        ListGridField ID = new ListGridField("ID","", 120);
+		        ID.setHidden(true);
+		        ListGridField PLATE_NO = new ListGridField("PLATE_NO","车牌", 80);
+		        PLATE_NO.setCanEdit(false);
+		        ListGridField VEHICLE_TYPE = new ListGridField("VEHICLE_TYPE","车型", 80);
+		        VEHICLE_TYPE.setCanEdit(false);
+		        ListGridField DRIVER = new ListGridField("DRIVER","司机", 120);
+		        DRIVER.setCanEdit(false);
+		        ListGridField LOAD_DATE = new ListGridField("LOAD_DATE","发货日期",120);
+		        LOAD_DATE.setCanEdit(false);
+		        ListGridField UNLOAD_DATE = new ListGridField("UNLOAD_DATE","收货日期", 120);
+		        UNLOAD_DATE.setCanEdit(false);
+		        ListGridField LOAD_NAME = new ListGridField("LOAD_NAME","发货方", 120);
+		        LOAD_NAME.setCanEdit(false);
+		        ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME","收货方", 120);
+		        UNLOAD_NAME.setCanEdit(false);
+		       
+		        ListGridField TOT_QNTY = new ListGridField("TOT_QNTY","托数", 80);
+		        TOT_QNTY.setCanEdit(false);
+		        ListGridField TOT_NET_W = new ListGridField("TOT_NET_W","箱数", 80);
+		        TOT_NET_W.setCanEdit(false);
+		        ListGridField TOT_GROSS_W = new ListGridField("TOT_GROSS_W","吨位", 80);
+		        TOT_GROSS_W.setCanEdit(false);
+		        ListGridField TOT_VOL = new ListGridField("TOT_VOL","方数", 80);
+		        TOT_VOL.setCanEdit(false);
+		      
+		        ListGridField INITITAL_FEE = new ListGridField("INITITAL_FEE","期初金额", 80);
+		        INITITAL_FEE.setCanEdit(false);
+		        ListGridField PAY_FEE = new ListGridField("PAY_FEE","实付金额", 90);
+		        PAY_FEE.setCanEdit(false);
+		        ListGridField DIFF_FEE = new ListGridField("DIFF_FEE","亏损金额", 100);  
+		        DIFF_FEE.setCanEdit(false);
+		        ListGridField NOTES = new ListGridField("NOTES","异常说明", 90);
+		        NOTES.setCanEdit(true);
+		        countryGrid.setFields(ID,LOAD_NO,PLATE_NO,VEHICLE_TYPE,DRIVER,LOAD_DATE, UNLOAD_DATE,LOAD_NAME, UNLOAD_NAME,TOT_QNTY
+        				,TOT_NET_W,TOT_GROSS_W,TOT_VOL,INITITAL_FEE,PAY_FEE,DIFF_FEE,NOTES);
+		        countryGrid.fetchData(findValues);
+
+                layout.addMember(countryGrid);
+                layout.setLayoutLeftMargin(60);
+                
+                return layout;   
+            } 
+		};
+		table.setCanEdit(true);
+		table.setShowFilterEditor(false);
+		table.setCanExpandRecords(true);		
+		createListFields();	
+		
+		table.addRecordClickHandler(new RecordClickHandler() {
+				
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				OP_FLAG = "M";
+				initSaveBtn();
+			}
+		});
+
+		 table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+				
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				saveButton.setDisabled(false);
+					
+			}
+		});
+		
+		section= new SectionStack();
+		SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem.setItems(table);
+		listItem.setExpanded(true);
+		section.addSection(listItem);
+		pageForm = new SGPage(table,true).initPageBtn();
+		listItem.setControls(pageForm);
+		
+		createBtnWidget(toolStrip);
+		VLayout layout = new VLayout();
+		layout.setHeight100();
+		layout.setWidth100();
+		initVerify();
+		layout.addMember(toolStrip);
+		layout.addMember(section);
+		return layout;
+	}
+
+	
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setHeight("20");
+		toolStrip.setWidth("100%");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(12);
+		toolStrip.addSeparator();
+		
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN,"");
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(ds,createSerchForm(searchForm), section.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+		
+	    saveButton = createBtn(StaticRef.SAVE_BTN,SettPrivRef.PayReqBill_P0_01);
+		saveButton.addClickHandler(new ClickHandler() {
+			
+			@SuppressWarnings("unchecked")
+			@Override
+			public void onClick(ClickEvent event) {
+				
+				ArrayList<String> sqlList = new ArrayList<String>();
+				
+				Record record=table.getSelectedRecord();
+				if(record!=null){
+				Map<String,String> map=table.getEditValues(record);
+				String ID=record.getAttribute("ID");
+				String NOTES= map.get("NOTES");
+				String BILL_NO=map.get("BILL_NO");
+				String INVOICE_TIME=map.get("INVOICE_TIME");
+				String RECE_TIME=map.get("RECE_TIME");
+	
+				
+				String REQ_NO=record.getAttribute("REQ_NO");
+				String sql="update BILL_PAY_REQUEST set REQ_NO='"+REQ_NO+"'";
+				
+				if(BILL_NO!=null){					
+					sql=sql+",BILL_NO='"+BILL_NO+"'";
+				}
+
+				if(NOTES!=null){					
+					sql=sql+",NOTES='"+NOTES+"'";				
+				}
+
+				if(INVOICE_TIME!=null){		
+					sql=sql+",INVOICE_TIME=to_date('" + INVOICE_TIME.substring(0,10) + "','YYYY-MM-DD') ";
+				}
+				
+				if(RECE_TIME!=null){		
+					sql=sql+",RECE_TIME=to_date('" + RECE_TIME.substring(0,10) + "','YYYY-MM-DD') ";
+				}
+				sql=sql+" where ID='"+ID+"'";
+				
+				sqlList.add(sql);
+			
+				}
+				
+				if(countryGrid!=null){
+					
+				ListGridRecord[] listRecord=countryGrid.getRecords();
+
+			
+				for(int i=0;i<listRecord.length;i++){
+				
+					Record lstRecord=listRecord[i];
+				
+					Map<String,String> map=countryGrid.getEditValues(lstRecord);
+							
+					String ID=listRecord[i].getAttribute("ID");
+					String REQ_NO=listRecord[i].getAttribute("REQ_NO");
+					String DIFF_FEE=listRecord[i].getAttribute("DIFF_FEE");
+					String NOTES1=listRecord[i].getAttribute("NOTES");
+					String NOTES=map.get("NOTES");
+					if(DIFF_FEE!=null){
+					
+						if(NOTES==null&&NOTES1==null)
+										
+						{
+
+							sqlList=null;
+						
+							SC.say("亏损金额不为零，请补充说明");
+						
+							return;
+					
+						}else{
+							
+							String sql="update BILL_PAY_REQDETAILS set REQ_NO='"+REQ_NO+"'";
+							
+							if(NOTES!=null){								
+								sql=sql+",NOTES='"+NOTES+"'";							
+							}
+
+							sql=sql+" where ID='"+ID+"'";
+							
+							sqlList.add(sql);
+							
+						}	
+						
+					}				
+				}	
+				
+			}
+				
+				if(sqlList!=null){
+					Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+						
+						@Override
+						public void onFailure(Throwable caught) {
+							MSGUtil.sayError(caught.getMessage());
+						}
+
+						@Override
+						public void onSuccess(String result) {
+							if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+								table.collapseRecord(table.getSelectedRecord());
+								MSGUtil.showOperSuccess();
+							}else{
+								MSGUtil.sayError("更新失败");
+							}
+							
+						}
+						
+					});
+					
+				}
+				
+			}
+		});
+		IButton verificaButton = createBtn("核销",SettPrivRef.PayReqBill_P0_05);
+		verificaButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				final ListGridRecord record=table.getSelectedRecord();
+				if(record!=null){
+					String status=record.getAttribute("STATUS");
+					if("30".equals(status)){
+						String sql="update BILL_PAY_REQUEST set PAY_STATUS='20'  where ID='"+record.getAttribute("ID")+"'";
+						ArrayList<String> sqlList = new ArrayList<String>();
+						sqlList.add(sql);
+						if(sqlList!=null){
+							Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+								
+								@Override
+								public void onFailure(Throwable caught) {
+									MSGUtil.sayError(caught.getMessage());
+								}
+
+								@Override
+								public void onSuccess(String result) {	
+									if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+								    record.setAttribute("PAY_STATUS", "20");
+									MSGUtil.showOperSuccess();
+									}else{
+										MSGUtil.sayError("操作失败");
+									}
+								}
+								
+							});
+							
+						}
+					}else{
+						SC.say("该记录未审批完成!");
+					}
+					
+				}
+			}
+		});
+		
+		confimButton= createBtn("提交确认",SettPrivRef.PayReqBill_P0_02);
+		confimButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				
+				String REQ_NO = table.getSelectedRecord().getAttribute("REQ_NO");
+				String proName = "PAY_REQ_CONFIRM(?,?,?,?)";
+				ArrayList<String> paramList = new ArrayList<String>();
+				paramList.add(REQ_NO);
+				paramList.add(LoginCache.getLoginUser().getROLE_ID());
+				paramList.add(LoginCache.getLoginUser().getUSER_ID());
+				Util.async.execProcedure(paramList, proName, new AsyncCallback<String>() {
+
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError(caught.getMessage());
+					}
+
+					@Override
+					public void onSuccess(String result) {
+						if(result.startsWith(StaticRef.SUCCESS_CODE)){
+							MSGUtil.showOperSuccess();
+							table.getSelectedRecord().setAttribute("STATUS", "20");
+							table.redraw();
+							canConfimButton.setDisabled(false);
+							confimButton.setDisabled(true);
+						}else{
+							MSGUtil.sayError(result);
+						}
+					}
+					
+				});
+			}
+		});
+		canConfimButton = createBtn("取消确认",SettPrivRef.PayReqBill_P0_03);
+		canConfimButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				String REQ_NO = table.getSelectedRecord().getAttribute("REQ_NO");
+				String proName = "PAY_REQ_CANCEL(?,?)";
+				ArrayList<String> paramList = new ArrayList<String>();
+				paramList.add(REQ_NO);
+				Util.async.execProcedure(paramList, proName, new AsyncCallback<String>() {
+
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError(caught.getMessage());
+					}
+
+					@Override
+					public void onSuccess(String result) {
+						if(result.equals(StaticRef.SUCCESS_CODE)) {
+							MSGUtil.showOperSuccess();
+							table.getSelectedRecord().setAttribute("STATUS", "10");
+							table.redraw();
+							canConfimButton.setDisabled(true);
+							confimButton.setDisabled(false);
+						}else{
+							MSGUtil.sayError(result);
+						}
+					}
+					
+				});
+			}
+			
+		});
+		
+		IButton exportButton = createBtn(StaticRef.EXPORT_BTN,SettPrivRef.PayReqBill_P0_04);
+		exportButton.addClickHandler(new ExportAction(table, "addtime desc"));
+		
+
+		save_map.put(SettPrivRef.PayReqBill_P0_01, saveButton);
+        this.enableOrDisables(save_map, false);
+		
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,saveButton,verificaButton,confimButton,canConfimButton,exportButton);
+		
+		
+		
+	}
+	
+	private void createListFields(){
+	   
+		final ListGridField REQ_NO = new ListGridField("REQ_NO","请款单号",120);
+		REQ_NO.setCanEdit(false);
+		ListGridField STATUS = new ListGridField("STATUS","审批状态",80);
+		STATUS.setCanEdit(false);
+		Util.initCodesComboValue(STATUS,"APPROVE_STS");
+		ListGridField PAY_STATUS = new ListGridField("PAY_STATUS","核销状态",80);
+		PAY_STATUS.setCanEdit(false);
+		Util.initCodesComboValue(STATUS,"PAY_STAT");
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_NAME","承运商",120);
+		SUPLR_NAME.setCanEdit(false);
+		ListGridField BELONG_MONETH = new ListGridField("BELONG_MONETH","所属期",80);
+		BELONG_MONETH.setCanEdit(false);
+		ListGridField INITITAL_AMOUNT = new ListGridField("INITITAL_AMOUNT","期初金额",110);
+		INITITAL_AMOUNT.setCanEdit(false);
+		ListGridField PAY_AMOUNT = new ListGridField("PAY_AMOUNT","实付",100);
+		PAY_AMOUNT.setCanEdit(false);
+		ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT","税金",120);
+		TAX_AMOUNT.setCanEdit(false);
+		final ListGridField SUBTAX_AMOUNT = new ListGridField("SUBTAX_AMOUNT","实付金额（不含税）",150);
+		SUBTAX_AMOUNT.setCanEdit(false);
+		ListGridField NOTES = new ListGridField("NOTES","摘要",120);
+		NOTES.setCanEdit(true);
+		ListGridField BILL_NO = new ListGridField("BILL_NO","发票号",120);
+		BILL_NO.setCanEdit(true);
+		ListGridField INVOICE_TIME = new ListGridField("INVOICE_TIME","开票时间",120);
+		INVOICE_TIME.setCanEdit(true);
+		Util.initDate(table, INVOICE_TIME);
+		ListGridField RECE_TIME = new ListGridField("RECE_TIME","收到票据时间",120);
+		RECE_TIME.setCanEdit(true);
+		Util.initDate(table, RECE_TIME);
+		
+		ListGridField ID = new ListGridField("ID","",120);
+		ID.setHidden(true);
+		
+		
+		table.setFields(ID,REQ_NO,STATUS,PAY_STATUS,SUPLR_NAME,BELONG_MONETH
+				        ,INITITAL_AMOUNT,PAY_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT,NOTES,BILL_NO,INVOICE_TIME,RECE_TIME);
+		
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				ListGridRecord record=table.getSelectedRecord();
+        	
+				if(record!=null){
+  	
+					String status=record.getAttribute("STATUS");
+					if(("10").equals(status)||("15").equals(status)){
+						
+						canConfimButton.setDisabled(true);
+						confimButton.setDisabled(false);
+					}
+                    if(("20").equals(status)){
+						
+						canConfimButton.setDisabled(false);
+						confimButton.setDisabled(true);
+					}
+
+                    if(("30").equals(status)){
+						
+						canConfimButton.setDisabled(true);
+						confimButton.setDisabled(true);
+					}
+
+				}
+				//saveButton.setDisabled(true);
+			
+			}
+			
+		});
+
+	}
+	
+	public DynamicForm createSerchForm(final SGPanel form) {
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setNumCols(6);
+		form.setHeight100();
+		form.setWidth100();
+		form.setCellPadding(2);
+		form.setTitleSuffix("");
+				
+		SGText SUPLR_ID_NAME = new SGText("SUPLR_ID_NAME","承运商");
+    	PickerIcon searchPicker = new PickerIcon(PickerIcon.SEARCH);  	
+		searchPicker.addFormItemClickHandler(new FormItemClickHandler() {			
+			@Override
+			public void onFormItemClick(FormItemIconClickEvent event) {
+				 new SuplrWin(form,"20%","50%").getViewPanel();		
+			}
+		});      
+		SUPLR_ID_NAME.setIcons(searchPicker);		
+		SGText SUPLR_ID = new SGText("SUPLR_ID","客户");
+		SUPLR_ID.setVisible(false);		
+		SGText BELONG_MONETH = new SGText("BELONG_MONETH","所属期");	
+		SGText ROLE_ID = new SGText("USER_ID","");
+		ROLE_ID.setValue(LoginCache.getLoginUser().getUSER_ID());
+		System.out.println(LoginCache.getLoginUser().getROLE_ID());
+		ROLE_ID.setVisible(false);
+		SGCombo STATUS = new SGCombo("STATUS","审批状态");
+		Util.initCodesComboValue(STATUS,"APPROVE_STS");		
+        form.setItems(ROLE_ID,SUPLR_ID_NAME,SUPLR_ID,BELONG_MONETH,STATUS);
+		
+		return form;
+	}
+	
+	
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	
+	@Override
+	public void initVerify() {
+	
+		
+	check_map.put("TABLE", "BILL_PAY_REQUEST");		
+	check_map.put("INVOICE_TIME", StaticRef.CHK_DATE+"开票时间");	
+	check_map.put("RECE_TIME", StaticRef.CHK_DATE+"收到票据时间");
+	
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin!=null){
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		
+	}
+		
+	
+
+}

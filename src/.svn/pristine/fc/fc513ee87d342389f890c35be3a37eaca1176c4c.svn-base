@@ -1,0 +1,79 @@
+package com.rd.client.action.settlement;
+
+import java.util.ArrayList;
+
+import com.rd.client.common.util.Util;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.menu.events.MenuItemClickEvent;
+
+public class ExportPayInitAction implements com.smartgwt.client.widgets.menu.events.ClickHandler{
+
+	private ListGrid table;
+	private ListGrid itemTable;
+	
+	public ExportPayInitAction(ListGrid table,ListGrid itemTable) {
+		this.table = table;
+		this.itemTable = itemTable;
+	}
+	
+	@Override
+	public void onClick(MenuItemClickEvent event) {
+		if(table.getSelectedRecord()==null)return;
+		if(itemTable==null)return;
+		ArrayList<String> list = new ArrayList<String>();
+		String id="";
+		ListGridRecord [] records=itemTable.getSelection();
+		if(records!=null&&records.length>0){
+			for(int i=0;i<records.length;i++){
+				list.add("'"+records[i].getAttribute("ID")+"'");
+			}
+			id=list.get(0);
+		}
+		for(int i=1;i<list.size();i++){
+			id = id+","+list.get(i);
+		}
+		String fieldName = "LOAD_NO,PLATE_NO,VEHICLE_TYP_ID_NAME,DRIVER,MOBILE,LOAD_DATE,UNLOAD_DATE,LOAD_NAME,UNLOAD_NAME,INIT_AMOUNT,TOT_AMOUNT,ADJ_AMOUNT,CONFIRM_AMOUNT,ADJ_REASON";
+		String where = " where INIT_NO = '"+table.getSelectedRecord().getAttribute("INIT_NO")+"' and ID in("+id+")";
+		String header = getFieldName();
+		StringBuffer sql = new StringBuffer();
+		sql.append("select ");
+		sql.append(fieldName);
+		sql.append(" from V_PAY_INITDETAILS ");
+		sql.append(where);
+		Util.exportUtil(header, fieldName, sql.toString());
+	}
+
+	private String getFieldName(){
+		StringBuffer sf = new StringBuffer();
+		sf.append("调度单号");
+		sf.append(",");
+		sf.append("车牌号");
+		sf.append(",");
+		sf.append("车型");
+		sf.append(",");
+		sf.append("司机");
+		sf.append(",");
+		sf.append("联系电话");
+		sf.append(",");
+		sf.append("发货日期");
+		sf.append(",");
+		sf.append("收货日期");
+		sf.append(",");
+		sf.append("出发地");
+		sf.append(",");
+		sf.append("到达地");
+		sf.append(",");
+		sf.append("月初金额");
+		sf.append(",");
+		sf.append("调前金额");
+		sf.append(",");
+		sf.append("调整金额");
+		sf.append(",");
+		sf.append("确认金额");
+		sf.append(",");
+		sf.append("调整原因");
+		return sf.toString();
+	}
+	
+}

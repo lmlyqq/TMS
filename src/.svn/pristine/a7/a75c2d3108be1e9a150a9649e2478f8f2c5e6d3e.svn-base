@@ -1,0 +1,387 @@
+package com.rd.client.common.util;
+
+/**
+ * 基础资料权限配置
+ * @author yuanlei
+ *
+ */
+public class BasPrivRef {
+
+	//行政区域
+	public final static String AREA = "P02_B01";
+	public final static String AREA_P0_01 = "P02_B01_P0_01";
+	public final static String AREA_P0_02 = "P02_B01_P0_02";
+	public final static String AREA_P0_03 = "P02_B01_P0_03";
+	public final static String AREA_P0_04 = "P02_B01_P0_04";
+	public final static String AREA_P0_05 = "P02_B01_P0_05";
+
+	//组织机构
+	public final static String ORG = "P02_B02";
+	public final static String ORG_P0_01 = "P02_B02_P0_01";
+	public final static String ORG_P0_02 = "P02_B02_P0_02";
+	public final static String ORG_P0_03 = "P02_B02_P0_03";
+	public final static String ORG_P0_04 = "P02_B02_P0_04";
+	public final static String ORG_P0_05 = "P02_B02_P0_05";
+	public final static String ORG_P1 = "P02_B02_P1";
+	public final static String ORG_P2 = "P02_B02_P2";
+	public final static String ORG_P3 = "P02_B02_P3";
+	public final static String ORG_P4 = "P02_B02_P4";
+	public final static String ORG_P4_01 = "P02_B02_P4_01";
+	public final static String ORG_P4_02 = "P02_B02_P4_02";
+	
+	//货品分类管理
+	public final static String SKUCLS = "P02_B03";
+	public final static String SKUCLS_P0_01 = "P02_B03_P0_01";
+	public final static String SKUCLS_P0_02 = "P02_B03_P0_02";
+	public final static String SKUCLS_P0_03 = "P02_B03_P0_03";
+	public final static String SKUCLS_P0_04 = "P02_B03_P0_04";
+	
+	//度量衡
+	public final static String MSRMNT = "P02_B04";
+	public final static String MSRMNT_P0_01 = "P02_B04_P0_01";
+	public final static String MSRMNT_P0_02 = "P02_B04_P0_02";
+	public final static String MSRMNT_P0_03 = "P02_B04_P0_03";
+	public final static String MSRMNT_P0_04 = "P02_B04_P0_04";
+	public final static String MSRMNT_P0_05 = "P02_B04_P0_05";
+	public final static String MSRMNT_P0_06 = "P02_B04_P0_06";
+	public final static String MSRMNT_P0_07 = "P02_B04_P0_07";
+	public final static String MSRMNT_P0_08 = "P02_B04_P0_08";
+	public final static String MSRMNT_P0_09 = "P02_B04_P0_09";
+	
+	//包装
+	public final static String PACK = "P02_B05";
+	public final static String PACK_P0_01 = "P02_B05_P0_01";
+	public final static String PACK_P0_02 = "P02_B05_P0_02";
+	public final static String PACK_P0_03 = "P02_B05_P0_03";
+	public final static String PACK_P0_04 = "P02_B05_P0_04";
+	public final static String PACK_P0_05 = "P02_B05_P0_05";
+	public final static String PACK_P1 = "P02_B05_P1";
+	public final static String PACK_P2 = "P02_B05_P2";
+	
+	//货品管理
+	public final static String SKU = "P02_B06";
+	public final static String SKU_P0_01 = "P02_B06_P0_01";
+	public final static String SKU_P0_02 = "P02_B06_P0_02";
+	public final static String SKU_P0_03 = "P02_B06_P0_03";
+	public final static String SKU_P0_04 = "P02_B06_P0_04";
+	public final static String SKU_P0_05 = "P02_B06_P0_05";
+	public final static String SKU_P1 = "P02_B06_P1";
+	public final static String SKU_P3 = "P02_B06_P3";
+	public final static String SKU_P4 = "P02_B06_P4";
+	public final static String SKU_P4_01 = "P02_B06_P4_01";
+	
+	//地址点管理
+	public final static String ADDR = "P02_B07";
+	public final static String ADDR_P0_01 = "P02_B07_P0_01";
+	public final static String ADDR_P0_02 = "P02_B07_P0_02";
+	public final static String ADDR_P0_03 = "P02_B07_P0_03";
+	public final static String ADDR_P0_04 = "P02_B07_P0_04";
+	public final static String ADDR_P0_05 = "P02_B07_P0_05";
+	public final static String ADDR_P1 = "P02_B07_P1";
+	public final static String ADDR_P2 = "P02_B07_P2";
+	public final static String ADDR_P3 = "P02_B07_P3";
+	public final static String ADDR_P4 = "P02_B07_P4";
+	//public final static String ADDR_P4_01 = "P02_B07_P4_01";
+	//public final static String ADDR_P4_02 = "P02_B07_P4_02";
+	//public final static String ADDR_P4_03 = "P02_B07_P4_03";
+	
+	//地址点间距离管理
+	public final static String ADDRDIST = "P02_B20";
+	public final static String ADDRDIST_P0_01 = "P02_B20_P0_01";
+	public final static String ADDRDIST_P0_02 = "P02_B20_P0_02";
+	public final static String ADDRDIST_P0_03 = "P02_B20_P0_03";
+	public final static String ADDRDIST_P0_04 = "P02_B20_P0_04";
+	public final static String ADDRDIST_P0_05 = "P02_B20_P0_05";
+	public final static String ADDRDIST_P1 = "P02_B20_P1";
+	public final static String ADDRDIST_P2 = "P02_B20_P2";
+	
+	//客户管理
+	public final static String CUSTOM = "P02_B08";
+	public final static String CUSTOM_P0_01 = "P02_B08_P0_01";
+	public final static String CUSTOM_P0_02 = "P02_B08_P0_02";
+	public final static String CUSTOM_P0_03 = "P02_B08_P0_03";
+	public final static String CUSTOM_P0_04 = "P02_B08_P0_04";
+	public final static String CUSTOM_P0_05 = "P02_B08_P0_05";
+	public final static String CUSTOM_P1 = "P02_B08_P1";
+	public final static String CUSTOM_P2 = "P02_B08_P2";
+	public final static String CUSTOM_P2_P1 = "P02_B08_P2_P1";
+	public final static String CUSTOM_P2_P2 = "P02_B08_P2_P2";
+	public final static String CUSTOM_P2_P2_01 = "P02_B08_P2_P2_01";
+	public final static String CUSTOM_P2_P2_02 = "P02_B08_P2_P2_02";
+	public final static String CUSTOM_P2_P2_03 = "P02_B08_P2_P2_03";
+	public final static String CUSTOM_P2_P2_04 = "P02_B08_P2_P2_04";
+	public final static String CUSTOM_P2_P2_05 = "P02_B08_P2_P2_05";
+	public final static String CUSTOM_P2_P3 = "P02_B08_P2_P3";
+	public final static String CUSTOM_P2_P3_01 = "P02_B08_P2_P3_01";//保存
+	public final static String CUSTOM_P2_P3_02 = "P02_B08_P2_P3_02";
+	public final static String CUSTOM_P2_P4 = "P02_B08_P2_P4";
+	public final static String CUSTOM_P2_P4_01 = "P02_B08_P2_P4_01";
+	public final static String CUSTOM_P2_P4_02 = "P02_B08_P2_P4_02";
+	public final static String CUSTOM_P2_P4_03 = "P02_B08_P2_P4_03";
+	public final static String CUSTOM_P2_P4_04 = "P02_B08_P2_P4_04";
+	public final static String CUSTOM_P3 = "P02_B08_P3";//图片信息          
+	public final static String CUSTOM_P3_P1 = "P02_B08_P3_P1";//上传
+	public final static String CUSTOM_P3_P2 = "P02_B08_P3_P2";//下载
+	public final static String CUSTOM_P4 = "P02_B08_P4";
+
+	//供应商管理
+	public final static String SUPLR = "P02_B09";
+	public final static String SUPLR_P0_01 = "P02_B09_P0_01";
+	public final static String SUPLR_P0_02 = "P02_B09_P0_02";
+	public final static String SUPLR_P0_03 = "P02_B09_P0_03";
+	public final static String SUPLR_P0_04 = "P02_B09_P0_04";
+	public final static String SUPLR_P0_05 = "P02_B09_P0_05";
+	public final static String SUPLR_P0_06 = "P02_B09_P0_06";
+	public final static String SUPLR_P1 = "P02_B09_P1";
+	public final static String SUPLR_P2 = "P02_B09_P2";
+	public final static String SUPLR_P2_P2 = "P02_B09_P2_P2";
+	public final static String SUPLR_P2_P2_01 = "P02_B09_P2_P2_01";
+	public final static String SUPLR_P2_P2_02 = "P02_B09_P2_P2_02";
+	public final static String SUPLR_P2_P2_03 = "P02_B09_P2_P2_03";
+	public final static String SUPLR_P2_P2_04 = "P02_B09_P2_P2_04";
+	public final static String SUPLR_P2_P3 = "P02_B09_P2_P3";
+	public final static String SUPLR_P2_P3_01 = "P02_B09_P2_P3_01";
+	public final static String SUPLR_P2_P3_02 = "P02_B09_P2_P3_02";
+	public final static String SUPLR_P2_P4 = "P02_B09_P2_P4";
+	public final static String SUPLR_P2_P4_01 = "P02_B09_P2_P4_01";
+	public final static String SUPLR_P2_P4_02 = "P02_B09_P2_P4_02";
+	public final static String SUPLR_P3 = "P02_B09_P3";
+	public final static String SUPLR_P4 = "P02_B09_P4";
+
+	//车型管理
+	public final static String VEHTYP = "P02_B10";
+	public final static String VEHTYP_P0_01 = "P02_B10_P0_01";
+	public final static String VEHTYP_P0_02 = "P02_B10_P0_02";
+	public final static String VEHTYP_P0_03 = "P02_B10_P0_03";
+	public final static String VEHTYP_P0_04 = "P02_B10_P0_04";
+	public final static String VEHTYP_P0_05 = "P02_B10_P0_05";
+	
+	//运力管理
+	public final static String VEH = "P02_B11";
+	public final static String VEH_P0_01 = "P02_B11_P0_01";
+	public final static String VEH_P0_02 = "P02_B11_P0_02";
+	public final static String VEH_P0_03 = "P02_B11_P0_03";
+	public final static String VEH_P0_04 = "P02_B11_P0_04";
+	public final static String VEH_P0_05 = "P02_B11_P0_05";
+	public final static String VEH_P0_06 = "P02_B11_P0_06";
+	public final static String VEH_P0_07 = "P02_B11_P0_07";
+	public final static String VEH_P0_08 = "P02_B11_P0_08";
+	public final static String VEH_P1 = "P02_B11_P1";
+	public final static String VEH_P3 = "P02_B11_P3";
+	public final static String VEH_P3_01 = "P02_B11_P3_01";
+	
+	//运输服务
+	public final static String SRVC = "P02_B12";
+	public final static String SRVC_P0_01 = "P02_B12_P0_01";
+	public final static String SRVC_P0_02 = "P02_B12_P0_02";
+	public final static String SRVC_P0_03 = "P02_B12_P0_03";
+	public final static String SRVC_P0_04 = "P02_B12_P0_04";
+	public final static String SRVC_P0_05 = "P02_B12_P0_05";
+	
+	//线路管理
+	public final static String ROUTE = "P02_B13";
+	public final static String ROUTE_P0_01 = "P02_B13_P0_01";
+	public final static String ROUTE_P0_02 = "P02_B13_P0_02";
+	public final static String ROUTE_P0_03 = "P02_B13_P0_03";
+	public final static String ROUTE_P0_04 = "P02_B13_P0_04";
+	public final static String ROUTE_P0_05 = "P02_B13_P0_05";
+	public final static String ROUTE_P0_06 = "P02_B13_P0_06";
+	public final static String ROUTE_P1 = "P02_B13_P1";
+	
+	//结算区域
+	public final static String REGION = "P02_B14";
+	public final static String REGION_P0_01 = "P02_B14_P0_01";
+	public final static String REGION_P0_02 = "P02_B14_P0_02";
+	public final static String REGION_P0_03 = "P02_B14_P0_03";
+	public final static String REGION_P0_04 = "P02_B14_P0_04";
+	public final static String REGION_P0_05 = "P02_B14_P0_05";
+	
+	//仓库管理
+	public final static String WHSE = "P02_B15";
+	public final static String WHSE_P0= "P02_B15_P0";       //仓库设置
+	public final static String WHSE_P0_01 = "P02_B15_P0_01";
+	public final static String WHSE_P0_02 = "P02_B15_P0_02";
+	public final static String WHSE_P0_03 = "P02_B15_P0_03";
+	public final static String WHSE_P0_04 = "P02_B15_P0_04";
+	public final static String WHSE_P0_05 = "P02_B15_P0_05";
+	public final static String WHSE_P1= "P02_B15_P1";       //DOCK设置
+	public final static String WHSE_P1_01 = "P02_B15_P1_01";
+	public final static String WHSE_P1_02 = "P02_B15_P1_02";
+	public final static String WHSE_P1_03 = "P02_B15_P1_03";
+	public final static String WHSE_P1_04 = "P02_B15_P1_04";
+	
+	
+	//人员管理
+	public final static String STAFF = "P02_B16";
+	public final static String STAFF_P0_01 = "P02_B16_P0_01";
+	public final static String STAFF_P0_02 = "P02_B16_P0_02";
+	public final static String STAFF_P0_03 = "P02_B16_P0_03";
+	public final static String STAFF_P0_04 = "P02_B16_P0_04";
+	public final static String STAFF_P0_05 = "P02_B16_P0_05";
+	public final static String STAFF_P0_06 = "P02_B16_P0_06";
+	public final static String STAFF_P0_07 = "P02_B16_P0_07";
+	public final static String STAFF_P1 = "P02_B16_P1";
+	public final static String STAFF_P2 = "P02_B16_P2";
+	public final static String STAFF_P2_01 = "P02_B16_P2_01";
+	
+	//时间管理 
+	public final static String TIME = "P02_B17";
+	public final static String TIME_P0="P02_B17_P0";		//主信息
+	public final static String TIME_P0_01 = "P02_B17_P0_01";//新增
+	public final static String TIME_P0_02 = "P02_B17_P0_02";//保存
+	public final static String TIME_P0_03 = "P02_B17_P0_03";//删除
+	public final static String TIME_P0_04 = "P02_B17_P0_04";//取消
+	public final static String TIME_P0_05 = "P02_B17_P0_05";//取消
+	public final static String TIME_P1="P02_B17_P1";		//表达式信息
+	public final static String TIME_P1_01 = "P02_B17_P1_01";//新增
+	public final static String TIME_P1_02 = "P02_B17_P1_02";//保存
+	public final static String TIME_P1_03 = "P02_B17_P1_03";//删除
+	public final static String TIME_P1_04 = "P02_B17_P1_04";//取消
+	public final static String TIME_P2="P02_B17_P2";		//过滤条件信息
+	public final static String TIME_P2_01 = "P02_B17_P2_01";//新增
+	public final static String TIME_P2_02 = "P02_B17_P2_02";//保存
+	public final static String TIME_P2_03 = "P02_B17_P2_03";//删除
+	public final static String TIME_P2_04 = "P02_B17_P2_04";//取消
+	
+	//服务范围
+	public final static String RANGE = "P02_B18";
+	public final static String RANGE_P0_01 = "P02_B18_P0_01";
+	public final static String RANGE_P0_02 = "P02_B18_P0_02";
+	public final static String RANGE_P0_03 = "P02_B18_P0_03";
+	public final static String RANGE_P0_04 = "P02_B18_P0_04";
+	public final static String RANGE_P0_05 = "P02_B18_P0_05";
+	public final static String RANGE_P0_06 = "P02_B18_P0_06";
+	
+	//顺丰网点管理
+	public final static String SFADDR = "P02_B19";
+	public final static String SFADDR_P0_01 = "P02_B19_P0_01";
+	public final static String SFADDR_P0_02 = "P02_B19_P0_02";
+	public final static String SFADDR_P0_03 = "P02_B19_P0_03";
+	public final static String SFADDR_P0_04 = "P02_B19_P0_04";
+	public final static String SFADDR_P0_05 = "P02_B19_P0_05";
+	public final static String SFADDR_P0_06 = "P02_B19_P0_06";
+	public final static String SFADDR_P1 = "P02_B19_P1";
+	public final static String SFADDR_P2 = "P02_B19_P2";
+	public final static String SFADDR_P2_01="P02_B19_P2_01";//新增
+	public final static String SFADDR_P2_02="P02_B19_P2_02";//保存
+	public final static String SFADDR_P2_03="P02_B19_P2_03";//删除
+	public final static String SFADDR_P2_04="P02_B19_P2_04";//取消
+	public final static String SFADDR_P2_06="P02_B19_P0_06";//导入
+
+	//GPS设备管理
+	public final static String GPSRQ = "P02_B22";
+	public final static String GPSRQ_P0 = "P02_B22_P0";
+	public final static String GPSRQ_P0_01 = "P02_B22_P0_01";
+	public final static String GPSRQ_P0_02 = "P02_B22_P0_02";
+	public final static String GPSRQ_P0_03 = "P02_B22_P0_03";
+	public final static String GPSRQ_P0_04 = "P02_B22_P0_04";
+	public final static String GPSRQ_P0_05 = "P02_B22_P2_05";
+	public final static String GPSRQ_P0_06 = "P02_B22_P2_06";
+	public final static String GPSRQ_P0_07 = "P02_B22_P2_07";
+	public final static String GPSRQ_P0_08 = "P02_B22_P2_08";
+	public final static String GPSRQ_P1 = "P02_B22_P1";
+	public final static String GPSRQ_P2 = "P02_B22_P2";
+	
+	//温控设备管理
+	public final static String TEMPEQ = "P02_B21";
+	public final static String TEMPEQ_P0 = "P02_B21_P0";
+	public final static String TEMPEQ_P0_01 = "P02_B21_P0_01";
+	public final static String TEMPEQ_P0_02 = "P02_B21_P0_02";
+	public final static String TEMPEQ_P0_03 = "P02_B21_P0_03";
+	public final static String TEMPEQ_P0_04 = "P02_B21_P0_04";
+	public final static String TEMPEQ_P0_05 = "P02_B21_P2_05";
+	public final static String TEMPEQ_P0_06 = "P02_B21_P2_06";
+	public final static String TEMPEQ_P0_07 = "P02_B21_P2_07";
+	public final static String TEMPEQ_P0_08 = "P02_B21_P2_08";
+	public final static String TEMPEQ_P1 = "P02_B21_P1";
+	public final static String TEMPEQ_P2 = "P02_B21_P2";
+	
+	//保险购买记录
+	public final static String INSPURCHASE = "P06_T043";
+	public final static String INSPURCHASE_P0_01 = "P06_T043_P0_01";
+	public final static String INSPURCHASE_P0_02 = "P06_T043_P0_02";
+	public final static String INSPURCHASE_P0_03 = "P06_T043_P0_03";
+	public final static String INSPURCHASE_P0_04 = "P06_T043_P0_04";
+	public final static String INSPURCHASE_P0_05 = "P06_T043_P0_05";
+	
+	//收款账号管理
+	public final static String ACCOUNT = "P02_B25";
+	public final static String ACCOUNT_P0_01 = "P02_B25_P0_01";//新增
+	public final static String ACCOUNT_P0_02 = "P02_B25_P0_02";//保存
+	public final static String ACCOUNT_P0_03 = "P02_B25_P0_03";//删除
+	public final static String ACCOUNT_P0_04 = "P02_B25_P0_04";//取消
+	public final static String ACCOUNT_P0_05 = "P02_B25_P0_05";//导出
+	
+	//事故管理
+	public final static String ACCIDENT = "P06_T046";
+	public final static String ACCIDENT_P0_01 = "P06_T046_P0_01";//新增
+	public final static String ACCIDENT_P0_02 = "P06_T046_P0_02";//保存
+	public final static String ACCIDENT_P0_03 = "P06_T046_P0_03";//删除
+	public final static String ACCIDENT_P0_04 = "P06_T046_P0_04";//取消
+	public final static String ACCIDENT_P0_05 = "P06_T046_P0_05";//办事处上报
+	public final static String ACCIDENT_P0_06 = "P06_T046_P0_06";//案件资料
+	public final static String ACCIDENT_P0_07 = "P06_T046_P1_03";//新增
+	public final static String ACCIDENT_P0_08 = "P06_T046_P1_04";//保存
+	public final static String ACCIDENT_P0_09 = "P06_T046_P1_05";//删除
+	public final static String ACCIDENT_P0_10 = "P06_T046_P1_06";//取消
+	public final static String ACCIDENT_P0_11 = "P06_T046_P1_07";//结案
+	
+	//维修保养
+	public final static String VehPepair = "P06_T048";
+	public final static String VehPepair_P0 = "P06_T048_P0";      //按钮
+	public final static String VehPepair_P0_01 = "P06_T048_P0_01";//新增
+	public final static String VehPepair_P0_02 = "P06_T048_P0_02";//保存
+	public final static String VehPepair_P0_03 = "P06_T048_P0_03";//删除
+	public final static String VehPepair_P0_04 = "P06_T048_P0_04";//取消
+	public final static String VehPepair_P0_05 = "P06_T048_P0_05";//导出
+	
+	
+	//应付扣款单
+	public final static String PayDeduct = "P09_F032";
+	public final static String PayDeduct_P0 = "P09_F032_P0";      //按钮
+	public final static String PayDeduct_P0_01 = "P09_F032_P0_01";//新增
+	public final static String PayDeduct_P0_02 = "P09_F032_P0_02";//保存
+	public final static String PayDeduct_P0_03 = "P09_F032_P0_03";//删除
+	public final static String PayDeduct_P0_04 = "P09_F032_P0_04";//取消
+	public final static String PayDeduct_P1 = "P09_F032_P1";      //图片信息
+	public final static String PayDeduct_P1_01 = "P09_F032_P1_01";//上传
+	
+	//投诉建议
+	public final static String Complaint = "P06_T016";
+	public final static String Complaint_P0 = "P06_T016_P0";      //按钮
+	public final static String Complaint_P0_01 = "P06_T016_P0_01";//新增
+	public final static String Complaint_P0_02 = "P06_T016_P0_02";//保存
+	public final static String Complaint_P0_03 = "P06_T016_P0_03";//删除
+	public final static String Complaint_P0_04 = "P06_T016_P0_04";//取消
+	public final static String Complaint_P0_05 = "P06_T016_P0_05";//处理完毕
+		
+	//应收扣款单
+	public final static String RecDeduct = "P09_F034";
+	public final static String RecDeduct_P0 = "P09_F034_P0";      //按钮
+	public final static String RecDeduct_P0_01 = "P09_F034_P0_01";//新增
+	public final static String RecDeduct_P0_02 = "P09_F034_P0_02";//保存
+	public final static String RecDeduct_P0_03 = "P09_F034_P0_03";//删除
+	public final static String RecDeduct_P0_04 = "P09_F034_P0_04";//取消
+	public final static String RecDeduct_P0_05 = "P09_F034_P0_05";//确认
+	public final static String RecDeduct_P0_06 = "P09_F034_P0_06";//取消确认	
+	public final static String RecDeduct_P1 = "P09_F034_P1";      //图片信息
+	public final static String RecDeduct_P1_01 = "P09_F034_P1_01";//上传
+	
+	
+	public final static String RecAdjBill = "P09_F039";
+	public final static String RecAdjBill_P0 = "P09_F039_P0";      //按钮
+	public final static String RecAdjBill_P0_01 = "P09_F039_P0_01";//保存
+	public final static String RecAdjBill_P0_02 = "P09_F039_P0_02";//确认
+	public final static String RecAdjBill_P0_03 = "P09_F039_P0_03";//取消确认	
+	public final static String RecAdjBill_P0_04 = "P09_F039_P0_04";//导出
+	
+	public final static String OilFue = "P06_T042";
+	public final static String OilFue_P1 = "P06_T042_P1";      //按钮
+	public final static String OilFue_P1_01 = "P06_T042_P1_01";//新增
+	public final static String OilFue_P1_02 = "P06_T042_P1_02";//保存
+	public final static String OilFue_P1_03 = "P06_T042_P1_03";//删除	
+	public final static String OilFue_P1_04 = "P06_T042_P1_04";//取消
+	public final static String OilFue_P1_05 = "P06_T042_P1_05";//导出
+	
+	
+}

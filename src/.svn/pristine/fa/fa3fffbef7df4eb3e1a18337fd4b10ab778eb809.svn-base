@@ -1,0 +1,326 @@
+package com.rd.client.view.report;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.AddrDS;
+import com.rd.client.ds.report.R_CustomerOrderDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.events.KeyPressEvent;
+import com.smartgwt.client.widgets.form.fields.events.KeyPressHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+@ClassForNameAble
+public class R_CustomerOrderView extends SGForm implements PanelFactory{
+	private DataSource ds;
+	private SGTable table;
+	private Window searchWin;
+	private SGPanel searchForm;
+	private SectionStack section;
+	
+	/*public R_CustomerOrderView(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		ToolStrip toolStrip = new ToolStrip();//按钮布局
+		toolStrip.setAlign(Alignment.RIGHT);
+		ds = R_CustomerOrderDS.getInstance("R_CUSTOMER_ORDER", "R_CUSTOMER_ORDER");
+
+		table = new SGTable(ds, "100%", "70%");
+        createListFields(table);
+        table.setShowFilterEditor(false);
+        table.setCanEdit(false);
+        
+        //创建按钮布局
+		createBtnWidget(toolStrip);
+		section = createSection(table, null, true, true);
+		initVerify();  
+		VLayout main = new VLayout();//定义全局布局
+		main.setWidth100();
+		main.setHeight100();
+		main.addMember(toolStrip);
+		main.addMember(section);
+		return main;
+		
+	}
+	//布局列表信息按钮
+	private void createListFields(SGTable table) {
+		
+		ListGridField ODR_NO = new ListGridField("ODR_NO",Util.TI18N.ORDER_CODE(),100);
+		ListGridField SHPM_NO = new ListGridField("SHPM_NO",Util.TI18N.SHPM_NO(),120);
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO",Util.TI18N.CUSTOM_ODR_NO(),90);
+		ListGridField ODR_STATUS = new ListGridField("ODR_STATUS","状态",50);
+		//ListGridField SHPM_STATUS = new ListGridField("SHPM_STATUS",Util.TI18N.SHPM_STSTUS(),70);
+		ListGridField LOAD_NAME = new ListGridField("LOAD_NAME",Util.TI18N.LOAD_NAME(),90);
+		ListGridField UNLOAD_NAME =new ListGridField("UNLOAD_NAME",Util.TI18N.UNLOAD_NAME(),140);
+		ListGridField UNLOAD_AREA_NAME = new ListGridField("UNLOAD_AREA_NAME",Util.TI18N.UNLOAD_AREA_NAME(),60);
+		ListGridField UNLOAD_ADDRESS = new ListGridField("UNLOAD_ADDRESS",Util.TI18N.UNLOAD_ADDRESS(),120);
+		ListGridField UNLOAD_CONTACT = new ListGridField("UNLOAD_CONTACT","收货联系人",60);
+		ListGridField UNLOAD_TEL = new ListGridField("UNLOAD_TEL",Util.TI18N.CONT_TEL(),140);
+		ListGridField SKU = new ListGridField("SKU",Util.TI18N.SKU(), 60);
+  		ListGridField SKU_NAME = new ListGridField("SKU_NAME",Util.TI18N.SKU_NAME(), 140);
+	    ListGridField SKU_SPEC = new ListGridField("SKU_SPEC",Util.TI18N.SKU_SPEC(), 60);
+  		ListGridField UOM = new ListGridField("UOM",Util.TI18N.TRANS_UOM_FLAG(),40);
+  		ListGridField QNTY = new ListGridField("QNTY",Util.TI18N.QNTY(),60);
+  		ListGridField QNTY_EACH = new ListGridField("QNTY_EACH",Util.TI18N.QNTY_EACH(),60);
+  		ListGridField LOTATT02 = new ListGridField("LOTATT02",Util.TI18N.LOTATT02(),90);
+  		ListGridField EXEC_ORG_ID_NAME = new ListGridField("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID(),60);
+  		ListGridField PLATE_NO =new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),60);
+  		ListGridField DRIVER1 =new ListGridField("DRIVER1",Util.TI18N.DRIVER1(),60);
+  		ListGridField MOBILE1 = new ListGridField("MOBILE1", Util.TI18N.MOBILE(), 85);  
+  		ListGridField ODR_TIME =new ListGridField("ODR_TIME",Util.TI18N.ODR_TIME(),110);
+  		ListGridField ASSIGN_TIME = new ListGridField("ASSIGN_TIME", Util.TI18N.ASSIGN_TIME(),110);  
+  		//ListGridField CREATE_TIME = new ListGridField("CREATE_TIME","调度配载时间",110);
+  		ListGridField ARRIVE_WHSE_TIME = new ListGridField("ARRIVE_WHSE_TIME","到库登记时间",110);
+  		ListGridField DEPART_TIME = new ListGridField("DEPART_TIME",Util.TI18N.MANAGE_END_LOAD_TIME(),110);
+  		ListGridField LEAVE_WHSE_TIME =new ListGridField("LEAVE_WHSE_TIME","离库登记时间",110);
+  		ListGridField PRE_UNLOAD_TIME =new ListGridField("PRE_UNLOAD_TIME","预计到达时间",110);
+  		ListGridField UNLOAD_TIME = new ListGridField("UNLOAD_TIME", "实际到达时间", 110);  
+  		ListGridField SUPLR_NAME =new ListGridField("SUPLR_NAME",Util.TI18N.SUPLR_NAME(),70);
+  		
+  		
+  		Util.initFloatListField(QNTY, StaticRef.QNTY_FLOAT);
+  		Util.initFloatListField(QNTY_EACH, StaticRef.QNTY_FLOAT);
+  		
+  		
+		table.setFields(ODR_NO,SHPM_NO,CUSTOM_ODR_NO,ODR_STATUS,LOAD_NAME,UNLOAD_NAME,
+				UNLOAD_AREA_NAME,UNLOAD_ADDRESS,UNLOAD_CONTACT,UNLOAD_TEL,SKU,SKU_NAME,SKU_SPEC,UOM,QNTY,QNTY_EACH,LOTATT02,
+				EXEC_ORG_ID_NAME,PLATE_NO,DRIVER1,MOBILE1,ODR_TIME,ASSIGN_TIME,
+				ARRIVE_WHSE_TIME,DEPART_TIME,LEAVE_WHSE_TIME,PRE_UNLOAD_TIME,UNLOAD_TIME,SUPLR_NAME);
+	
+	}
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		//组件按钮
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(12);
+		toolStrip.addSeparator();
+		IButton searchButton=createBtn(StaticRef.FETCH_BTN);
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				// TODO Auto-generated method stub
+			   if(searchWin==null){
+				   searchForm=new SGPanel();
+					searchWin = new SearchWin(ds, createSerchForm(searchForm),
+							section.getSection(0)).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+	        //导出按钮
+	        IButton expButton = createBtn(StaticRef.EXPORT_BTN);
+	        expButton.addClickHandler(new ExportAction(table, "addtime desc"));
+	    
+	        toolStrip.setMembersMargin(4);
+	        toolStrip.setMembers(searchButton, expButton);
+	  
+	}
+
+	//查询窗口（二级窗口）
+	protected DynamicForm createSerchForm(final DynamicForm form) {
+		// TODO Auto-generated method stub
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setWidth100();
+		form.setCellPadding(2);
+		
+		SGCombo CUSTOMER=new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER(),true);
+		Util.initCustComboValue(CUSTOMER, LoginCache.getDefCustomer().get("CUSTOMER_ID"));
+		SGText CUSTOM_ODR_NO = new SGText("CUSTOM_ODR_NO", Util.TI18N.CUSTOM_ODR_NO());
+		SGText SHPM_NO = new SGText("SHPM_NO", Util.TI18N.SHPM_NO());
+		
+		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID", "");
+		EXEC_ORG_ID.setVisible(false);
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		TextItem EXEC_ORG_ID_NAME = new TextItem("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID_NAME.setWidth(130);
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		EXEC_ORG_ID_NAME.setTitleOrientation(TitleOrientation.TOP);
+		
+		//yuanlei 2012-12-06 将收货方改成下拉框 
+		SGText UNLOAD_NAME1 = new SGText("UNLOAD_NAME", Util.TI18N.UNLOAD_NAME());
+		//yuanlei
+		
+		SGText UNLOAD_AREA_NAME1 = new SGText("UNLOAD_AREA_NAME", Util.TI18N.UNLOAD_AREA_NAME());
+		SGDateTime ODR_TIME_FROM = new SGDateTime("ODR_TIME_FROM", Util.TI18N.ORD_ADDTIME()+" 从");
+		SGDateTime ODR_TIME_TO = new SGDateTime("ODR_TIME_TO", "到");
+		ODR_TIME_FROM.setDefaultValue(getCurInitDay());
+		ODR_TIME_TO.setDefaultValue(getCurTime());
+		ODR_TIME_TO.setWidth(130);
+		
+		final SGText AREA_ID = new SGText("AREA_ID", Util.TI18N.AREA_ID());
+		AREA_ID.setVisible(false);
+		
+		final SGText UNLOAD_ID = new SGText("UNLOAD_ID", Util.TI18N.UNLOAD_ID());
+		UNLOAD_ID.setVisible(false);
+		
+		final ComboBoxItem UNLOAD_AREA_NAME = new ComboBoxItem("UNLOAD_AREA_NAME", Util.TI18N.UNLOAD_AREA_NAME());//收货区域
+		UNLOAD_AREA_NAME.setWidth(120);
+		UNLOAD_AREA_NAME.setColSpan(2);
+		UNLOAD_AREA_NAME.setTitleOrientation(TitleOrientation.TOP);
+		Util.initAreaAddr(UNLOAD_AREA_NAME, AREA_ID);
+		UNLOAD_AREA_NAME.setWidth(127);
+		
+		final ComboBoxItem UNLOAD_NAME = new ComboBoxItem("UNLOAD_NAME1", Util.TI18N.UNLOAD_NAME());
+		ListGridField ADDR_ID = new ListGridField("ID");
+		ADDR_ID.setWidth(1);
+		ListGridField ADDR_NAME = new ListGridField("ADDR_NAME");
+		ListGridField AREA_NAME = new ListGridField("AREA_ID_NAME",Util.TI18N.AREA_ID_NAME());
+		AREA_NAME.setWidth(80);
+		ListGridField ADDRESS = new ListGridField("ADDRESS");
+		DataSource ds2 = AddrDS.getInstance("BAS_ADDRESS");
+		UNLOAD_NAME.setTitleOrientation(TitleOrientation.TOP);
+		UNLOAD_NAME.setWidth(250);
+		UNLOAD_NAME.setColSpan(4);
+		UNLOAD_NAME.setOptionDataSource(ds2);  
+		UNLOAD_NAME.setDisabled(false);
+		UNLOAD_NAME.setShowDisabled(false);
+		UNLOAD_NAME.setDisplayField("FULL_INDEX");
+		UNLOAD_NAME.setPickListBaseStyle("myBoxedGridCell");
+		UNLOAD_NAME.setPickListWidth(550);
+		Criteria criteria = new Criteria();
+		criteria.addCriteria("OP_FLAG","M");
+		criteria.addCriteria("AND_RECV_FLAG","Y");
+		criteria.addCriteria("ENABLE_FLAG","Y");
+		UNLOAD_NAME.setPickListCriteria(criteria);	
+		UNLOAD_NAME.setPickListFields(ADDR_ID, ADDR_NAME,AREA_NAME,ADDRESS);
+		UNLOAD_NAME.addKeyPressHandler(new KeyPressHandler() {
+
+			@Override
+			public void onKeyPress(KeyPressEvent event) {
+				Criteria crit = UNLOAD_NAME.getPickListCriteria();
+				if(ObjUtil.isNotNull(AREA_ID.getValue())) {
+					crit.addCriteria("AREA_ID", AREA_ID.getValue().toString());
+				}
+			}
+			
+		});
+		UNLOAD_NAME.addChangedHandler(new com.smartgwt.client.widgets.form.fields.events.ChangedHandler() {
+
+			public void onChanged(com.smartgwt.client.widgets.form.fields.events.ChangedEvent event) {
+				Record selectedRecord  = UNLOAD_NAME.getSelectedRecord();
+				if(selectedRecord != null){
+					UNLOAD_ID.setValue(selectedRecord.getAttribute("ID"));
+					UNLOAD_NAME.setValue(selectedRecord.getAttribute("ADDR_NAME"));
+				}
+			}
+			
+		});
+		
+		SGText UNLOAD_TEL = new SGText("UNLOAD_TEL", Util.TI18N.UNLOAD_TEL());
+		
+		
+		SGCheck SLF_PICKUP_FLAG = new SGCheck("SLF_PICKUP_FLAG", Util.TI18N.SLF_PICKUP_FLAG(),true);
+		SLF_PICKUP_FLAG.setValue(false);//包含下级机构
+		SLF_PICKUP_FLAG.setColSpan(2);
+		
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());	
+		C_ORG_FLAG.setValue(true);//包含下级机构
+		C_ORG_FLAG.setColSpan(2);
+		
+		SGCheck C_RDC_FLAG = new SGCheck("C_RDC_FLAG", Util.TI18N.C_RDC_FLAG());	
+		C_RDC_FLAG.setValue(true);//包含下级机构
+		C_RDC_FLAG.setColSpan(2);
+		
+		SGCheck HISTORY_FLAG=new SGCheck("HISTORY_FLAG", "查看历史数据");// 包含历史数据
+		
+		form.setItems(CUSTOMER,CUSTOM_ODR_NO,SHPM_NO,EXEC_ORG_ID,EXEC_ORG_ID_NAME,
+				UNLOAD_NAME1,UNLOAD_AREA_NAME1,ODR_TIME_FROM,ODR_TIME_TO,
+				UNLOAD_AREA_NAME,UNLOAD_ID,UNLOAD_NAME,UNLOAD_TEL,SLF_PICKUP_FLAG,C_ORG_FLAG,C_RDC_FLAG,HISTORY_FLAG,AREA_ID);
+		
+		return form;
+	}
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+
+	public static native String getCurInitDay() /*-{
+	
+	var now = new Date(new Date()-24*60*60*1000);
+	var year=now.getFullYear();
+	var month=now.getMonth()+1;
+	var day="01";	
+	var res = year+"/"+month+"/"+ day + " 00:00";
+	return res;
+
+}-*/;
+
+	public static native String getCurTime() /*-{
+
+	var now = new Date();
+	var enddate = now;
+	enddate.setUTCDate(now.getUTCDate() + 1)
+	var year=enddate.getFullYear();
+	var month=enddate.getMonth()+1;
+	var day=enddate.getDate();
+	var res = year+"/"+month+"/"+ day + " 00:00";
+	return res;
+}-*/;
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		R_CustomerOrderView view = new R_CustomerOrderView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	} 
+
+}

@@ -1,0 +1,243 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.tms.dispatch.CreateStrDisAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.TransOrderDS2;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+@ClassForNameAble
+public class DispatchWinView extends SGForm implements PanelFactory {
+	public SGTable table;
+	private DataSource ds;
+	private Window searchWin;
+	private SGPanel searchForm =new SGPanel();
+	
+	private SectionStack stack;
+	public String biz_typ;
+	
+	/*public DispatchWinView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		privObj=LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();
+		
+		VLayout main=new VLayout();
+		main.setHeight100();
+		main.setWidth100();
+		
+		ds=TransOrderDS2.getInstance("V_SHIPMENT_HEADER3","TRANS_SHIPMENT_HEADER");
+		
+		table=new SGTable(ds,"100%","100%",false,true,false);
+		
+		TabSet tabSet=new TabSet();
+		
+		if(isPrivilege(TrsPrivRef.DISVIEW_P1)){
+			Tab tab1=new Tab("托运单");
+			tab1.setPane(createShpmList());
+			tabSet.addTab(tab1);
+		}
+		
+		IButton search=createBtn(StaticRef.FETCH_BTN,"");
+		search.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin==null){
+					searchWin=new SearchWin(ds,createSearchForm(searchForm),stack.getSection(0),null).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+			}
+		});
+		
+		IButton loadButton=createUDFBtn("生成调度单", StaticRef.ICON_SAVE, TrsPrivRef.DISVIEW_P1_01);
+		loadButton.addClickHandler(new CreateStrDisAction(this));
+//		loadButton.addClickHandler(null);
+		
+		ToolStrip toolStrip =new ToolStrip();
+		toolStrip.setWidth100();
+		toolStrip.setHeight(20);
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.setMembers(search,loadButton);
+		
+		main.addMember(toolStrip);
+		main.addMember(tabSet);
+		return main;
+	}
+	
+	private Canvas createShpmList(){
+		VLayout vlay=new VLayout();
+		table.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+//		table.setSelectionType(SelectionStyle.SINGLE);
+		
+		ListGridField LOAD_AREA_ID2=new ListGridField("LOAD_AREA_ID2","起运地代码");
+		LOAD_AREA_ID2.setHidden(true);
+		ListGridField LOAD_AREA_NAME2=new ListGridField("LOAD_AREA_NAME2","起运地",100);
+		
+		ListGridField UNLOAD_AREA_ID2=new ListGridField("UNLOAD_AREA_ID2","目的地代码");
+		UNLOAD_AREA_ID2.setHidden(true);
+		ListGridField UNLOAD_AREA_NAME2=new ListGridField("UNLOAD_AREA_NAME2","目的地",100);
+		
+		ListGridField TEMPERATURE_ID=new ListGridField("TEMPERATURE_ID");
+		TEMPERATURE_ID.setHidden(true);
+		ListGridField TEMPERATURE=new ListGridField("TEMPERATURE",Util.TI18N.TEMPERATURE(),80);
+		
+		ListGridField QNTY=new ListGridField("QNTY","订单票数",60);
+		
+		ListGridField TOT_GROSS_W=new ListGridField("TOT_GROSS_W",Util.TI18N.TOT_GROSS_W(),60);
+		
+		ListGridField TOT_VOL=new ListGridField("TOT_VOL",Util.TI18N.TOT_VOL(),60);
+		
+		ListGridField STR_DEL=new ListGridField("STR_DEL","是否直送",60);
+		
+		ListGridField DATETIME=new ListGridField("ADDTIME",Util.TI18N.ORD_ADDTIME(),100);
+		
+		table.setFields(LOAD_AREA_ID2,LOAD_AREA_NAME2,UNLOAD_AREA_ID2,UNLOAD_AREA_NAME2,TEMPERATURE_ID,TEMPERATURE,
+				QNTY,TOT_GROSS_W,TOT_VOL,STR_DEL,DATETIME);
+		
+		stack=new SectionStack();
+		SectionStackSection listItem=new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem.addItem(table);
+		listItem.setExpanded(true);
+		listItem.setControls(new SGPage(table,true).initPageBtn());
+		stack.addSection(listItem);
+		
+		vlay.addMember(stack);
+		return vlay;
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		
+	}
+	
+	private SGPanel createSearchForm(SGPanel form){
+		form.setDataSource(ds);
+		form.setWidth(460);
+		form.setNumCols(8);
+		
+		TextItem LOAD_AREA_ID2=new TextItem("LOAD_AREA_ID2");
+		LOAD_AREA_ID2.setVisible(false);
+		ComboBoxItem LOAD_AREA_NAME2=new ComboBoxItem("LOAD_AREA_NAME2","起运地");
+		LOAD_AREA_NAME2.setColSpan(2);
+		LOAD_AREA_NAME2.setTitleOrientation(TitleOrientation.TOP);
+		Util.initArea(LOAD_AREA_NAME2, LOAD_AREA_ID2);
+		
+		TextItem UNLOAD_AREA_ID2=new TextItem("UNLOAD_AREA_ID2");
+		UNLOAD_AREA_ID2.setVisible(false);
+		ComboBoxItem UNLOAD_AREA_NAME2=new ComboBoxItem("UNLOAD_AREA_NAME2","目的地");
+		UNLOAD_AREA_NAME2.setColSpan(2);
+		UNLOAD_AREA_NAME2.setTitleOrientation(TitleOrientation.TOP);
+		Util.initArea(UNLOAD_AREA_NAME2, UNLOAD_AREA_ID2);
+		
+		TextItem DATE_FROM=new TextItem("DATE_FROM","创建时间 从");
+		DATE_FROM.setWidth(120);
+		DATE_FROM.setColSpan(2);
+		DATE_FROM.setTitleOrientation(TitleOrientation.TOP);
+		Util.initDateTime(searchForm, DATE_FROM);
+		
+		TextItem DATE_TO =new TextItem("DATE_TO","到");
+		DATE_TO.setWidth(120);
+		DATE_TO.setColSpan(2);
+		DATE_TO.setTitleOrientation(TitleOrientation.TOP);
+		Util.initDateTime(searchForm, DATE_TO);
+		
+		SGCombo TEMPERATURE=new SGCombo("TEMPERATRUE",Util.TI18N.TEMPERATURE());
+		Util.initCodesComboValue(TEMPERATURE,"TRANS_COND");
+		
+		final SGCombo BIZ_TYP=new SGCombo("BIZ_TYP",Util.TI18N.BIZ_TYP());
+//		Util.initComboValue(BIZ_TYP, "BAS_CODES", "id", "name_c","PROP_CODE='BIZ_TYP' and (id='"+StaticRef.B2B+"' or id='"+StaticRef.LD+"')");
+		Util.initCodesComboValue(BIZ_TYP,"BIZ_TYP");
+		BIZ_TYP.addChangedHandler(new ChangedHandler() {
+			@Override
+			public void onChanged(ChangedEvent event) {
+				if(ObjUtil.isNotNull(BIZ_TYP.getValue())){
+					biz_typ=BIZ_TYP.getValue().toString();
+				}
+			}
+		});
+		
+		TextItem EXEC_ORG_ID=new TextItem("EXEC_ORG_ID");
+		EXEC_ORG_ID.setVisible(false);
+		SGText EXEC_ORG_ID_NAME=new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false,"50%","50%");
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		
+		SGCheck C_ORG_FLAG=new SGCheck("C_ORG_FLAG",Util.TI18N.C_ORG_FLAG());
+		C_ORG_FLAG.setValue(true);
+		C_ORG_FLAG.setColSpan(2);
+		form.setItems(LOAD_AREA_ID2,LOAD_AREA_NAME2,UNLOAD_AREA_ID2,UNLOAD_AREA_NAME2,
+				DATE_FROM,DATE_TO,TEMPERATURE,BIZ_TYP,EXEC_ORG_ID,EXEC_ORG_ID_NAME,C_ORG_FLAG);
+		
+		return form;
+	} 
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin!=null){
+			searchForm.destroy();
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		DispatchWinView view = new DispatchWinView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+	
+}

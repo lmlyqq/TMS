@@ -1,0 +1,215 @@
+package com.rd.server.util;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.dom4j.Document;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+import org.dom4j.io.OutputFormat;
+import org.dom4j.io.XMLWriter;
+
+
+//生成bean
+
+public class CreateDS<T> {
+	
+   
+	public void CreateDsXml(ArrayList<HashMap<String,String>> list,HashMap<String,String> map) {
+			
+		try {
+			
+			Element root = DocumentHelper.createElement("DataSource");  
+		       
+			Document document = DocumentHelper.createDocument(root);  
+			
+			String path=this.getClass().getResource("").getPath();	
+			
+			System.out.println(path);
+			
+			String [] paths=path.split("/com");
+			
+			System.out.println(map.get("PackagePath"));
+			
+			String packagePath=map.get("PackagePath");
+			
+			if(packagePath!=null&&!packagePath.equals("")){
+				
+				String str=packagePath.replace(".", "/");
+				
+				String [] packages=str.split("/");
+				
+				for(int i=0;i<packages.length;i++){
+					
+					paths[0]=paths[0]+"/"+packages[i];
+					
+					File outfile = new File(paths[0]);                 
+					  //如果文件不存在，则创建一个新文件
+					 
+					if(!outfile.isFile()){
+						
+						 outfile.mkdirs();
+						 
+						 System.out.println( paths[0]);
+					}
+					
+				}
+				 
+				
+		            //根节点  
+		        root.addAttribute("ID",map.get("ID"));  
+		        root.addAttribute("serverType","sql");  
+		        root.addAttribute("TableName",map.get("TABLENAME"));  
+		        root.addAttribute("dataFormat","json");  
+		        root.addAttribute("showPrompt","false");
+		        
+		            //子节点  
+		        Element fields = root.addElement("fields"); 
+		       
+		        for(int i=0;i<list.size();i++){
+		        
+		        	HashMap<String,String> fmap=list.get(i);
+		        	
+		        	Element field = fields.addElement("field"); 
+		        
+		        	field.addAttribute( "name", fmap.get("name") );  
+		       
+		        	field.addAttribute( "type", fmap.get("type") );  
+		        
+		        	field.addAttribute( "title", fmap.get("title") );  
+		        	
+		        	field.addAttribute( "width", fmap.get("width") );  
+		        	
+		        	if(fmap.get("hidden").equals("true")){
+		        		
+		        		field.addAttribute( "hidden", "true");
+		        		
+		        	}
+
+		        }
+		        Element serverObject = root.addElement("serverObject");
+		        serverObject.addAttribute("lookupStyle","spring"); 
+		        serverObject.addAttribute("bean",map.get("BEAN")); 
+		        
+		        Element operationBindings = root.addElement("operationBindings");  
+		       
+		        Element operationBinding = operationBindings.addElement("operationBindings");
+		        operationBinding.addAttribute("operationType","fetch");  
+		      
+		        Element selectClause = operationBinding.addElement("selectClause");
+		        selectClause.setText(map.get("SELECT"));
+		        
+		        Element tableClause = operationBinding.addElement("tableClause");
+		        tableClause.setText(map.get("TABLE"));
+		        
+		        Element orderClause = operationBinding.addElement("orderClause");
+		        orderClause.setText(map.get("ORDERBY"));
+		            //添加  
+		        OutputFormat outputFormat = new OutputFormat();
+                
+		        outputFormat.setEncoding("UTF-8");
+
+                FileOutputStream outputStream = new FileOutputStream(paths[0]+"/"+map.get("ID")+".xml");
+                XMLWriter xmlWriter = new XMLWriter(outputStream,outputFormat);
+
+                xmlWriter.write(document);
+                
+                outputStream.flush();
+                
+                xmlWriter.flush();
+                
+                xmlWriter.close();
+                
+                outputStream.close();
+			
+			}else if(map.get("FilePath")!=null&&!map.get("FilePath").equals("")){
+				
+				File outfile = new File(map.get("FilePath"));                 
+				  //如果文件不存在，则创建一个新文件
+				 
+				if(!outfile.isFile()){
+					
+					 outfile.mkdirs();
+					 
+					 System.out.println(map.get("FilePath"));
+				}
+			       //根节点  
+		        root.addAttribute("ID",map.get("ID"));  
+		        root.addAttribute("serverType","sql");  
+		        root.addAttribute("TableName",map.get("TABLENAME"));  
+		        root.addAttribute("dataFormat","json");  
+		        root.addAttribute("showPrompt","false");
+		        
+		            //子节点  
+		        Element fields = root.addElement("fields"); 
+		       
+		        for(int i=0;i<list.size();i++){
+		        
+		        	HashMap<String,String> fmap=list.get(i);
+		        	
+		        	Element field = fields.addElement("field"); 
+		        
+		        	field.addAttribute( "name", fmap.get("name") );  
+		       
+		        	field.addAttribute( "type", fmap.get("type") );  
+		        
+		        	field.addAttribute( "title", fmap.get("title") );  
+		        	
+		        	field.addAttribute( "width", fmap.get("width") );  
+		        	
+		        	if(fmap.get("hidden").equals("true")){
+		        		
+		        		field.addAttribute( "hidden", "true");
+		        		
+		        	}
+
+		        }
+		        Element serverObject = root.addElement("serverObject");
+		        serverObject.addAttribute("lookupStyle","spring"); 
+		        serverObject.addAttribute("bean",map.get("BEAN")); 
+		        
+		        Element operationBindings = root.addElement("operationBindings");  
+		       
+		        Element operationBinding = operationBindings.addElement("operationBindings");
+		        operationBinding.addAttribute("operationType","fetch");  
+		      
+		        Element selectClause = operationBinding.addElement("selectClause");
+		        selectClause.setText(map.get("SELECT"));
+		        
+		        Element tableClause = operationBinding.addElement("tableClause");
+		        tableClause.setText(map.get("TABLE"));
+		        
+		        Element orderClause = operationBinding.addElement("orderClause");
+		        orderClause.setText(map.get("ORDERBY"));
+			 
+				OutputFormat outputFormat = new OutputFormat();
+	                
+			    outputFormat.setEncoding("UTF-8");
+
+	            FileOutputStream outputStream = new FileOutputStream(map.get("FilePath")+"/"+map.get("ID")+".xml");
+	            
+	            XMLWriter xmlWriter = new XMLWriter(outputStream,outputFormat);
+
+	            xmlWriter.write(document);
+
+	            outputStream.flush();
+
+	            xmlWriter.flush();
+
+	            xmlWriter.close();
+	 
+	            outputStream.close();
+				
+			}
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}	
+
+	
+	
+}

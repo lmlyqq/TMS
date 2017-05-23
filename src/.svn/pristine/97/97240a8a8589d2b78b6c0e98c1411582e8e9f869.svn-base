@@ -1,0 +1,909 @@
+package com.rd.client.view.base;
+
+import java.util.Map;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.base.sku.NewSkuAction;
+import com.rd.client.common.action.CancelMultiFormAction;
+import com.rd.client.common.action.DeleteMultiFormAction;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.action.GetHintAction;
+import com.rd.client.common.action.ImageUploadAction;
+import com.rd.client.common.action.ImageViewAction;
+import com.rd.client.common.action.SaveMultiFormAction;
+import com.rd.client.common.obj.FormUtil;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGButtonItem;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGLText;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.SkuDS;
+import com.rd.client.ds.base.UserCustDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ContentsType;
+import com.smartgwt.client.types.DragDataAction;
+import com.smartgwt.client.types.Encoding;
+import com.smartgwt.client.types.FormMethod;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VerticalAlignment;
+import com.smartgwt.client.types.VisibilityMode;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.HTMLPane;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.DoubleClickEvent;
+import com.smartgwt.client.widgets.events.DoubleClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.UploadItem;
+import com.smartgwt.client.widgets.form.fields.events.BlurEvent;
+import com.smartgwt.client.widgets.form.fields.events.BlurHandler;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.tab.events.TabSelectedEvent;
+import com.smartgwt.client.widgets.tab.events.TabSelectedHandler;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+import com.smartgwt.client.widgets.tree.TreeNode;
+
+/**
+ * 基础资料->货品管理
+ * @author 
+ *
+ */
+@ClassForNameAble
+public class BasSkuView extends SGForm implements PanelFactory {
+	
+	private DataSource ds;
+	private SGTable table;
+	public ValuesManager vm;
+	private DynamicForm mainForm;
+	private DynamicForm mainForm2;
+	private SectionStack section;
+	private Window searchWin = null;
+	//private static ButtonItem searchItem;
+	public TreeNode selectNode;
+	public Record selectRecord;
+	public SGPanel searchForm;
+	private ComboBoxItem CUSTOMER_NAME;
+	private TextItem customer_id;
+	private SectionStack list_section;
+	private TabSet leftTabSet; 
+	private HStack stack;
+	private Tab tab4;
+	private Canvas canvas;
+	public  Canvas tileCanvas;
+	private int tab_num;
+//	private String imageName;
+	
+	/*public BasSkuView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();//获取默认客户
+		
+		vm = new ValuesManager();
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+	    ToolStrip toolStrip = new ToolStrip();  //按钮布局
+	    toolStrip.setAlign(Alignment.RIGHT);
+	    ds = SkuDS.getInstance("BAS_SKU","BAS_SKU");
+		
+		//主布局
+		stack = new HStack();
+		stack.setWidth("99%");
+		stack.setHeight100();
+		
+		//STACK的左边列表
+		table = new SGTable(ds, "100%", "100%",true,true,false);
+		createListFields();
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		list_section = new SectionStack();
+		final SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+	    list_section.addSection(listItem);
+	    listItem.setControls(new SGPage(table, true).initPageBtn());
+	    list_section.setWidth("100%");
+
+//	    searchItem =  new ButtonItem(Util.BI18N.SEARCH());
+//	    new PageUtil(listItem, table, searchItem, false);
+	    
+		stack.addMember(list_section);
+		addSplitBar(stack);
+		//STACK的右边布局
+		
+        leftTabSet = new TabSet();  
+        leftTabSet.setWidth("80%");   
+        leftTabSet.setHeight("100%"); 
+        leftTabSet.setMargin(0);
+        leftTabSet.setSmoothFade(true);
+        leftTabSet.setVisible(false);
+  
+        if(isPrivilege(BasPrivRef.SKU_P1)) {
+        	
+	        Tab tab1 = new Tab(Util.TI18N.MAININFO());
+			//组织明细的FORM布局
+	
+			tab1.setPane(createHeader());
+	        leftTabSet.addTab(tab1);
+        }
+        if(isPrivilege(BasPrivRef.SKU_P4)) {
+	       
+        	tab4 = new Tab(Util.TI18N.IMG_INFO());
+	        tab4.setPane(createImgInfo());
+	        leftTabSet.addTab(tab4);
+        }
+		stack.addMember(leftTabSet);
+		
+		
+		vm.addMember(mainForm);
+		vm.addMember(mainForm2);
+		vm.setDataSource(ds);
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		main.addMember(stack);
+		
+		
+		initVerify();
+//		addDoubeclick(table, listItem, leftTabSet,list_section);
+		
+		table.addDoubleClickHandler(new DoubleClickHandler() {
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+				if(table.getSelectedRecord() != null){
+					enableOrDisables(add_map, false);
+					enableOrDisables(del_map, false);
+					enableOrDisables(save_map, true);
+					
+					if(isMax) {
+						expend();
+					}
+				}
+			}
+			
+		});
+		leftTabSet.addTabSelectedHandler(new TabSelectedHandler() {
+			
+			@Override
+			public void onTabSelected(TabSelectedEvent event) {
+				tab_num = event.getTabNum();
+				if(tab_num == 1){
+					if(table.getSelectedRecord() != null){
+//						imagePre();
+						if(canvas != null){
+							if(canvas.isCreated()){
+								canvas.destroy();
+							}
+						}
+						canvas = new Canvas();
+						tileCanvas.addChild(canvas);
+						canvas.setHeight(163);
+						canvas.setWidth(780);
+					    if(table.getSelectedRecord().getAttribute("SKU") != null){
+							ImageViewAction action = new ImageViewAction(canvas,table,StaticRef.BAS_SKU_PREVIEW_URL,table.getSelectedRecord().getAttribute("SKU"));
+							action.getName();
+					    }
+					}
+				}
+				
+			}
+		});
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				if(tab_num == 1){
+					if(table.getSelectedRecord() != null){
+//						imagePre();
+						if(canvas != null){
+							if(canvas.isCreated()){
+								canvas.destroy();
+							}
+						}
+						canvas = new Canvas();
+						tileCanvas.addChild(canvas);
+						canvas.setHeight(163);
+						canvas.setWidth(780);
+					    if(table.getSelectedRecord().getAttribute("SKU") != null){
+							ImageViewAction action = new ImageViewAction(canvas,table,StaticRef.BAS_SKU_PREVIEW_URL,table.getSelectedRecord().getAttribute("SKU"));
+							action.getName();
+					    }
+					}
+				}
+				
+			}
+		});
+		return main;
+	}
+	
+	/*public void expend(){
+		JavaScriptObject jsobject = list_section.getSection(0).getAttributeAsJavaScriptObject("controls");
+		Canvas[] canvas = null;
+		DynamicForm pageForm = null;
+		if(jsobject != null) {
+			canvas = Canvas.convertToCanvasArray(jsobject);
+		}
+		else {
+			canvas = new Canvas[1];
+		}
+		for(int i = 0; i < canvas.length; i++) {
+			if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+				pageForm = (DynamicForm)canvas[i];
+				break;
+			}
+		}
+		if(!isMax) {
+			list_section.setWidth100();	
+			bar.setBackgroundImage(StaticRef.ICON_GOLEFT);
+			stack.getMember(2).setVisible(false);
+			if(pageForm != null) {
+				pageForm.setVisible(true);
+			}
+		}
+		else {
+			list_section.setWidth(200);
+			bar.setBackgroundImage(StaticRef.ICON_GORIGHT);
+			stack.getMember(2).setVisible(true);
+			if(pageForm != null) {
+				pageForm.setVisible(false);
+			}
+		}
+		isMax = !isMax;
+		jsobject = null;
+		canvas = null;
+	}*/
+	//创建列表
+	private void createListFields(){
+    	table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+            	Record selectedRecord  =  event.getRecord();
+            	if(ObjUtil.isNotNull(selectedRecord)){
+            		vm.editRecord(selectedRecord);
+            		vm.setValue("OP_FLAG", "M");
+            	}
+               initSaveBtn();
+            }
+        });
+		
+		  ListGridField CUSTOMER_ID = new ListGridField("CUSTOMER_NAME", Util.TI18N.CUSTOMER_NAME(), 80); 
+		  ListGridField SKU = new ListGridField("SKU", Util.TI18N.SKU(), 100);
+		  ListGridField SKU_CNAME = new ListGridField("SKU_CNAME",Util.TI18N.SKU_CNAME(),120); 
+		  ListGridField SKU_SPEC = new ListGridField("SKU_SPEC",Util.TI18N.SKU_SPEC(),60);
+		  ListGridField ENABLE_FLAG = new ListGridField("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG(),50);
+		  ENABLE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  ListGridField HINT_CODE = new ListGridField("HINT_CODE",Util.TI18N.HINT_CODE(),80);
+		  
+		  ListGridField VOLUME = new ListGridField("VOLUME",Util.TI18N.VOLUME(),60);
+		  Util.initFloatListField(VOLUME, StaticRef.VOL_FLOAT);
+		  ListGridField VOLUME_UNIT = new ListGridField("VOLUME_UNIT_NAME",Util.TI18N.VOLUME_UNIT(),60);
+		  ListGridField GROSSWEIGHT = new ListGridField("GROSSWEIGHT",Util.TI18N.GROSSWEIGHT(),60);
+		  ListGridField WEIGHT_UNIT = new ListGridField("WEIGHT_UNIT_NAME",Util.TI18N.WEIGHT_UNIT(),60);
+//		  ListGridField RATIO=new ListGridField("RATIO",Util.TI18N.RATION(),50);
+		  ListGridField PRICE = new ListGridField("PRICE",Util.TI18N.PRICE(),50);
+		  Util.initFloatListField(PRICE, StaticRef.PRICE_FLOAT);
+		  ListGridField SKU_CLS = new ListGridField("SKU_CLS_NAME",Util.TI18N.SKU_CLS(),60);
+		  ListGridField COMMON_FLAG = new ListGridField("COMMON_FLAG",Util.TI18N.COMMON_FLAG(),50);
+		  COMMON_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  
+
+		  table.setFields(CUSTOMER_ID, SKU, SKU_CNAME,SKU_SPEC,ENABLE_FLAG,HINT_CODE,VOLUME, VOLUME_UNIT,GROSSWEIGHT,WEIGHT_UNIT, PRICE, SKU_CLS,COMMON_FLAG);		
+		  table.setCanDragRecordsOut(true);
+		  table.setCanReorderRecords(true);
+		  table.setCanAcceptDroppedRecords(true);
+		  table.setDragDataAction(DragDataAction.MOVE);
+	}
+	
+	//创建按钮
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(3);
+        toolStrip.setSeparatorSize(5);
+        
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.SKU);
+        
+        toolStrip.addMember(searchButton);
+//        toolStrip.addSeparator();
+        
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchWin = new SearchWin(ds,
+							createSerchForm(searchForm),list_section.getSection(0),vm).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+				
+			}
+        	
+        });
+        
+		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.SKU_P0_01);
+        toolStrip.addMember(newButton);
+        newButton.addClickHandler(new NewSkuAction(vm, cache_map,CUSTOMER_NAME,customer_id,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.SKU_P0_02);
+        toolStrip.addMember(saveButton);
+        saveButton.addClickHandler(new SaveMultiFormAction(table, vm, check_map, this));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.SKU_P0_03);
+        delButton.addClickHandler(new DeleteMultiFormAction(table, vm));
+        toolStrip.addMember(delButton);
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.SKU_P0_04);
+        canButton.addClickHandler(new CancelMultiFormAction(table, vm,this));
+        toolStrip.addMember(canButton);
+//        toolStrip.addSeparator();
+        
+        
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN,BasPrivRef.SKU_P0_05);
+        toolStrip.addMember(expButton);
+        expButton.addClickHandler(new ExportAction(table,"AREA_CODE"));
+
+        add_map.put(BasPrivRef.SKU_P0_01, newButton);
+        del_map.put(BasPrivRef.SKU_P0_03, delButton);
+        save_map.put(BasPrivRef.SKU_P0_02, saveButton);
+        save_map.put(BasPrivRef.SKU_P0_04, canButton);
+        this.enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        this.enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+	//创建主信息页签
+	private SectionStack createHeader(){
+		VLayout vLay = new VLayout();
+        vLay.setWidth100();
+        vLay.setBackgroundColor(ColorUtil.BG_COLOR);
+        
+		//主信息/1
+		customer_id = new TextItem("CUSTOMER_ID");
+		customer_id.setVisible(false);
+		customer_id.setColSpan(2);
+		CUSTOMER_NAME = new ComboBoxItem("CUSTOMER_NAME", ColorUtil.getRedTitle(Util.TI18N.CUSTOMER()));
+		CUSTOMER_NAME.setTitleOrientation(TitleOrientation.TOP);
+		CUSTOMER_NAME.setWidth(FormUtil.Width);
+		CUSTOMER_NAME.setColSpan(2);
+		initCustomer(CUSTOMER_NAME, customer_id);
+		
+		SGText sku = new SGText("SKU",ColorUtil.getRedTitle(Util.TI18N.SKU()));
+		
+		
+		SGCheck enable = new SGCheck("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG());
+		
+		final SGLText sku_cname = new SGLText("SKU_CNAME",Util.TI18N.SKU_CNAME(),true);
+		
+		final SGText hint_code = new SGText("HINT_CODE",Util.TI18N.HINT_CODE());
+		
+		
+		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID", "");//wangjun 2010-06-30
+		EXEC_ORG_ID.setColSpan(2);
+		EXEC_ORG_ID.setVisible(false);
+		TextItem EXEC_ORG_ID_NAME = new TextItem("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		EXEC_ORG_ID_NAME.setTitleOrientation(TitleOrientation.TOP);
+		EXEC_ORG_ID_NAME.setWidth(FormUtil.Width);
+		EXEC_ORG_ID_NAME.setColSpan(2);
+		
+		//3
+		final SGCombo sku_cls = new SGCombo("SKU_CLS",Util.TI18N.SKU_CLS(),true);//货品分类
+		
+		Util.initComboValue(sku_cls, "BAS_SKU_CLS", "SKUCLS", "DESCR_C");
+		
+		final SGCombo pack_id = new SGCombo("PACK_ID",Util.TI18N.PACK_ID());
+		
+		Util.initComboValue(pack_id, "BAS_PACKAGE", "ID", "PACK");
+		
+		SGText sku_spec = new SGText("SKU_SPEC",Util.TI18N.SKU_SPEC());
+		
+		
+		final SGCombo trans_uom = new SGCombo("TRANS_UOM",Util.TI18N.TRANS_UOM());
+		
+		Util.initComboValue(trans_uom, "BAS_CODES", "NAME_C", "NAME_C", " prop_code='UNIT_TYP'", " order by show_seq asc","");
+		
+		//4
+		ComboBoxItem sku_attr = new ComboBoxItem("SKU_ATTR",Util.TI18N.SKU_ATTR());
+		sku_attr.setColSpan(2);
+        sku_attr.setTitleOrientation(TitleOrientation.TOP);
+        sku_attr.setWidth(FormUtil.Width);
+        sku_attr.setStartRow(true);
+        Util.initCodesComboValue(sku_attr,"SKU_ATTR");
+        
+        SGCombo TRANS_COND = new SGCombo("TRANS_COND", "温区");
+        Util.initCodesComboValue(TRANS_COND,"STOR_COND");
+        
+        final SGText VOL_GWT_RATIO = new SGText("VOL_GWT_RATIO","体积重量折算比",true);
+		
+		SGText TEMPERATURE1 = new SGText("TEMPERATURE1",Util.TI18N.TEMPERATURE1());
+      
+        
+        SGText TEMPERATURE2 = new SGText("TEMPERATURE2",Util.TI18N.TEMPERATURE2());
+       
+		
+        //5
+        SGCheck SLF_PICKUP_FLAG = new SGCheck("SLF_PICKUP_FLAG",Util.TI18N.SLF_PICKUP_FLAG());
+    
+		
+		SGCheck COMMON_FLAG = new SGCheck("COMMON_FLAG",Util.TI18N.COMMON_FLAG());
+		
+		
+		SGCheck MIX_FLAG = new SGCheck("MIX_FLAG",Util.TI18N.MIX_FLAG());
+      
+        
+        
+		
+		//计量/1
+        final SGText len = new SGText("LENGTH",Util.TI18N.LENGHT(),true);
+		
+		Util.initFloatTextItem(len, StaticRef.VOL_FLOAT);
+		
+		final SGText wid = new SGText("WIDTH",Util.TI18N.WIDTH());
+		
+		Util.initFloatTextItem(wid, StaticRef.VOL_FLOAT);
+		
+		final SGText hei = new SGText("HEIGHT",Util.TI18N.HEIGHT());
+		
+		Util.initFloatTextItem(hei, StaticRef.VOL_FLOAT);
+		
+		final SGText volume = new SGText("VOLUME",Util.TI18N.VOLUME());//体积
+		
+		Util.initFloatTextItem(volume, StaticRef.VOL_FLOAT);
+        
+        //2
+		SGCombo l_unit= new SGCombo("LENGTH_UNIT",Util.TI18N.LENGHT_UNIT(),true);
+		
+		Util.initComboValue(l_unit, "BAS_MSRMNT_UNIT", "UNIT", "UNIT_NAME", " MSRMNT_CODE = 'LENGHT'", " SHOW_SEQ");
+		
+		SGCombo v_unit= new SGCombo("VOLUME_UNIT",Util.TI18N.VOLUME_UNIT());
+		
+		Util.initComboValue(v_unit, "BAS_MSRMNT_UNIT", "UNIT", "UNIT_NAME", " MSRMNT_CODE = 'VOLUME'", " SHOW_SEQ");
+
+		
+		SGCombo w_unit= new SGCombo("WEIGHT_UNIT",Util.TI18N.WEIGHT_UNIT());
+		
+		Util.initComboValue(w_unit, "BAS_MSRMNT_UNIT", "UNIT", "UNIT_NAME", " MSRMNT_CODE = 'WEIGHT'", " SHOW_SEQ");
+		
+		SGText tare = new SGText("TARE",Util.TI18N.TARE());//箱数
+		
+		Util.initFloatTextItem(tare, StaticRef.GWT_FLOAT);
+        
+        //3
+		SGText g_w = new SGText("GROSSWEIGHT",Util.TI18N.GROSSWEIGHT(),true);//毛重
+    	
+    	Util.initFloatTextItem(g_w, StaticRef.GWT_FLOAT);
+    	
+		SGText n_w = new SGText("NETWEIGHT",Util.TI18N.NETWEIGHT());//净重
+		
+		Util.initFloatTextItem(n_w, StaticRef.GWT_FLOAT);
+		
+		SGText price = new SGText("PRICE",Util.TI18N.PRICE());
+		
+		Util.initFloatTextItem(price, StaticRef.PRICE_FLOAT);
+        
+		SGText WORTH = new SGText("WORTH",Util.TI18N.WORTH());
+		Util.initFloatTextItem(WORTH, StaticRef.PRICE_FLOAT);
+        //4
+		TextAreaItem notes = new TextAreaItem("NOTES",Util.TI18N.NOTES());
+		notes.setStartRow(true);
+		notes.setColSpan(4);
+		notes.setHeight(50);
+		notes.setWidth(FormUtil.longWidth);
+		notes.setTitleOrientation(TitleOrientation.TOP);
+		notes.setTitleVAlign(VerticalAlignment.TOP);
+		
+		
+		//2011-2-17 fanglm 货品类别，根据客户联动
+		customer_id.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				String cust_id = customer_id.getValue().toString();
+				id = " where customer_id='" + cust_id +"'";
+				Util.initComboValue(sku_cls, "BAS_SKU_CLS", "SKUCLS", "DESCR_C", id);
+					
+			}
+		});
+		
+		//默认包装单位根据包装联动
+		pack_id.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				String id = pack_id.getValue().toString();
+				id =" where id='" +id +"'";
+ 				Util.initComboValue(trans_uom, "V_BAS_PACKAGE", "DESCR", "UOM",id,"",null);
+ 				
+			}
+		});
+		
+		
+	
+		
+		sku_cname.addBlurHandler(new GetHintAction(sku_cname, hint_code));
+		
+		hei.addBlurHandler(new BlurHandler() {
+			
+			@Override
+			public void onBlur(BlurEvent event) {
+				double loo = Double.parseDouble(len.getValue().toString());
+				double woo = Double.parseDouble(wid.getValue().toString());
+				double hoo = Double.parseDouble(hei.getValue().toString());
+				volume.setValue(loo*woo*hoo);
+			}
+		});
+		
+		
+		
+		mainForm = new SGPanel();
+		mainForm.setWidth("40%");
+		mainForm.setItems(CUSTOMER_NAME,customer_id,sku,enable,sku_cname,hint_code,EXEC_ORG_ID_NAME,
+				sku_cls,pack_id,sku_spec,trans_uom,sku_attr,TRANS_COND,TEMPERATURE1,TEMPERATURE2,VOL_GWT_RATIO,
+				SLF_PICKUP_FLAG,COMMON_FLAG,MIX_FLAG);
+		
+		mainForm2 = new SGPanel();
+		mainForm2.setWidth("40%");
+		mainForm2.setItems(len,wid,hei,volume,l_unit,v_unit,w_unit,tare,g_w,n_w,price,WORTH,notes);
+		
+		
+		Canvas sku_img = new Canvas();
+		sku_img.setBackgroundColor(ColorUtil.BG_COLOR);
+		sku_img.setHeight(186);
+		sku_img.setWidth100();
+	
+		section = new SectionStack();
+		section.setBackgroundColor(ColorUtil.BG_COLOR);
+		
+		SectionStackSection mainS = new SectionStackSection("主信息");
+		mainS.addItem(mainForm);
+		mainS.setExpanded(true); 
+		section.addSection(mainS);
+		
+		SectionStackSection mainS2 = new SectionStackSection("计量");
+		mainS2.addItem(mainForm2);
+		mainS2.setExpanded(true);
+		section.addSection(mainS2);
+		
+		section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+		
+		return section;
+	}
+	
+	private VLayout createImgInfo(){
+		VLayout vLay = new VLayout();
+        vLay.setWidth100();
+        vLay.setBackgroundColor(ColorUtil.BG_COLOR);
+        
+        /**
+        final FormPanel uploadForm = new FormPanel();  
+        uploadForm.setAction("uploadServlet");
+        uploadForm.setEncoding(FormPanel.ENCODING_MULTIPART);
+        uploadForm.setMethod(FormPanel.METHOD_POST);
+        uploadForm.addSubmitCompleteHandler(new SubmitCompleteHandler() {
+			
+			@Override
+			public void onSubmitComplete(SubmitCompleteEvent event) {
+				if(StaticRef.SUCCESS_CODE.equals(event.getResults())){
+					SC.say("上传成功。");
+				}
+			}
+		});
+        
+        VerticalPanel verticalPanel = new VerticalPanel();
+        final FileUpload imageItem = new FileUpload();
+        imageItem.setName("图片");
+        imageItem.setWidth("140px");
+        verticalPanel.add(imageItem);
+        
+        Button saveItem = new Button("上传");  
+        saveItem.addClickHandler(new com.google.gwt.event.dom.client.ClickHandler() {
+			
+			@Override
+			public void onClick(com.google.gwt.event.dom.client.ClickEvent event) {
+				uploadForm.submit();
+			}
+		});
+        verticalPanel.add(saveItem);
+        uploadForm.setWidget(verticalPanel);
+        RootPanel.get().add(uploadForm);
+        **/
+        
+        HTMLPane htmlPane = new HTMLPane();
+		htmlPane.setContentsType(ContentsType.PAGE);
+		htmlPane
+				.setContents("<iframe name='foo' style='position:absolute;width:0;height:0;border:0'></iframe>");
+		htmlPane.setWidth("1");
+		htmlPane.setHeight("1");
+		
+        final DynamicForm uploadForm = new DynamicForm();
+        uploadForm.setAction("excelUploadServlet");
+        uploadForm.setEncoding(Encoding.MULTIPART);
+        uploadForm.setMethod(FormMethod.POST);
+        uploadForm.setTarget("foo");
+        
+        final UploadItem imageItem = new UploadItem("image","图片");
+        
+        TextItem notes = new TextItem("NOTES","描述");
+        
+//        IButton saveItem = createBtn(StaticRef.PUTIN_BTN,BasPrivRef.SKU_P4_01);
+        SGButtonItem saveItem = new SGButtonItem("上传",StaticRef.ICON_IMPORT);
+        setButtonItemEnabled(BasPrivRef.SKU_P4_01,saveItem,true);
+        saveItem.setWidth(60);
+        saveItem.setAutoFit(true);
+        saveItem.setIcon(StaticRef.ICON_NEW);
+        saveItem.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+			
+			@SuppressWarnings("unchecked")
+			@Override
+			public void onClick(
+					com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+				if(table.getSelectedRecord() !=  null){
+					if(table.getSelectedRecord().getAttribute("SKU") != null){
+						Map<String,String> map = uploadForm.getValues();
+						if(map.get("image") != null){
+							String sku = table.getSelectedRecord().getAttribute("SKU").toString();
+							String image = map.get("image").toString();
+							new ImageUploadAction(sku,StaticRef.BAS_SKU_URL,image,uploadForm).onClick(event);	
+							if(table.getSelectedRecord() != null){
+//								imagePre();
+								if(canvas != null){
+									if(canvas.isCreated()){
+										canvas.destroy();
+									}
+								}
+								canvas = new Canvas();
+								tileCanvas.addChild(canvas);
+								canvas.setHeight(163);
+								canvas.setWidth(1000);
+							    if(table.getSelectedRecord().getAttribute("SKU") != null){
+									ImageViewAction action = new ImageViewAction(canvas,table,StaticRef.BAS_SKU_PREVIEW_URL,table.getSelectedRecord().getAttribute("SKU"));
+									action.getName();
+							    }
+							}
+						
+						}else{
+							MSGUtil.sayWarning("请选择所要上传的图片");
+						}
+					}
+				} else {
+					MSGUtil.sayWarning("请选择上传图片对应的货品编号.");
+				}
+			}
+		});
+
+//        saveItem.addClickHandler(new ClickHandler() {
+//			
+//			@Override
+//			public void onClick(ClickEvent event) {
+//				if(table.getSelectedRecord() !=  null){
+//					if(table.getSelectedRecord().getAttribute("SKU") != null){
+//						if(!"{}".equals(uploadForm.getValues().toString())){
+////							new ImageUploadAction(table.getSelectedRecord().getAttribute("SKU").toString(),StaticRef.BAS_SKU_URL,uploadForm.getValues().toString(),uploadForm);	
+//							new ImageUploadAction(table.getSelectedRecord().getAttribute("SKU").toString(),StaticRef.BAS_SKU_URL,uploadForm.getValues().toString(),uploadForm).onClick(event);	
+//
+//						}else{
+//							MSGUtil.sayWarning("请选择所要上传的图片");
+//						}
+//					}
+//				} else {
+//					MSGUtil.sayWarning("请选择上传图片对应的货品编号.");
+//				}
+//			}
+//		});
+        
+        uploadForm.setItems(imageItem,notes,saveItem);
+        
+        tileCanvas = new Canvas();
+        tileCanvas.setBorder("1px solid black");
+        tileCanvas.setHeight(200);  
+        tileCanvas.setWidth100(); 
+        tileCanvas.setShowResizeBar(true);
+     
+//        table.addClickHandler(new ClickHandler() {
+//			
+//			@Override
+//			public void onClick(ClickEvent event) {
+//				if(table.getSelectedRecord() != null){
+//				
+//					if(canvas != null){
+//						if(canvas.isCreated()){
+//							canvas.destroy();
+//						}
+//					}
+//					canvas = new Canvas();
+//					tileCanvas.addChild(canvas);
+//					canvas.setHeight(163);
+//					canvas.setWidth(1000);
+//				    if(table.getSelectedRecord().getAttribute("SKU") != null){
+//						ImageViewAction action = new ImageViewAction(canvas,table,StaticRef.BAS_SKU_PREVIEW_URL,table.getSelectedRecord().getAttribute("SKU"));
+//						action.getName();
+//						
+//				    }
+//				}
+//			}
+//		});
+        vLay.setMembers(uploadForm,tileCanvas,htmlPane);
+        
+        return vLay;
+	}
+	
+
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+		form = new SGPanel();
+		form.setTitleWidth(75);
+		TextItem txt_global = new TextItem("FULL_INDEX", "模糊查询");
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(356);
+		txt_global.setColSpan(5);
+		txt_global.setEndRow(true);
+
+		final SGCombo customer_id = new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER(),true);
+		Util.initCustComboValue(customer_id, "", "",LoginCache.getDefCustomer().get("CUSTOMER_ID"));
+		final SGCombo sku_cls = new SGCombo("SKU_CLS",Util.TI18N.SKU_CLS());
+		sku_cls.setColSpan(2);
+		
+		Util.initComboValue(sku_cls, "BAS_SKU_CLS", "SKUCLS", "DESCR_C");
+		
+		//2011-2-17 fanglm 货品类别，根据客户联动
+		customer_id.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				String cust_id = customer_id.getValue().toString();
+				id = " where customer_id='" + cust_id +"'";
+				Util.initComboValue(sku_cls, "BAS_SKU_CLS", "SKUCLS", "DESCR_C", id);
+					
+			}
+		});
+		
+		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID", "");
+		EXEC_ORG_ID.setVisible(false);
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		TextItem EXEC_ORG_ID_NAME = new TextItem("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID_NAME.setWidth(130);
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		EXEC_ORG_ID_NAME.setTitleOrientation(TitleOrientation.TOP);
+		EXEC_ORG_ID_NAME.setWidth(120);
+		
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG(),true);
+		C_ORG_FLAG.setColSpan(2);
+		C_ORG_FLAG.setValue(true);
+		
+		SGCheck txt_enable = new SGCheck("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG());
+		txt_enable.setValue(true);
+		
+        form.setItems(txt_global,customer_id,sku_cls,EXEC_ORG_ID_NAME,C_ORG_FLAG,txt_enable,EXEC_ORG_ID);
+        
+        return form;
+	}
+	
+	public void initVerify() {
+		
+		check_map.put("TABLE", "BAS_SKU");
+		check_map.put("SKU", StaticRef.CHK_NOTNULL + Util.TI18N.SKU());
+		check_map.put("SKU", StaticRef.CHK_UNIQUE + Util.TI18N.SKU());
+		check_map.put("CUSTOMER_ID", StaticRef.CHK_NOTNULL + Util.TI18N.CUSTOMER_NAME());
+		//check_map.put("SKU,CUSTOMER_ID", StaticRef.CHK_UNIQUE +Util.TI18N.CUSTOMER_NAME()+"与" +Util.TI18N.SKU());
+		cache_map.put("ENABLE_FLAG", "Y");
+		cache_map.put("LENGTH", "0.00");
+		cache_map.put("WIDTH", "0.00");
+		cache_map.put("HEIGHT", "0.00");
+		cache_map.put("VOLUME", "0.000");
+		cache_map.put("TARE", "0.00");
+		cache_map.put("GROSSWEIGHT", "0.00");
+		cache_map.put("NETWEIGHT", "0.00");
+		cache_map.put("PRICE", "0.00");
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+	
+	//根据当前登录用户初始化客户
+	private void initCustomer(final ComboBoxItem customer_name,final TextItem customer_id){
+		DataSource custDS = UserCustDS.getInstance("VC_CUSTOMER");
+		ListGridField CUSTOMER_CNAME = new ListGridField("CUSTOMER_NAME",Util.TI18N.CUSTOMER_NAME());
+		ListGridField CUSTOMER_CODE = new ListGridField("CUSTOMER_CODE",Util.TI18N.CUSTOMER_CODE(),80);
+		customer_name.setOptionDataSource(custDS);  
+		customer_name.setDisabled(false);
+		customer_name.setShowDisabled(false);
+		customer_name.setDisplayField("FULL_INDEX");  
+		customer_name.setPickListBaseStyle("myBoxedGridCell");
+		customer_name.setPickListWidth(230);
+	
+		customer_name.setPickListFields(CUSTOMER_CODE, CUSTOMER_CNAME);
+		Criteria criteria = new Criteria();
+		criteria.addCriteria("OP_FLAG","M");
+		criteria.addCriteria("LOGIN_USER",LoginCache.getLoginUser().getUSER_ID());
+		customer_name.setPickListCriteria(criteria);
+		
+		customer_name.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				final Record selectedRecord  = customer_name.getSelectedRecord();
+				if(selectedRecord != null){
+					customer_name.setValue(selectedRecord.getAttribute("CUSTOMER_NAME"));
+					customer_id.setValue(selectedRecord.getAttribute("CUSTOMER_ID"));
+					vm.setValue("PACK_ID", selectedRecord.getAttribute("PACK_ID"));
+					vm.setValue("TRANS_UOM", selectedRecord.getAttribute("TRANS_UOM"));
+					vm.setValue("LOAD_ID", selectedRecord.getAttribute("LOAD_ID"));
+					vm.setValue("LENGTH_UNIT", selectedRecord.getAttribute("LENGTH_UNIT"));
+					vm.setValue("WEIGHT_UNIT", selectedRecord.getAttribute("WEIGHT_UNIT"));
+					vm.setValue("VOLUME_UNIT", selectedRecord.getAttribute("VOLUME_UNIT"));
+					vm.setValue("VOL_GWT_RATIO", selectedRecord.getAttribute("VOL_GWT_RATIO"));
+				}
+			}
+		});
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		BasSkuView view = new BasSkuView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

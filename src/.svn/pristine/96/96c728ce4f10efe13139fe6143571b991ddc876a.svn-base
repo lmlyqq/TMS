@@ -1,0 +1,246 @@
+package com.rd.client.view.tms;
+
+import java.util.LinkedHashMap;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.tms.odrgroup.MakeOdrGroupAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.TranOrderDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 运输管理->订单管理->订单组管理
+ * @author wangjun
+ */
+@ClassForNameAble
+public class OrderGroupView extends SGForm implements PanelFactory {
+
+	public SGTable table;
+	private DataSource ds;
+	private Window searchWin;
+	private SGPanel searchForm = new SGPanel();
+	private SectionStack sectionStack;
+	private SectionStackSection  listItem;
+	
+	private IButton makeGroupButton;
+	
+	private DynamicForm pageForm;
+	
+	/*public OrderGroupView(String id) {
+		super(id);
+	}*/
+
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		
+		VLayout main = new VLayout();
+		main.setHeight100();
+		main.setWidth("100%");
+		ds = TranOrderDS.getInstance("V_ORDER_HEADER","TRANS_ORDER_HEADER");	
+		
+		
+		//创建正常订单的TAB
+		HStack stack = new HStack();
+		stack.setWidth100();
+		stack.setHeight100();
+
+		// 左边列表
+		table = new SGTable(ds, "100%", "100%", true, true, false);
+
+		createListField();
+		table.setShowFilterEditor(false);
+		table.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		sectionStack = new SectionStack();
+		listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		listItem.setItems(table);
+		listItem.setExpanded(true);
+		sectionStack.addSection(listItem);
+		pageForm = new SGPage(table,true).initPageBtn();
+		listItem.setControls(pageForm);
+		sectionStack.setWidth("99%");
+		stack.addMember(sectionStack);
+
+		// 按钮布局
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		createBtnWidget(toolStrip);
+
+
+		main.addMember(toolStrip);
+		main.addMember(stack);
+		
+		return main;
+	}
+	
+	//页签切换
+
+	private void createListField() {
+	
+		table.setShowRowNumbers(true);
+
+		/**
+		 * 主列表显示的字段
+		 * @param ORD_NO  托运单编号
+		 * 托运单列表
+		 */
+		table.setCanEdit(false);
+		//LinkedHashMap<String, String> listMap = LoginCache.getListConfig().get("V_ORDER_HEADER订单组管理");
+		LinkedHashMap<String, String> listMap = LoginCache.getListConfig().get(StaticRef.V_ORDER_HEADER_GRP);
+		createListField(table, listMap);
+		
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(3);
+		toolStrip.setSeparatorSize(5);
+
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+
+		toolStrip.addMember(searchButton);
+		toolStrip.addSeparator();
+
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if (searchWin == null) {
+					searchWin = new SearchWin(ds, //600 ,380
+							createSearchForm(searchForm), sectionStack.getSection(0)).getViewPanel();
+				} else {
+					searchWin.show();
+				}
+			}
+
+		});
+		
+		// 新增按钮
+		makeGroupButton = createUDFBtn("编组计费", StaticRef.ICON_SAVE, TrsPrivRef.MAKEGROUP_P1_01);
+		makeGroupButton.addClickHandler(new MakeOdrGroupAction(table,this));
+
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,makeGroupButton);
+	}
+
+	protected DynamicForm createSearchForm(DynamicForm form) {
+		
+		form.setDataSource(ds);
+		
+		SGCombo CUSTOMER=new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER(),true);
+		Util.initCustComboValue(CUSTOMER, LoginCache.getDefCustomer().get("CUSTOMER_ID"));
+//		CUSTOMER.setDisabled(true);
+		 
+		SGText ORDER_CODE=new SGText("ODR_NO",Util.TI18N.ORDER_CODE());//订单编号
+		
+		SGCombo BIZ_TYP = new SGCombo("BIZ_TYP", Util.TI18N.BIZ_TYP());
+		Util.initCodesComboValue(BIZ_TYP, "BIZ_TYP");
+		
+		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID");
+		EXEC_ORG_ID.setVisible(false);
+	    //二级窗口 EXEC_ORG_ID 执行结构
+		SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "50%");
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		
+		SGCombo ORDER_STATE_FROM = new SGCombo("STATUS_FORM", Util.TI18N.ORDER_STATE(),true);//下单状态
+		Util.initStatus(ORDER_STATE_FROM, StaticRef.ODRNO_STAT,"10");
+		
+		SGCombo ORDER_STATE_TO = new SGCombo("STATUS_TO", "到");//到
+		Util.initStatus(ORDER_STATE_TO, StaticRef.ODRNO_STAT,"10");
+		
+		ComboBoxItem LOAD_AREA_NAME=new ComboBoxItem("LOAD_AREA_NAME2",Util.TI18N.LOAD_AREA_NAME());//起点区域
+		LOAD_AREA_NAME.setTitleOrientation(TitleOrientation.TOP);
+		TextItem LOAD_AREA_ID=new TextItem("LOAD_AREA_ID2", Util.TI18N.START_ARAE());
+		Util.initArea(LOAD_AREA_NAME, LOAD_AREA_ID);
+		LOAD_AREA_ID.setVisible(false);
+		
+		ComboBoxItem UNLOAD_AREA_NAME=new ComboBoxItem("UNLOAD_AREA_NAME2",Util.TI18N.UNLOAD_AREA_NAME());//
+		UNLOAD_AREA_NAME.setTitleOrientation(TitleOrientation.TOP);
+		TextItem UNLOAD_AREA_ID=new TextItem("UNLOAD_AREA_ID2", Util.TI18N.UNLOAD_AREA_ID());
+		UNLOAD_AREA_ID.setVisible(false);
+		Util.initArea(UNLOAD_AREA_NAME, UNLOAD_AREA_ID);
+		
+		
+		SGDateTime ODR_TIME_FROM = new SGDateTime("ODR_TIME_FROM", Util.TI18N.ODR_TIME_FROM());
+		SGDateTime ODR_TIME_TO = new SGDateTime("ODR_TIME_TO", "到");//订单时间
+		
+		SGText BTCH_NUM = new SGText("BTCH_NUM",Util.TI18N.BTCH_NUM());//订单编号
+		
+		SGText LOAD_NO = new SGText("LOAD_NO",Util.TI18N.LOAD_NO());//订单编号
+		
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG(),true);	
+		C_ORG_FLAG.setValue(true);//包含下级机构
+		C_ORG_FLAG.setColSpan(2);
+		
+		
+		form.setItems(CUSTOMER,ORDER_CODE,BIZ_TYP,EXEC_ORG_ID_NAME,LOAD_AREA_NAME,UNLOAD_AREA_NAME,
+				ODR_TIME_FROM,ODR_TIME_TO,ORDER_STATE_FROM,ORDER_STATE_TO,BTCH_NUM,LOAD_NO,
+				C_ORG_FLAG,LOAD_AREA_ID,UNLOAD_AREA_ID, EXEC_ORG_ID
+				);
+		return form;
+		
+	}
+
+	public void createForm(DynamicForm form) {
+
+	}
+
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public void initVerify() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		OrderGroupView view = new OrderGroupView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

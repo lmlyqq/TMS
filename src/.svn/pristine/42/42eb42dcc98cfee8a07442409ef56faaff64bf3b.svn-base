@@ -1,0 +1,124 @@
+package com.rd.client.common.util;
+
+import com.google.gwt.i18n.client.DateTimeFormat;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.smartgwt.client.types.DateDisplayFormat;
+import com.smartgwt.client.widgets.DateChooser;
+import com.smartgwt.client.widgets.events.DataChangedEvent;
+import com.smartgwt.client.widgets.events.DataChangedHandler;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.layout.VLayout;
+
+
+/**
+ * 日期、时间控件弹出窗口
+ * @author lijun
+ * 
+ */
+public class DateChooserWin extends VLayout {
+    
+	private SGTable groupTable;
+	private int itemRow;
+	private ValuesManager vm;
+	private DateDisplayFormat format;
+	private String fieldName;
+	private SGPanel panel;
+	
+	/**
+	 * Form布局中日期控件
+	 * @param vm valuesManager
+	 * @param fieldName 控件名称
+	 * @param format 时间格式
+	 * @param top 顶部位置
+	 * @param left 左边位置
+	 */
+	public DateChooserWin(ValuesManager vm,String fieldName,DateDisplayFormat format,String top,String left){
+		this.vm = vm;
+		this.fieldName = fieldName;
+		this.format = format;
+		create(top, left);
+	}
+	/**
+	 * spanel布局中日期控件
+	 * @param panel SGPanel
+	 * @param fieldName 控件名称
+	 * @param format 时间格式
+	 * @param top 顶部位置
+	 * @param left 左边位置
+	 */
+	public DateChooserWin(SGPanel panel,String fieldName,DateDisplayFormat format,String top,String left){
+		this.panel = panel;
+		this.fieldName = fieldName;
+		this.format = format;
+		create(top,left);
+	}
+	
+	/**
+	 * 列表布局中日期控件
+	 * @param vm valuesManager
+	 * @param fieldName 控件名称
+	 * @param format 时间格式
+	 * @param top 顶部位置
+	 * @param left 左边位置
+	 */
+	public DateChooserWin(SGTable groupTable,int itemRow,String fieldName,DateDisplayFormat format,String top,String left){
+		this.groupTable = groupTable;
+		this.itemRow = itemRow;
+		this.format = format;
+		this.fieldName = fieldName;
+		create(top, left);
+	}
+	
+	
+	public void create(String top, String left) {
+		setTop(top);
+		setLeft(left); 
+		bringToFront();
+
+        final DateChooser dateChooser = new DateChooser();  
+        dateChooser.setWidth(180); 
+        dateChooser.setShowCancelButton(true);
+        dateChooser.setCancelButtonTitle("关闭");
+         
+        addMember(dateChooser); 
+        dateChooser.addDataChangedHandler(new DataChangedHandler() {  
+	       	 @Override  
+	       	 public void onDataChanged(DataChangedEvent event) { 
+	       		 DateTimeFormat formate = DateTimeFormat.getFormat("yyyy/MM/dd");
+	       		 String sysDate = getHourMinutes();
+	       		 String dates = formate.format(dateChooser.getData());
+	       		 if(DateDisplayFormat.TOJAPANSHORTDATE.equals(format)){
+	       			 if(vm != null){
+	       				 vm.setValue(fieldName, dates);
+	       			 }else if(groupTable != null){
+	       				 groupTable.setEditValue(itemRow,fieldName, dates);
+	       			 } else if(panel != null){
+	       				 panel.setValue(fieldName, dates);
+	       			 }
+	       		 } else if(DateDisplayFormat.TOJAPANSHORTDATETIME.equals(format)){
+	       			 if(vm != null){
+	       				 vm.setValue(fieldName, dates+" "+sysDate);
+	       			 }else if(groupTable != null){
+	       				 groupTable.setEditValue(itemRow,fieldName, dates+" "+sysDate);
+	       			 } else if(panel != null){
+	       				 panel.setValue(fieldName, dates+" "+sysDate);
+	       			 }      			 
+	       		 }
+	       		 hide();
+	       	}  
+        }); 
+        draw();  
+	}
+	
+	public static native String getHourMinutes() /*-{
+		var now = new Date();
+		var hour=now.getHours();
+		var minute=now.getMinutes();
+		if (minute < 10) {
+		    minute = "0" + minute;
+		}				
+		return hour + ':' + minute;
+
+	}-*/; 
+}

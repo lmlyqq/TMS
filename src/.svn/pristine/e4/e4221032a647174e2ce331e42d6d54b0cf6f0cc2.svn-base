@@ -1,0 +1,243 @@
+package com.rd.server.util;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import org.dom4j.Document;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+import org.dom4j.io.OutputFormat;
+import org.dom4j.io.XMLWriter;
+
+
+//生成bean
+
+public class CreateHBM<T> {
+	
+   
+	public void CreateHbmXml(ArrayList<HashMap<String,String>> list,HashMap<String,String> map) {
+			
+		try {
+			Element root = DocumentHelper.createElement("hibernate-mapping");  
+		       
+			Document document = DocumentHelper.createDocument(root); 
+			
+			String arg1="hibernate-mapping";
+			
+			String arg2="-//Hibernate/Hibernate Mapping DTD 3.0//EN";
+			
+			String arg3="http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd";
+			
+			document.addDocType(arg1,arg2,arg3);			
+	
+			String path=this.getClass().getResource("").getPath();	
+			
+			System.out.println(path);
+			
+			String [] paths=path.split("/com");
+			
+			System.out.println(map.get("PackagePath"));
+			
+			String packagePath=map.get("PackagePath");
+			
+
+				List<HashMap<String,String>> pList=new ArrayList<HashMap<String,String>>();
+				List<HashMap<String,String>> qList=new ArrayList<HashMap<String,String>>();
+				for(int i=0;i<list.size();i++){
+					
+					HashMap<String,String> fmap=list.get(i);
+					
+					 if(fmap.get("prk").equals("true")){
+						 HashMap<String,String> m=new HashMap<String,String>();
+						 m.put("name",fmap.get("name"));
+						 m.put("type",fmap.get("type"));
+						 m.put("insert",fmap.get("insert"));
+						 m.put("update",fmap.get("update"));
+						 
+						 pList.add(m);				 
+					 }else{
+						 HashMap<String,String> m=new HashMap<String,String>();
+						 m.put("name",fmap.get("name"));
+						 m.put("type",fmap.get("type"));
+						 m.put("insert",fmap.get("insert"));
+						 m.put("update",fmap.get("update"));
+						 
+						 qList.add(m);	
+					 }				 
+				}
+							 
+				Element hbmClass = root.addElement("class"); 
+				
+				hbmClass.addAttribute("name", map.get("CLASSNAME") );
+				hbmClass.addAttribute("table", map.get("TABLENAME") );
+				hbmClass.addAttribute("dynamic-update","true");
+				
+				if(pList.size()==1){
+					
+					Element id = hbmClass.addElement("id"); 
+					id.addAttribute("name",pList.get(0).get("name")); 
+					id.addAttribute("column",pList.get(0).get("name")); 
+					id.addAttribute("type",pList.get(0).get("type")); 
+					
+					Element generator = id.addElement("generator"); 
+					generator.addAttribute("class","assigned"); 
+				
+					for(int i=0;i<qList.size();i++){
+						
+						Element property = hbmClass.addElement("property"); 
+						property.addAttribute("name",qList.get(i).get("name"));
+						property.addAttribute("type",qList.get(i).get("type"));
+						if(qList.get(i).get("insert")!=null&&qList.get(i).get("insert").equals("false")){
+							
+							property.addAttribute("insert","false"); 
+							
+						}
+						
+						if(qList.get(i).get("update")!=null&&qList.get(i).get("update").equals("false")){
+							
+							property.addAttribute("update","false"); 
+							
+						}
+					}
+					
+				}
+				if(pList.size()>1){
+					
+					Element composite_id = hbmClass.addElement("composite-id"); 
+					for(int i=0;i<pList.size();i++){
+						
+						Element key_property = composite_id.addElement("key-property");
+						key_property.addAttribute("name",pList.get(i).get("name"));
+						key_property.addAttribute("column",pList.get(i).get("name"));
+						key_property.addAttribute("type",pList.get(i).get("type"));
+					
+					}
+
+					for(int i=0;i<qList.size();i++){
+						
+						Element property = hbmClass.addElement("property"); 
+						property.addAttribute("name",qList.get(i).get("name"));
+						property.addAttribute("type",qList.get(i).get("type"));
+						if(qList.get(i).get("insert")!=null&&qList.get(i).get("insert").equals("false")){
+							
+							property.addAttribute("insert","false"); 
+							
+						}
+						
+						if(qList.get(i).get("update")!=null&&qList.get(i).get("update").equals("false")){
+							
+							property.addAttribute("update","false"); 
+							
+						}
+						
+					}
+					
+				}
+				if(pList.size()==0){
+				
+
+					for(int i=0;i<qList.size();i++){
+						
+						Element property = hbmClass.addElement("property"); 
+						property.addAttribute("name",qList.get(i).get("name"));
+						property.addAttribute("type",qList.get(i).get("type"));
+						if(qList.get(i).get("insert")!=null&&qList.get(i).get("insert").equals("false")){
+							
+							property.addAttribute("insert","false"); 
+							
+						}
+						
+						if(qList.get(i).get("update")!=null&&qList.get(i).get("update").equals("false")){
+							
+							property.addAttribute("update","false"); 
+							
+						}
+						
+					}
+			
+				
+				}
+				
+				if(packagePath!=null&&!packagePath.equals("")){
+					
+					String str=packagePath.replace(".", "/");
+					
+					String [] packages=str.split("/");
+					
+					for(int i=0;i<packages.length;i++){
+						paths[0]=paths[0]+"/"+packages[i];
+						
+						File outfile = new File(paths[0]);                 
+						  //如果文件不存在，则创建一个新文件
+						 
+						if(!outfile.isFile()){
+							
+							 outfile.mkdirs();
+							 
+							 System.out.println( paths[0]);
+						}
+						
+					}
+		        OutputFormat outputFormat = new OutputFormat();
+                
+		        outputFormat.setEncoding("UTF-8");
+
+                FileOutputStream outputStream = new FileOutputStream(paths[0]+"/"+map.get("ID")+".hbm.xml");
+                XMLWriter xmlWriter = new XMLWriter(outputStream,outputFormat);
+
+                xmlWriter.write(document);
+                
+                outputStream.flush();
+                
+                xmlWriter.flush();
+                
+                xmlWriter.close();
+                
+                outputStream.close();
+			
+			}
+				
+				else if(map.get("FilePath")!=null&&!map.get("FilePath").equals("")){
+				
+				File outfile = new File(map.get("FilePath"));                 
+				  //如果文件不存在，则创建一个新文件
+				 
+				if(!outfile.isFile()){
+					
+					 outfile.mkdirs();
+					 
+					 System.out.println(map.get("FilePath"));
+				}
+				 
+				OutputFormat outputFormat = new OutputFormat();
+
+				outputFormat.setEncoding("UTF-8");
+
+				FileOutputStream outputStream = new FileOutputStream(map.get("FilePath")+"/"+map.get("ID")+".hbm.xml");
+
+				XMLWriter xmlWriter = new XMLWriter(outputStream,outputFormat);
+
+				xmlWriter.write(document);
+
+				outputStream.flush();
+
+				xmlWriter.flush();
+
+				xmlWriter.close();
+
+				outputStream.close();
+				
+			}
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}	
+
+	
+	
+}

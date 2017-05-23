@@ -1,0 +1,572 @@
+package com.rd.client.view.tms;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.action.tms.CancelChgRDCAction;
+import com.rd.client.action.tms.ChangeRDCSuccAction;
+import com.rd.client.action.tms.ChangingRDCAction;
+import com.rd.client.action.tms.CreateRDCAction;
+import com.rd.client.action.tms.DeleteRDCAction;
+import com.rd.client.action.tms.order.RDCPrintAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.RDCShpmDS;
+import com.rd.client.ds.tms.ShpmDS2;
+import com.rd.client.win.SearchWin;
+import com.rd.client.win.VehicleWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.Autofit;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.RecordSummaryFunctionType;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.SummaryFunctionType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.ShowContextMenuEvent;
+import com.smartgwt.client.widgets.events.ShowContextMenuHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.FormItemIcon;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.events.FormItemClickHandler;
+import com.smartgwt.client.widgets.form.fields.events.FormItemIconClickEvent;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.layout.VStack;
+import com.smartgwt.client.widgets.menu.Menu;
+import com.smartgwt.client.widgets.menu.MenuItem;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 转仓单生成
+ * 
+ * @author xuweibin
+ * 
+ */
+
+public class ChangeRDCView extends SGForm {
+
+	private SGTable shpmTable;
+	private DataSource shpmds;
+	private SGTable shpmRDCTable;
+
+	private SGTable RDCTable;
+	private DataSource RDCds;
+
+	private SectionStack shpmStack;
+	private SectionStack rdcStack;
+
+	private Window seaShpm;
+	public SGPanel seaShpmForm = new SGPanel();
+
+	private Window seaRDC;
+	public SGPanel seaRDCForm = new SGPanel();
+	
+	private HashMap<String, String> valmap;
+	
+	private IButton chgRDC;
+	private IButton delRDC;
+	private IButton sucRDC;
+	private IButton canChgRDC;
+	private IButton canSucRDC;
+	
+
+	public ChangeRDCView(String id) {
+		super(id);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		IButton search = createUDFBtn("查询作业单",StaticRef.ICON_SEARCH, TrsPrivRef.CHGRDC_P3_01);
+		search.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if (seaRDC != null) {
+					seaRDC.hide();
+				}
+				if (seaShpm == null) {
+					seaShpm = new SearchWin(shpmds,createSearchForm(seaShpmForm), shpmStack.getSection(0)).getViewPanel();
+				} else {
+					seaShpm.show();
+				}
+			}
+		});
+
+		IButton seaRDCB = createUDFBtn("查询转仓单",StaticRef.ICON_SEARCH, TrsPrivRef.CHGRDC_P3_02);
+		seaRDCB.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if (seaShpm != null) {
+					seaShpm.hide();
+				}
+				if (seaRDC == null) {
+					seaRDC = new SearchWin(RDCds,createSearchRDCForm(seaRDCForm), rdcStack.getSection(0)).getViewPanel();
+				}else{
+					seaRDC.show();
+				}
+			}
+		});
+		IButton RDC = createUDFBtn("生成转仓单", StaticRef.ICON_SAVE, TrsPrivRef.CHGRDC_P3_03);
+		RDC.addClickHandler(new CreateRDCAction(shpmTable,RDCTable,this));
+		
+		delRDC = createBtn(StaticRef.DELETE_BTN,TrsPrivRef.CHGRDC_P3_04);
+		delRDC.addClickHandler(new DeleteRDCAction(shpmTable,RDCTable,this));
+		
+		chgRDC = createUDFBtn("转仓",StaticRef.ICON_SAVE,TrsPrivRef.CHGRDC_P3_06);
+		chgRDC.addClickHandler(new ChangingRDCAction(RDCTable,check_map,valmap,this));
+		
+		sucRDC = createUDFBtn("完成", StaticRef.ICON_CANCEL,TrsPrivRef.CHGRDC_P3_05);
+		sucRDC.addClickHandler(new ChangeRDCSuccAction(RDCTable,this));
+		
+		canChgRDC = createUDFBtn("取消转仓", StaticRef.ICON_SAVE,TrsPrivRef.CHGRDC_P3_07);
+		canChgRDC.addClickHandler(new CancelChgRDCAction(RDCTable,"10","已创建",false,this));
+		
+		canSucRDC = createUDFBtn("取消完成", StaticRef.ICON_CANCEL , TrsPrivRef.CHGRDC_P3_08);
+		canSucRDC.addClickHandler(new CancelChgRDCAction(RDCTable,"20","转仓中",true,this));
+		
+		initButton(false, false, false,false,false);
+		strip.setMembers(search, seaRDCB, RDC, chgRDC, canChgRDC,delRDC,sucRDC , canSucRDC);
+	}
+
+	private DynamicForm createSearchRDCForm(SGPanel form) {
+		form.setDataSource(RDCds);
+		
+		SGText RDC_NO = new SGText("RDC_NO", Util.TI18N.RDC_NO());
+		
+		SGText ORI_RDC_CODE = new SGText("ORI_RDC_CODE", Util.TI18N.ORI_RDC()+"代码");
+		SGText CURR_RDC_CODE = new SGText("CURR_RDC_CODE", Util.TI18N.CURR_RDC()+"代码");
+		
+		SGText ODR_TIME_FROM = new SGText("ADDTIME_FROM", Util.TI18N.ODR_TIME_FROM());
+		SGText ODR_TIME_TO = new SGText("ADDTIME_TO", "到");
+		Util.initDateTime(form, ODR_TIME_FROM);
+		Util.initDateTime(form, ODR_TIME_TO);
+		
+		SGText EXEC_ORG_ID = new SGText("EXEC_ORG_ID", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID.setVisible(false);
+		// 二级窗口 EXEC_ORG_ID 执行结构
+		SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID(),true);
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "50%");
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());
+		C_ORG_FLAG.setColSpan(2);
+		C_ORG_FLAG.setValue(true);
+		
+		SGCombo STATUS = new SGCombo("STATUS", "转仓状态");
+		LinkedHashMap<String,String> map = new LinkedHashMap<String, String>();
+		map.put("", "");
+		map.put("10", "已创建");
+		map.put("20", "转仓中");
+		map.put("30", "已转仓");
+		STATUS.setValueMap(map);
+		
+		SGText SHPM_NO = new SGText("SHPM_NO", Util.TI18N.SHPM_NO());
+		
+		form.setItems(SHPM_NO,RDC_NO,ORI_RDC_CODE,CURR_RDC_CODE,ODR_TIME_FROM,ODR_TIME_TO,STATUS,EXEC_ORG_ID,EXEC_ORG_ID_NAME,C_ORG_FLAG);
+		return form;
+	}
+
+	private DynamicForm createSearchForm(SGPanel form) {
+		form.setDataSource(shpmds);
+		final TextItem CUSTOMER_ID = new TextItem("CUSTOMER_ID");
+		CUSTOMER_ID.setVisible(false);
+
+		final ComboBoxItem CUSTOMER_NAME = new ComboBoxItem("CUSTOMER_NAME",Util.TI18N.CUSTOMER());
+		CUSTOMER_NAME.setStartRow(true);
+		CUSTOMER_NAME.setWidth(120);
+		CUSTOMER_NAME.setColSpan(2);
+		CUSTOMER_NAME.setTitleAlign(Alignment.LEFT);
+		CUSTOMER_NAME.setTitleOrientation(TitleOrientation.TOP);
+		Util.initCustomerByQuery(CUSTOMER_NAME, CUSTOMER_ID);
+
+		SGText SHPM_NO = new SGText("SHPM_NO", Util.TI18N.SHPM_NO());
+
+		SGText CUSTOM_ODR_NO_NAME = new SGText("CUSTOM_ODR_NO", Util.TI18N.CUSTOM_ODR_NO());// 客户单号
+
+		SGText EXEC_ORG_ID = new SGText("EXEC_ORG_ID", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID.setVisible(false);
+		// 二级窗口 EXEC_ORG_ID 执行结构
+		SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "50%");
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		EXEC_ORG_ID_NAME.setWidth(120);
+
+		final TextItem LOAD_AREA_ID2 = new TextItem("LOAD_AREA_ID2");
+		LOAD_AREA_ID2.setVisible(false);
+
+		ComboBoxItem LOAD_AREA_NAME2 = new ComboBoxItem("LOAD_AREA_NAME2",
+				"发货城市");// 起点区域
+		LOAD_AREA_NAME2.setColSpan(2);
+		Util.initArea(LOAD_AREA_NAME2, LOAD_AREA_ID2);
+		LOAD_AREA_NAME2.setTitleOrientation(TitleOrientation.TOP);
+
+		final TextItem UNLOAD_AREA_ID2 = new TextItem("UNLOAD_AREA_ID2");
+		UNLOAD_AREA_ID2.setVisible(false);
+		ComboBoxItem UNLOAD_AREA_NAME2 = new ComboBoxItem("UNLOAD_AREA_NAME2",
+				"收货城市");//
+		UNLOAD_AREA_NAME2.setColSpan(2);
+		Util.initArea(UNLOAD_AREA_NAME2, UNLOAD_AREA_ID2);
+		UNLOAD_AREA_NAME2.setTitleOrientation(TitleOrientation.TOP);
+
+		SGCombo BIZ_TYP = new SGCombo("BIZ_TYP", Util.TI18N.BIZ_TYP()); 
+		Util.initCodesComboValue(BIZ_TYP, "BIZ_TYP");
+
+//		SGText LOAD_ID = new SGText("LOAD_CODE", Util.TI18N.LOAD_NAME_ID());
+//		LOAD_ID.setVisible(false);
+
+//		SGText LOAD_NAME = new SGText("LOAD_NAME", Util.TI18N.LOAD_NAME());
+//		LOAD_NAME.setVisible(false);
+
+//		SGText UNLOAD_NAME = new SGText("UNLOAD_NAME", Util.TI18N.UNLOAD_NAME());
+//		UNLOAD_NAME.setVisible(false);
+
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());
+		C_ORG_FLAG.setColSpan(2);
+		C_ORG_FLAG.setValue(true);
+
+		SGText ODR_TIME_FROM = new SGText("ODR_TIME_FROM", Util.TI18N.ODR_TIME_FROM(),true);
+		SGText ODR_TIME_TO = new SGText("ODR_TIME_TO", "到");
+		Util.initDateTime(form, ODR_TIME_FROM);
+		Util.initDateTime(form, ODR_TIME_TO);
+		ODR_TIME_FROM.setWidth(128);
+		ODR_TIME_TO.setWidth(128);
+		
+		SGText ODR_NO = new SGText("ODR_NO", Util.TI18N.ODR_NO());
+		SGText REFENENCE1 = new SGText("REFENENCE1", Util.TI18N.REFENENCE1());
+
+		form.setItems(CUSTOMER_ID, CUSTOMER_NAME, SHPM_NO, ODR_NO,CUSTOM_ODR_NO_NAME,REFENENCE1,BIZ_TYP,
+				LOAD_AREA_ID2,LOAD_AREA_NAME2, LOAD_AREA_ID2, UNLOAD_AREA_NAME2,
+				UNLOAD_AREA_ID2,
+				ODR_TIME_FROM, ODR_TIME_TO, EXEC_ORG_ID, EXEC_ORG_ID_NAME,
+				C_ORG_FLAG);
+		return form;
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();//获取默认客户
+		
+		VLayout lay = new VLayout();
+		VStack vs = new VStack();
+		shpmStack = new SectionStack();
+		rdcStack = new SectionStack();
+		valmap = new HashMap<String, String>();
+		initVerify();
+		shpmds = RDCShpmDS.getInstance("RDC_SHIPMENT_HEADER","TRANS_SHIPMENT_HEADER");
+		RDCds = RDCNods.getInstance("TRANS_RDC_HEADER", "TMS_CHANGE_RDC");
+
+		// 上边布局
+		TabSet topTab = new TabSet();
+		topTab.setHeight("50%");
+		topTab.setWidth("100%");
+		if (isPrivilege(TrsPrivRef.CHGRDC_P1)) {
+			Tab tab1 = new Tab("作业单");
+			tab1.setPane(createShpmList());
+			topTab.addTab(tab1);
+		}
+
+		// 下边布局
+		TabSet botTab = new TabSet();
+		botTab.setHeight("50%");
+		botTab.setWidth("100%");
+		if (isPrivilege(TrsPrivRef.CHGRDC_P2)) {
+			Tab tab2 = new Tab("转仓单");
+			tab2.setPane(createChgRDCList());
+			botTab.addTab(tab2);
+		}
+
+		vs.setMembers(topTab, botTab);
+		
+		ToolStrip strip = new ToolStrip();
+		strip.setWidth("100%");
+		strip.setAlign(Alignment.RIGHT);
+		strip.setMembersMargin(2);
+		createBtnWidget(strip);
+
+		lay.setMembers(strip, vs);
+		return lay;
+	}
+
+	private Canvas createShpmList() {
+		VLayout lay = new VLayout();
+		shpmTable = new SGTable(shpmds, "100%", "100%", false, true, false);
+		shpmTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		shpmTable.setCanEdit(true);
+
+		LinkedHashMap<String, String> listMap = LoginCache.getListConfig().get(StaticRef.V_SHIPMENT_HEADER_UNLOAD);
+		String FIELD = listMap.get("FIELD");
+		if (FIELD.indexOf("CURR_RDC_NAME") < 0) {
+			String NAME = listMap.get("NAME");
+			String WIDTH = listMap.get("WIDTH");
+			int fi = FIELD.indexOf("UNLOAD_NAME");
+			FIELD = FIELD.substring(0, fi+"UNLOAD_NAME".length())+",CURR_RDC_NAME,"+FIELD.substring(fi+"UNLOAD_NAME".length()+1,FIELD.length());
+			int na = NAME.indexOf("收货方");
+			NAME = NAME.substring(0, na+"收货方".length())+",收货方所属RDC,"+NAME.substring(na+"收货方".length()+1, NAME.length());
+			int wi = -1;
+			int w = 0;
+			while (w < 8) {
+				wi = WIDTH.indexOf(",", wi+1);
+				w++;
+			}
+			WIDTH = WIDTH.substring(0,wi)+",120,"+WIDTH.substring(wi+1, WIDTH.length());
+			
+			listMap.put("FIELD", FIELD);
+			listMap.put("NAME", NAME);
+			listMap.put("WIDTH", WIDTH);
+		}
+		createListField(shpmTable, listMap);
+
+		SectionStackSection list = new SectionStackSection(Util.TI18N.LISTINFO());
+		list.addItem(shpmTable);
+		list.setExpanded(true);
+		list.setControls(new SGPage(shpmTable, true).initPageBtn());
+		
+		
+		shpmStack.addSection(list);
+
+		lay.addMember(shpmStack);
+		return lay;
+	}
+
+	private Canvas createChgRDCList() {
+		VLayout lay = new VLayout();
+		RDCTable = new SGTable(RDCds, "100%", "100%", false, true, false) {
+			@Override
+			protected Canvas getExpansionComponent(ListGridRecord record) {
+				VLayout lay = new VLayout();
+				DataSource ds4 = ShpmDS2.getInstance("V_SHIPMENT_HEADER", "TRANS_SHIPMENT_HEADER");
+				shpmRDCTable = new SGTable(ds4, "100%", "100%", false, true,false);
+				shpmRDCTable.setWidth("100%");
+				shpmRDCTable.setHeight(46);
+				shpmRDCTable.setAutoFitData(Autofit.VERTICAL);
+				shpmRDCTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+
+				LinkedHashMap<String, String> listMap = LoginCache.getListConfig().get(StaticRef.V_SHIPMENT_HEADER_LOAD);
+//				String field = listMap.get("FIELD");
+//				field = field.replace("SHPM_NO", "REFENENCE1");
+//				String name = listMap.get("NAME");
+//				name = name.replace("作业单编号", Util.TI18N.REFENENCE1());
+//				listMap.remove("FIELD");
+//				listMap.put("FIELD", field);
+//				listMap.remove("NAME");
+//				listMap.put("NAME", name);
+				createListField(shpmRDCTable, listMap);
+				
+				Criteria findValues = new Criteria();
+				findValues.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+				findValues.addCriteria("RDC_NO", record.getAttributeAsString("RDC_NO"));
+
+				shpmRDCTable.fetchData(findValues);
+				lay.setMembers(shpmRDCTable);
+				return lay;
+			}
+		};
+		RDCTable.setCanExpandRecords(true);
+		RDCTable.setCanEdit(true);
+		RDCTable.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		RDCTable.initBindEvent();
+
+		ListGridField RDC_NO = new ListGridField("RDC_NO", Util.TI18N.RDC_NO(),100);
+		ListGridField STATUS = new ListGridField("STATUS");
+		STATUS.setHidden(true);
+		ListGridField STATUS_NAME = new ListGridField("STATUS_NAME",Util.TI18N.RDC_STAT(),60);
+		ListGridField ORI_RDC_CODE = new ListGridField("ORI_RDC_CODE");
+		ORI_RDC_CODE.setHidden(true);
+		ListGridField ORI_RDC_NAME = new ListGridField("ORI_RDC_NAME", Util.TI18N.ORI_RDC(),120);
+		ListGridField CURR_RDC_CODE = new ListGridField("CURR_RDC_CODE");
+		CURR_RDC_CODE.setHidden(true);
+		ListGridField CURR_RDC_NAME = new ListGridField("CURR_RDC_NAME", Util.TI18N.CURR_RDC(),120);
+		
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",ColorUtil.getRedTitle(Util.TI18N.PLATE_NO()),60);//车牌号
+		FormItemIcon icon = new FormItemIcon();
+		PLATE_NO.setIcons(icon);
+		PLATE_NO.setShowSelectedIcon(true);
+		icon.addFormItemClickHandler(new FormItemClickHandler() {
+			
+			@Override
+			public void onFormItemClick(FormItemIconClickEvent event) {
+				Util.db_async.getSingleRecord("RDC_NO", "TMS_CHANGE_RDC", 
+						" where RDC_NO = '" + RDCTable.getSelectedRecord().getAttribute("RDC_NO") + "'", null, new AsyncCallback<HashMap<String, String>>() {
+							@Override
+							public void onFailure(Throwable caught) {
+							}
+
+							@Override
+							public void onSuccess(
+									HashMap<String, String> result) {
+								if(result != null && result.size() > 0) {
+									HashMap<String,String> map = new HashMap<String,String>();
+									String tmp_attr = StaticRef.TMP_SINGLE;
+									map.put("TMP_ATTR", tmp_attr);
+									map.put("AVAIL_FLAG",StaticRef.AVAIL_FLAG);
+									new VehicleWin(RDCTable,itemRow,"20%", "32%", map).getViewPanel();
+								}
+								else {
+									new VehicleWin(RDCTable,itemRow,"20%", "32%").getViewPanel();
+								}
+							}						
+				});					
+			}
+		});
+		
+		ListGridField VEHICLE_TYP = new ListGridField("VEHICLE_TYP_ID",Util.TI18N.VEHICLE_TYP(),60);//车辆类型
+		Util.initComboValue(VEHICLE_TYP, "BAS_VEHICLE_TYPE", "ID", "VEHICLE_TYPE", " WHERE ENABLE_FLAG = 'Y'", " SHOW_SEQ ASC");  //车辆类型
+		
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_ID", ColorUtil.getRedTitle(Util.TI18N.SUPLR_NAME()), 70);  //供应商
+		Util.initOrgSupplier(SUPLR_NAME, "");
+		ListGridField DRIVER1 = new ListGridField("DRIVER1", Util.TI18N.DRIVER1(), 50);  //司机
+		ListGridField MOBILE1 = new ListGridField("MOBILE1", Util.TI18N.MOBILE(), 85);  //电话
+		
+		ListGridField VEH_SIGN=new ListGridField("VEH_SIGN","车标号",80);
+		
+		ListGridField TOT_QNTY = new ListGridField("QNTY", "总数量", 50);
+		TOT_QNTY.setRecordSummaryFunction(RecordSummaryFunctionType.MULTIPLIER);
+		TOT_QNTY.setSummaryFunction(SummaryFunctionType.SUM);
+		TOT_QNTY.setShowGroupSummary(true);
+		TOT_QNTY.setAlign(Alignment.RIGHT);
+
+		ListGridField TOT_GROSS_W = new ListGridField("W_WGT", Util.TI18N
+				.TOT_GROSS_W(), 60);
+		TOT_GROSS_W
+				.setRecordSummaryFunction(RecordSummaryFunctionType.MULTIPLIER);
+		TOT_GROSS_W.setSummaryFunction(SummaryFunctionType.SUM);
+		TOT_GROSS_W.setShowGroupSummary(true);
+		TOT_GROSS_W.setAlign(Alignment.RIGHT);
+
+		ListGridField TOT_VOL = new ListGridField("VOL", Util.TI18N
+				.TOT_VOL(), 60);
+		// TOT_VOL.setRecordSummaryFunction(RecordSummaryFunctionType.MULTIPLIER);
+		TOT_VOL.setSummaryFunction(SummaryFunctionType.SUM);
+		TOT_VOL.setAlign(Alignment.RIGHT);
+		TOT_VOL.setShowGroupSummary(true);
+
+		ListGridField NOTES = new ListGridField("NOTES", Util.TI18N.NOTES());// 备注
+		
+		
+		
+		RDC_NO.setCanEdit(false);
+		STATUS_NAME.setCanEdit(false);
+		ORI_RDC_NAME.setCanEdit(false);
+		CURR_RDC_NAME.setCanEdit(false);
+		VEH_SIGN.setCanEdit(false);
+		TOT_QNTY.setCanEdit(false);
+		TOT_GROSS_W.setCanEdit(false);
+		TOT_VOL.setCanEdit(false);
+		
+		RDCTable.setFields(RDC_NO,STATUS,STATUS_NAME, ORI_RDC_CODE,ORI_RDC_NAME, CURR_RDC_CODE,CURR_RDC_NAME,
+				SUPLR_NAME,PLATE_NO,VEHICLE_TYP,DRIVER1,MOBILE1,VEH_SIGN,TOT_QNTY,TOT_GROSS_W, TOT_VOL, NOTES);
+
+		final Menu m = new Menu();
+		m.setWidth(120);
+//		MenuItem printRDC1 = new MenuItem("打印店配转仓单", StaticRef.ICON_PRINT);
+//		printRDC1.addClickHandler(new RDCPrintAction(this,RDCTable,"b2bRDC"));
+		
+		MenuItem printRDC2 = new MenuItem("打印派送转仓单", StaticRef.ICON_PRINT);
+		printRDC2.addClickHandler(new RDCPrintAction(this,RDCTable,"b2cRDC"));
+		
+		MenuItem printRDC3 = new MenuItem("打印干线转仓单", StaticRef.ICON_PRINT);
+		printRDC3.addClickHandler(new RDCPrintAction(this,RDCTable,"arteryRDC"));
+		m.setItems(printRDC2,printRDC3);
+
+		RDCTable.addShowContextMenuHandler(new ShowContextMenuHandler() {
+
+			@Override
+			public void onShowContextMenu(ShowContextMenuEvent event) {
+				m.showContextMenu();
+				event.cancel();
+			}
+		});
+		
+		RDCTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				itemRow = RDCTable.getRecordIndex(event.getRecord());
+				Record rec = event.getRecord();
+				if (rec != null) {
+					if ("10".equals(rec.getAttribute("STATUS"))) {
+						initButton(true, true, false,false,false);
+					}else if ("20".equals(rec.getAttribute("STATUS"))) {
+						initButton(false, false, true,true,false);
+					}else {
+						initButton(false, false, false,false,true);
+					}
+				}else {
+					initButton(false, false, false,false,false);
+				}
+			}
+		});
+
+		SectionStackSection list = new SectionStackSection(Util.TI18N.LISTINFO());
+		list.addItem(RDCTable);
+		list.setExpanded(true);
+		list.setControls(new SGPage(RDCTable, true).initPageBtn());
+
+		
+		rdcStack.addSection(list);
+
+		lay.setMembers(rdcStack);
+		return lay;
+	}
+	
+	public void initButton(boolean bo1,boolean bo2,boolean bo3,boolean bo4,boolean bo5){
+		setButtonEnabled(TrsPrivRef.CHGRDC_P3_06, chgRDC, bo1);
+		setButtonEnabled(TrsPrivRef.CHGRDC_P3_04, delRDC, bo2);
+		setButtonEnabled(TrsPrivRef.CHGRDC_P3_05, sucRDC, bo3);
+		setButtonEnabled(TrsPrivRef.CHGRDC_P3_07, canChgRDC, bo4);
+		setButtonEnabled(TrsPrivRef.CHGRDC_P3_08, canSucRDC, bo5);
+	}
+	
+	@Override
+	public void initVerify() {
+		check_map.put("TABLE", "TRANS_LOAD_HEADER");		
+		check_map.put("SUPLR_ID", StaticRef.CHK_NOTNULL + Util.TI18N.SUPLR_ID());		
+		check_map.put("PLATE_NO", StaticRef.CHK_NOTNULL + Util.TI18N.PLATE_NO());
+	}
+
+	@Override
+	public void onDestroy() {
+		if (seaShpm != null) {
+			seaShpmForm.destroy();
+			seaShpm.destroy();
+		}
+		if (seaRDC != null) {
+			seaRDCForm.destroy();
+			seaRDC.destroy();
+		}
+	}
+}

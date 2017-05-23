@@ -1,0 +1,119 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.tms.ShpmDS2;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.MinimizeClickEvent;
+import com.smartgwt.client.widgets.events.MinimizeClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+
+/**
+ * 回单管理-->【托运单列表】右键【调度相关信息】弹出窗口
+ * @author wang2
+ *
+ */
+public class ManShipWin extends Window{
+
+	//private String title;
+	public Window window = null;
+	public DynamicForm mainItem;
+	public SectionStackSection sectionStackSection;
+	public SectionStack section;
+	
+	
+	public SGTable table;
+	private DataSource shpmDS;            //已调作业单数据源
+//	private String shpm_no;   //作业单号 
+	public SGTable shpmTable;       //已调作业单表
+	public SGTable shpmlstTable;    //已调作业单明细表
+	public String order_no;
+	
+	public ManShipWin(SGTable table,String order_no) {
+		this.order_no=order_no;
+		shpmTable = table;
+	}
+	public Window getViewPanel() {
+		
+		VLayout layout = new VLayout();
+		layout.setWidth100();
+		layout.setHeight100();
+		
+		shpmDS = ShpmDS2.getInstance("V_SHIPMENT_HEADER","TRANS_SHIPMENT_HEADER");
+//		shpmTable = new SGTable(shpmDS);
+		//
+		HStack hStack = new HStack();
+		hStack.setWidth100();
+		hStack.setHeight100();
+//		createListField(shpmTable);
+		
+		//列表
+		//字段及顺序：调度单号、作业单状态、承运商、车牌号、司机、手机号、发运时间、到货签收时间
+		shpmTable = new SGTable(shpmDS);
+		shpmTable.setHeight("100%");
+		shpmTable.setShowFilterEditor(false);
+		shpmTable.setEditEvent(ListGridEditEvent.CLICK);
+		//shpmTable.setShowRowNumbers(false);
+	
+		
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO",Util.TI18N.LOAD_NO(), 100);
+		ListGridField STATUS = new ListGridField("STATUS",Util.TI18N.STATUS(), 40);
+		ListGridField ORG_CARRIER = new ListGridField("SUPLR_NAME",Util.TI18N.SUPLR_NAME(),70);
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),60);
+		ListGridField DRIVER1 = new ListGridField("DRIVER",Util.TI18N.DRIVER1(),60);
+		ListGridField MOBILE = new ListGridField("MOBILE",Util.TI18N.MOBILE(),90);
+		ListGridField DEPART_TIME = new ListGridField("DEPART_TIME",Util.TI18N.OP_LOAD_TIME(),120);
+		ListGridField UNLOAD_TIME = new ListGridField("UNLOAD_TIME",Util.TI18N.UNLOAD_TIME(),120);
+
+		
+		shpmTable.setFields(LOAD_NO,STATUS, ORG_CARRIER, PLATE_NO, 
+				DRIVER1,MOBILE, DEPART_TIME, UNLOAD_TIME);
+		
+		Criteria crit = new Criteria();
+		crit.addCriteria("OP_FLAG", "M");
+		crit.addCriteria("ODR_NO",order_no);
+		shpmTable.fetchData(crit);
+		
+		hStack.addMember(shpmTable);
+		layout.addMember(hStack);
+
+		window = new Window();
+		window.setTitle(Util.TI18N.TRANS_SHMP_LIST());
+		window.setLeft("23%");
+		window.setTop("37%");
+		window.setWidth(718);
+		window.setHeight(200);
+		window.setCanDragReposition(true);
+		window.setCanDragResize(true);
+		
+		window.addItem(layout);
+		
+		window.setShowCloseButton(true);
+		window.show();
+		window.addMinimizeClickHandler(new MinimizeClickHandler() {
+
+			@Override
+			public void onMinimizeClick(MinimizeClickEvent event) {
+				window.setMinimized(false);
+				window.hide();
+				event.cancel();
+			}
+
+		});
+		return window;
+		
+	}
+//	private void createListField(SGTable shpmTable) {
+//		
+//		
+//	}
+	
+}

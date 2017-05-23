@@ -1,0 +1,50 @@
+package com.rd.client.common.obj;
+
+import com.google.gwt.user.client.rpc.IsSerializable;
+import com.rd.client.PanelFactory;
+import com.rd.client.reflection.ClassTools;
+
+/**
+ * 主界面左边树型结构数据模型
+ * @author yuanlei
+ *
+ */
+public class FUNCTION implements IsSerializable {
+
+	protected String FUNCTION_ID;
+	protected String FUNCTION_NAME;
+	protected String PARENT_FUNCTION_ID;
+	protected String FUNCTION_FORMNAME;
+
+	public String getFUNCTION_FORMNAME() {
+		return FUNCTION_FORMNAME;
+	}
+
+	public void setFUNCTION_FORMNAME(String fUNCTIONFORMNAME) {
+		FUNCTION_FORMNAME = fUNCTIONFORMNAME;
+	}
+	
+	public String getFUNCTION_ID() {
+		return FUNCTION_ID;
+	}
+	public void setFUNCTION_ID(String fUNCTIONID) {
+		FUNCTION_ID = fUNCTIONID; 
+	}
+	public String getFUNCTION_NAME() {
+		return FUNCTION_NAME;
+	}
+	public void setFUNCTION_NAME(String fUNCTIONNAME) {
+		FUNCTION_NAME = fUNCTIONNAME;
+	}
+	public String getPARENT_FUNCTION_ID() {
+		return PARENT_FUNCTION_ID;
+	}
+	public void setPARENT_FUNCTION_ID(String pARENTFUNCTIONID) {
+		PARENT_FUNCTION_ID = pARENTFUNCTIONID;
+	}
+	
+	public PanelFactory getUserPanel() {
+		PanelFactory factory = ClassTools.newInstance(FUNCTION_FORMNAME);
+		return factory;
+	}
+}

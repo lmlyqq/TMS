@@ -1,0 +1,297 @@
+package com.rd.client.common.obj;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.user.client.Cookies;
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.Util;
+import com.rd.client.obj.system.SYS_USER;
+import com.smartgwt.client.widgets.form.fields.FormItem;
+import com.smartgwt.client.widgets.grid.ListGrid;
+
+/**
+ * 登录用户的缓存信息
+ * @author yuanlei
+ *
+ */
+public class LoginCache {
+
+	public static SYS_USER userInfo = new SYS_USER();
+    public static LinkedHashMap<String, String> whseInfo = new LinkedHashMap<String, String>();
+    protected static LinkedHashMap<String, LinkedHashMap<String, String>> codeCache;
+    protected static LinkedHashMap<String, LinkedHashMap<String, String>> statCache;
+    protected static LinkedHashMap<String, LinkedHashMap<String, String>> userOrgCache = 
+    	new LinkedHashMap<String, LinkedHashMap<String, String>>();	//用户机构缓存
+    protected static LinkedHashMap<String, String> client_prop;
+    protected static LinkedHashMap<String,SysParam> sys_param;
+    public static CUSTOMER customerInfo;
+    public static HashMap<String, String> customerMap;
+    public static LinkedHashMap<String, String> privilegeMap;
+    public static LinkedHashMap<String, LinkedHashMap<String, String>> listMap;
+    public final int pageSize = 50;
+	public static SYS_USER getLoginUser() {
+		try {
+			if(!ObjUtil.isNotNull(userInfo.getUSER_NAME())) {
+				
+				userInfo = new SYS_USER();
+				userInfo.setPASSWORD(Cookies.getCookie("PASSWORD"));
+				userInfo.setROLE_ID(Cookies.getCookie("ROLE_ID"));
+				userInfo.setROLE_ID_NAME(Cookies.getCookie("ROLE_ID_NAME"));
+				userInfo.setSALT(Cookies.getCookie("SALT"));
+				userInfo.setUSER_ID(Cookies.getCookie("USER_ID"));
+				userInfo.setUSER_NAME(Cookies.getCookie("USER_NAME"));
+				userInfo.setUSERGRP_ID(Cookies.getCookie("USERGRP_ID"));
+				userInfo.setUSERGRP_ID_NAME(Cookies.getCookie("USERGRP_ID_NAME"));
+				userInfo.setCUR_STATUS(Cookies.getCookie("CUR_STATUS"));
+				userInfo.setCUR_STATUS_NAME(Cookies.getCookie("CUR_STATUS_NAME"));
+				userInfo.setDEFAULT_ORG_ID(Cookies.getCookie("DEFAULT_ORG_ID"));
+				userInfo.setDEFAULT_ORG_ID_NAME(Cookies.getCookie("DEFAULT_ORG_ID_NAME").replaceAll("\"", ""));
+				userInfo.setMODIFY_FLAG(Cookies.getCookie("MODIFY_FLAG"));
+				userInfo.setIP_ADDR(Cookies.getCookie("IP_ADDR"));
+			}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+		return userInfo;
+	}
+	
+	public static void setLoginUser(SYS_USER result) {
+		userInfo = result;
+	}
+	
+	public static LinkedHashMap<String, String> getClientProp() {
+		if(client_prop == null) {
+			Util.db_async.getClientProp(new AsyncCallback<LinkedHashMap<String, String>>() {
+
+				@Override
+				public void onFailure(Throwable caught) {
+					// TODO Auto-generated method stub
+					
+				}
+
+				@Override
+				public void onSuccess(LinkedHashMap<String, String> result) {
+					client_prop = result;
+				}	
+			});
+		}
+		return client_prop;
+	}
+	
+	/**
+	 * 获取数据字典内容（用作缓存，可在初始化下拉框数据时调用）
+	 * @author yuanlei
+	 * @return
+	 */
+	public static LinkedHashMap<String, LinkedHashMap<String, String>> getBizCodes() {
+		if(codeCache == null) {
+			Util.db_async.getBizCodes(new AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>>() {
+
+				@Override
+				public void onFailure(Throwable caught) {
+					;
+				}
+
+				@Override
+				public void onSuccess(LinkedHashMap<String, LinkedHashMap<String, String>> result) {
+					codeCache = result;
+				}
+				
+			});
+		}
+		return codeCache;
+	}
+	
+	/**
+	 * 获取状态内容（用作缓存，可在初始化下拉框数据时调用）
+	 * @author yuanlei
+	 * @return
+	 */
+	public static LinkedHashMap<String, LinkedHashMap<String, String>> getStatCodes() {
+		if(statCache == null) {
+			Util.db_async.getStatCodes(new AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>>() {
+
+				@Override
+				public void onFailure(Throwable caught) {
+					;
+				}
+
+				@Override
+				public void onSuccess(LinkedHashMap<String, LinkedHashMap<String, String>> result) {
+					statCache = result;
+				}
+				
+			});
+		}
+		return statCache;
+	}
+	
+	public static void setPageResult(final ListGrid table, final FormItem countItem, final FormItem sumItem) {
+		Util.db_async.getPageInfo(new AsyncCallback<ArrayList<String>>() {
+
+			@Override
+			public void onFailure(Throwable caught) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onSuccess(ArrayList<String> result) {
+				int count = Integer.parseInt(result.get(0));
+				int page = Integer.parseInt(result.get(1));
+				countItem.setValue(count);
+				sumItem.setValue(page);
+				table.setProperty("WHERE", result.get(2));
+			}
+		});
+		return;
+	}
+	
+	public static LinkedHashMap<String, SysParam> getSysParam(){
+		if(sys_param == null) {
+			Util.db_async.getSysParam(new AsyncCallback<LinkedHashMap<String,SysParam>>() {
+				
+				@Override
+				public void onSuccess(LinkedHashMap<String, SysParam> result) {
+					sys_param = result;
+					
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					
+				}
+			});
+		}
+		return sys_param;
+	}
+	public static String getParamString(String CONFIG_CODE) {
+		SysParam param = getSysParam().get(CONFIG_CODE);
+		if(param != null) {
+			return param.getVALUE_STRING();
+		}
+		return "";
+	}
+	public static String getParamInt(String CONFIG_CODE) {
+		SysParam param = getSysParam().get(CONFIG_CODE);
+		if(param != null) {
+			return param.getVALUE_INT();
+		}
+		return "";
+	}
+	//配置文件配置默认客户
+	public static HashMap<String, String> getDefCustomer(){
+		if(customerMap == null){
+			Util.db_async.getDftCustomer(new AsyncCallback<HashMap<String, String>>() {
+				
+				@Override
+				public void onSuccess(HashMap<String, String> result) {
+					customerMap = result;
+					
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					
+				}
+			});
+		}
+		if(customerMap == null){
+			customerMap = new HashMap<String, String>();
+		}
+		return customerMap;
+	}
+	/**
+	 * 获取用户权限菜单
+	 * @author fanglm 
+	 * @return
+	 */
+	public static LinkedHashMap<String, String> getUserPrivilege() {
+		if(privilegeMap == null) {
+			Util.db_async.getUserPrivilege(new AsyncCallback<LinkedHashMap<String,String>>() {
+				
+				@Override
+				public void onSuccess(LinkedHashMap<String, String> result) {
+					privilegeMap = result;		
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					
+				}
+			});
+		}
+		return privilegeMap;
+	}
+	
+	/**
+	 * 获取登录用户的客户权限
+	 * @author fanglm 2011-9-29
+	 * @return
+	
+	public static String getUserCustomer() {
+		if(user_customer.equals("SYSTEM")) {
+			Util.db_async.getUserCustomer(new AsyncCallback<String>() {
+				
+				@Override
+				public void onSuccess(String result) {
+					user_customer = result;
+					
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					// TODO Auto-generated method stub
+					
+				}
+			});
+		}
+		return user_customer;
+	} */
+	
+	public static LinkedHashMap<String, LinkedHashMap<String, String>> getListConfig() {
+		if(listMap == null) {
+			Util.db_async.getListCfg(new AsyncCallback<LinkedHashMap<String, LinkedHashMap<String, String>>>() {
+				
+				@Override
+				public void onSuccess(LinkedHashMap<String, LinkedHashMap<String, String>> result) {
+					listMap = result;		
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					
+				}
+			});
+		}
+		return listMap;
+	}
+	
+	public static void getUserOrg(final String userId, final AsyncCallback<LinkedHashMap<String, String>> callBack){
+		if(callBack == null) return;
+		if(userOrgCache.get(userId) == null){
+			Util.db_async.getUserOrg(userId, new AsyncCallback<HashMap<String,String>>() {
+				@Override
+				public void onSuccess(HashMap<String, String> result) {
+					LinkedHashMap<String, String> resultMap = new LinkedHashMap<String, String>();
+					resultMap.putAll(result);
+					if(userOrgCache.size() >= 1000){
+						userOrgCache.entrySet().iterator().remove();
+					}
+					userOrgCache.put(userId, resultMap);
+					callBack.onSuccess(resultMap);
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+				}
+			});
+		}else{
+			callBack.onSuccess(userOrgCache.get(userId));
+		}
+	}
+}

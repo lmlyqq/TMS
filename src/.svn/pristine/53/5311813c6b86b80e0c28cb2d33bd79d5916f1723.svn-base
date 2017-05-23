@@ -1,0 +1,437 @@
+package com.rd.client.view.system;
+
+import java.util.List;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.system.privilege.SavePrivilegeAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.SysPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.TreeTable;
+import com.rd.client.ds.system.RoleDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.data.fields.DataSourceTextField;
+import com.smartgwt.client.types.DSDataFormat;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.events.DrawEvent;
+import com.smartgwt.client.widgets.events.DrawHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ButtonItem;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.tab.events.TabSelectedEvent;
+import com.smartgwt.client.widgets.tab.events.TabSelectedHandler;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+import com.smartgwt.client.widgets.tree.TreeGrid;
+import com.smartgwt.client.widgets.tree.TreeGridField;
+
+/**
+ * 安全->权限管理
+ * @author fanglm
+ *
+ */
+@ClassForNameAble
+public class PrivilegeView extends SGForm implements PanelFactory {
+	public TreeGrid tree = new TreeGrid();
+	private TreeGrid treeGrid;
+	private TreeGrid treeGrid2;
+	private TreeGrid treeGrid3;
+	private TreeGrid treeGrid4;
+	private TreeGrid treeGrid5;
+	private TreeGrid treeGrid6;
+	private TreeGrid treeGrid7;
+	private TreeGrid treeGrid8;
+	private TreeGrid treeGrid9;
+	private DataSource menu;
+	private DataSource menu2;
+	private DataSource menu3;
+	private DataSource menu4;
+	private DataSource menu5;
+	private DataSource menu6;
+	private DataSource menu7;
+	private DataSource menu8;
+	private DataSource menu9;
+	//private String role_id;
+	public String func_id;
+	private ButtonItem searchButton;
+	
+	/*public PrivilegeView(String id) {
+	    super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+	    menu = getDataSource("P00");
+	    menu2 = getDataSource("P01");
+	    menu3 = getDataSource("P02");
+	    menu4 = getDataSource("P03");
+	    menu5 = getDataSource("P04");
+	    menu6 = getDataSource("P06");
+	    menu7 = getDataSource("P07");
+	    menu8 = getDataSource("P08");
+	    menu9 = getDataSource("P09");
+	    
+	    treeGrid =  createTreeGrid(menu);
+        treeGrid2 = createTreeGrid(menu2);
+        treeGrid3 = createTreeGrid(menu3);
+        treeGrid4 = createTreeGrid(menu4);
+        treeGrid5 = createTreeGrid(menu5);
+        treeGrid6 = createTreeGrid(menu6);
+        treeGrid7 = createTreeGrid(menu7);
+        treeGrid8 = createTreeGrid(menu8);
+        treeGrid9 = createTreeGrid(menu9);
+        
+		SGPanel detailForm = new SGPanel();
+	    detailForm.setHeight("5%");
+//	    detailForm.setTitleOrientation(TitleOrientation.LEFT);
+	    createForm(detailForm);
+        
+
+	        TabSet leftTabSet = new TabSet();  
+	        leftTabSet.setWidth("100%");   
+	        leftTabSet.setHeight("100%"); 
+	  
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P1)) {
+	        
+	    	Tab tab = new Tab(Util.TI18N.PRIV_MANAGER());
+	        tab.setPane(treeGrid);
+	        leftTabSet.addTab(tab);
+        }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P2)) {
+	        
+	    	Tab tab1 = new Tab(Util.TI18N.SYS_MANAGER());
+			tab1.setPane(treeGrid2);
+	        leftTabSet.addTab(tab1);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P3)) {
+	        
+	    	Tab tab2 = new Tab(Util.TI18N.BAS_MANAGER());
+	        tab2.setPane(treeGrid3);
+	        leftTabSet.addTab(tab2);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P4)) {
+	        
+	    	Tab tab3 = new Tab(Util.TI18N.BUSSINESS_MANAGER());
+	        tab3.setPane(treeGrid4);
+	        leftTabSet.addTab(tab3);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P5)) {
+	        
+	    	Tab tab4 = new Tab(Util.TI18N.ORDER_MANAGER());
+	        tab4.setPane(treeGrid5);
+	        leftTabSet.addTab(tab4);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P6)) {
+	        
+	    	Tab tab5 = new Tab(Util.TI18N.TRANS_MANAGER());
+	        tab5.setPane(treeGrid6);
+	        leftTabSet.addTab(tab5);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P7)) {
+	        
+	    	Tab tab6 = new Tab(Util.TI18N.INTER_MANAGER());
+	        tab6.setPane(treeGrid7);
+	        leftTabSet.addTab(tab6);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P8)) {
+	        
+	    	Tab tab7 = new Tab(Util.TI18N.REPORT_MANAGER());
+	        tab7.setPane(treeGrid8);
+	        leftTabSet.addTab(tab7);
+	    }
+	    
+	    if(isPrivilege(SysPrivRef.PRIVILEGE_P9)) {
+	        
+	    	Tab tab8 = new Tab(Util.TI18N.FINAN_MANAGER());
+	        tab8.setPane(treeGrid9);
+	        leftTabSet.addTab(tab8);
+	    }
+		
+        leftTabSet.addTabSelectedHandler(new TabSelectedHandler() {
+			
+			@Override
+			public void onTabSelected(TabSelectedEvent event) {
+				int num = event.getTabNum();
+				if(num == 0){
+					tree = treeGrid;
+					func_id="P00";
+				}
+				if(num == 1){
+					tree = treeGrid2;
+					func_id="P01";
+				}else if(num == 2){
+					tree = treeGrid3;
+					func_id="P02";
+				}else if(num == 3){
+					tree = treeGrid4;
+					func_id="P03";
+				}else if(num == 4){
+					func_id="P04";
+					tree = treeGrid5;
+				}else if(num == 5){
+					tree = treeGrid6;
+					func_id="P06";
+				}else if(num == 6){
+					tree = treeGrid7;
+					func_id="P07";
+				}else if(num == 7){
+					tree = treeGrid8;
+					func_id="P08";
+				}else if(num == 8){
+					tree = treeGrid9;
+					func_id="P09";
+				}
+				if(searchButton != null)
+					com.smartgwt.client.widgets.form.fields.events.ClickEvent.fire(searchButton, searchButton.getConfig());
+			}
+		});
+	    
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		main.addMember(detailForm);
+		main.addMember(leftTabSet);
+		
+		return main;
+	}
+	
+	private TreeGrid createTreeGrid(DataSource ds){
+		final TreeGrid treeGrid = new TreeTable(ds, "100%", "100%");
+		treeGrid.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		treeGrid.setShowSelectedStyle(false);
+		treeGrid.setShowPartialSelection(true);
+		//fanglm 2011-2-21 树形结构级联操作
+		treeGrid.setCascadeSelection(true);
+		treeGrid.setShowResizeBar(false);
+		treeGrid.addDrawHandler(new DrawHandler() {  
+        	public void onDraw(DrawEvent event) {
+        		treeGrid.fetchData(); 
+        	}  
+        }); 
+		
+		
+		TreeGridField funcField = new TreeGridField();
+        funcField.setName("FUNCTION_NAME");
+        
+        TreeGridField funcField1 = new TreeGridField();
+        funcField1.setName("FUNCTION_ID");
+        
+        treeGrid.setFields(funcField);
+        return treeGrid;
+	}
+
+	/**
+	 * 创建主信息布局
+	 * @author fanglm
+	 */
+	@Override
+	public void createForm(DynamicForm form) {
+//		final SGCombo ROLE_ID = new SGCombo("ROLE_ID", Util.TI18N.ROLE_ID());
+//		ROLE_ID.setTitleOrientation(TitleOrientation.LEFT);
+//		Util.initComboValue(ROLE_ID, "SYS_ROLE", "ID", "ROLE_NAME", " WHERE ENABLE_FLAG='Y'", "", "");
+		final TextItem ROLE_ID=new TextItem("ID");
+		ROLE_ID.setVisible(false);
+		final ComboBoxItem ROLE_ID_NAME=new ComboBoxItem("ROLE_ID_NAME",Util.TI18N.ROLE_ID());
+		ROLE_ID_NAME.setTitleOrientation(TitleOrientation.LEFT);
+		ROLE_ID_NAME.setWidth(120);
+		initSysRole(ROLE_ID_NAME,ROLE_ID);
+		
+		searchButton = new ButtonItem(Util.BI18N.SEARCH());
+		searchButton.setIcon(StaticRef.ICON_SEARCH);
+		searchButton.setAutoFit(true);
+		searchButton.setStartRow(false);
+		searchButton.setEndRow(false);
+		searchButton.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+			
+			@Override
+			public void onClick(com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+				if(ROLE_ID.getValue() != null){
+					if(!(tree.getData()==null || 
+							tree.getData().getAllNodes()==null 
+							|| tree.getData().getAllNodes().length == 0)){
+						//role_id = ROLE_ID.getValue().toString();
+						tabChange(tree);
+					}
+				}
+			}
+		});
+		ButtonItem saveButton = new ButtonItem(Util.BI18N.SAVE());
+		setButtonItemEnabled(SysPrivRef.PRIVILEGE_P0_01,saveButton,true);
+		saveButton.setIcon(StaticRef.ICON_SAVE);
+		saveButton.setAutoFit(true);
+		saveButton.setStartRow(false);
+		saveButton.addClickHandler(new SavePrivilegeAction(this,ROLE_ID));
+		
+//		form.setFixedColWidths(true);
+//		form.setItems(ROLE_ID,searchButton,saveButton);
+		form.setItems(ROLE_ID,ROLE_ID_NAME,searchButton,saveButton);
+		
+		
+	}
+	
+	public void tabChange(final TreeGrid treeGrid){
+		treeGrid.invalidateCache();
+		treeGrid.draw();
+		treeGrid.fetchData(treeGrid.getCriteria(), new DSCallback() {
+			
+			@Override
+			public void execute(DSResponse response, Object rawData, DSRequest request) {
+//				Util.db_async.getRolePrivilege(role_id, new AsyncCallback<HashMap<String,String>>() {
+//					
+//					@Override
+//					public void onSuccess(HashMap<String, String> result) {
+//						Tree troo = treeGrid.getTree();
+//						TreeNode[] node = troo.getAllNodes();
+//						for(int i = 0;i<node.length;i++){
+//							String org_id = node[i].getAttribute("FUNCTION_ID");
+//							if(ObjUtil.isNotNull(result.get(org_id))){
+//								treeGrid.selectRecord(node[i]);
+//							}else{
+//								treeGrid.deselectRecord(node[i]);
+//							}
+//						}
+//						treeGrid.getData().openAll();
+//						if(node.length > 0){
+//							treeGrid.getData().closeFolders(troo.getChildren(node[0]));
+//						}
+//						
+//					}
+//					
+//					@Override
+//					public void onFailure(Throwable caught) {
+//						
+//					}
+//				});
+			}
+		}); 
+		
+	}
+
+	/**
+	 * 获取权限数据
+	 * @author fanglm
+	 * @return
+	 */
+	static DataSource getDataSource(String function_id)
+	{
+		String url = "initDataServlet?ds_id=USER_FUNCTION&&FILTER_FLAG=Y&&FUNCTION_ID="+function_id;
+		DataSource dataSource = new DataSource();
+		dataSource.setDataFormat(DSDataFormat.JSON);
+		dataSource.setDataURL(url);
+		dataSource.setClientOnly(true);
+
+		// id
+		DataSourceTextField idField = new DataSourceTextField("FUNCTION_ID");
+		idField.setPrimaryKey(true);
+		idField.setRequired(true);
+		idField.setHidden(true);
+
+		// parentId
+		DataSourceTextField parentIdField = new DataSourceTextField("PARENT_FUNCTION_ID");
+		parentIdField.setForeignKey("FUNCTION.FUNCTION_ID");
+		parentIdField.setRequired(true);
+		parentIdField.setHidden(true);
+		parentIdField.setRootValue(0);
+
+		// name
+		DataSourceTextField nameField = new DataSourceTextField("FUNCTION_NAME");
+		nameField.setRequired(true);
+
+		dataSource.setFields(idField, nameField, parentIdField);
+
+		return dataSource;
+	}
+	
+	private void initSysRole(final ComboBoxItem role_id_name,final TextItem role_id){
+		DataSource ds2=RoleDS.getInstance("SYS_ROLE");
+		
+		ListGridField ID=new ListGridField("ID");
+		ID.setHidden(true);
+		ListGridField ROLE_ID=new ListGridField("ROLE_ID",Util.TI18N.ROLE_ID(),100);
+		ListGridField ROLE_NAME=new ListGridField("ROLE_NAME",Util.TI18N.ROLE_NAME(),100);
+		
+		role_id_name.setOptionDataSource(ds2);
+		role_id_name.setDisabled(false);
+		role_id_name.setShowDisabled(false);
+		role_id_name.setDisplayField("FULL_INDEX");
+		role_id_name.setPickListBaseStyle("myBoxedGridCell");
+		role_id_name.setPickListWidth(220);
+		role_id_name.setPickListFields(ROLE_ID,ROLE_NAME);
+		
+		Criteria criteria=new Criteria();
+		criteria.addCriteria("OP_FLAG","M");
+		criteria.addCriteria("ENABLE_FLAG","Y");
+		
+		role_id_name.setPickListCriteria(criteria);
+		
+		role_id_name.addChangedHandler(new ChangedHandler() {
+			@Override
+			public void onChanged(ChangedEvent event) {
+				Record record=role_id_name.getSelectedRecord();
+				if(record !=null){
+					role_id_name.setValue(record.getAttribute("ROLE_NAME"));
+					role_id.setValue(record.getAttribute("ID"));
+				}
+			}
+		});
+	}
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		
+	}
+
+	public void createListField(SGTable table, List<String> fldList, List<String> titList, List<String> widList, List<ListGridFieldType> typList) {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+	}
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		PrivilegeView view = new PrivilegeView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+}

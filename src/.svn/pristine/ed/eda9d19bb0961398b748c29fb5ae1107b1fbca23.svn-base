@@ -1,0 +1,585 @@
+package com.rd.client.view.tms;
+
+import com.google.gwt.core.client.JavaScriptObject;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.tms.LoadJobDS;
+import com.rd.client.ds.tms.ShpmHeadDS;
+import com.smartgwt.client.core.KeyIdentifier;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.data.RecordList;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.ShowContextMenuEvent;
+import com.smartgwt.client.widgets.events.ShowContextMenuHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.Layout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.menu.Menu;
+import com.smartgwt.client.widgets.menu.MenuItem;
+import com.smartgwt.client.widgets.menu.events.MenuItemClickEvent;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 运输管理--运输执行 --车辆登记
+ * @author wangjun
+ *
+ */
+public class VechRegistView extends SGForm{
+
+	private DataSource loadJobDS;
+	private DataSource shpmDS;
+	public SGTable loadLeftTable;
+	public SGTable loadRightTable;
+	private Window leftWin;
+	//private Window centerWin;  --yuanlei 2011-2-16
+	//private Window rightWin;
+	private Window searchWin;
+	private SGPanel searchForm;
+	public Record clickrecord;
+	private SectionStack section;
+	private SectionStack section2;
+	private boolean rmax = false;
+	public Record right_record;
+	public Record left_record;
+	public boolean crit_flag = true;
+	public DynamicForm form;
+	public IButton checkButton;
+	
+	public VechRegistView(String id) {
+		super(id);
+	}
+
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		initVerify();
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		loadJobDS = LoadJobDS.getInstance("V_TRANS_LOAD_JOB_","TRANS_LOAD_JOB");
+		shpmDS = ShpmHeadDS.getInstance("V_SHIPMENT_HEADER_VECH", "TRANS_SHIPMENT_HEADER");
+
+		// 主布局
+		HStack stack = new HStack();// 设置详细信息布局
+		stack.setWidth100();
+		stack.setHeight100();
+		
+		loadLeftTable= new SGTable(shpmDS, "100%", "100%");
+		loadRightTable= new SGTable(loadJobDS, "100%", "100%");
+		loadLeftTable.setShowFilterEditor(false);
+		loadRightTable.setShowFilterEditor(false);
+		loadRightTable.setCanEdit(false);
+		loadLeftTable.setCanEdit(false);
+		
+		createLeftFields(loadLeftTable);
+		createRightFields(loadRightTable);
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		
+		//创建Section
+		section = new SectionStack();
+		section.setWidth("50%");
+		section.setHeight("100%");
+		final SectionStackSection listItem = new SectionStackSection(Util.TI18N.TRANS_SHMP_LIST());//TRANS_SHMP_LIST 作业单列表
+	    listItem.setItems(loadLeftTable);
+	    listItem.setExpanded(true);
+	    listItem.setControls(addMaxBtn2(stack, "50%"), new SGPage(loadLeftTable, false).initPageBtn());
+	    section.addSection(listItem);
+		
+		section2 = new SectionStack();
+		section2.setWidth("50%");
+		section2.setHeight("100%");
+		final SectionStackSection listItem2 = new SectionStackSection(Util.TI18N.LOAD_VECH_LIST());//LOAD_VECH_LIST 提货车辆列表
+	    listItem2.setItems(loadRightTable);
+	    listItem2.setExpanded(true);
+	    listItem2.setControls(addMaxBtn(stack, "50%"), new SGPage(loadRightTable, false).initPageBtn());
+	    section2.addSection(listItem2);
+	    
+	    final Menu menu2 = new Menu();
+		menu2.setWidth(140);
+		if(isPrivilege(TrsPrivRef.VECHREG_P1_02)) {
+		    MenuItem SelectSame2 = new MenuItem("清除",StaticRef.ICON_CANCEL);
+		    SelectSame2.addClickHandler(new com.smartgwt.client.widgets.menu.events.ClickHandler() {
+				
+				@Override
+				public void onClick(MenuItemClickEvent event) {
+//					loadLeftTable.setData(new RecordList());
+//					ListGridRecord[] records = loadLeftTable.getSelection();
+// 					loadLeftTable.setData(records);
+					loadLeftTable.setData(new RecordList());
+//					Record record=loadLeftTable.getSelectedRecord();
+// 					RecordList recordList=loadLeftTable.getRecordList();
+// 					recordList.remove(record);
+// 					loadLeftTable.setData(recordList);
+ 					
+//					newRecords = (ListGridRecord[])cache_list.toArray(new ListGridRecord[cache_list.size()]);
+//					newRecords=recordList.toArray(new ListGridRecord());
+					
+ 					
+ 					
+				}
+			});
+		    SelectSame2.setKeyTitle("Ctrl+B");
+		    KeyIdentifier allSelectKey2 = new KeyIdentifier();
+		    allSelectKey2.setCtrlKey(true);
+		    allSelectKey2.setKeyName("B");
+		    menu2.setItems(SelectSame2);
+		    
+		    loadLeftTable.addShowContextMenuHandler(new ShowContextMenuHandler() {  //wangjun 2010-3-9
+				
+				@Override
+				public void onShowContextMenu(ShowContextMenuEvent event) {
+					menu2.showContextMenu();
+	                event.cancel();
+	                
+				}
+			});
+		}
+		
+		
+		final Menu menu = new Menu();
+		menu.setWidth(140);
+		if(isPrivilege(TrsPrivRef.VECHREG_P2_03)) {
+		    MenuItem SelectSame = new MenuItem("清除",StaticRef.ICON_CANCEL);
+		    SelectSame.addClickHandler(new com.smartgwt.client.widgets.menu.events.ClickHandler() {
+				
+				@Override
+				public void onClick(MenuItemClickEvent event) {
+					loadRightTable.setData(new RecordList());
+					checkButton.disable();
+					
+				}
+			});
+		    SelectSame.setKeyTitle("Ctrl+B");
+		    KeyIdentifier allSelectKey = new KeyIdentifier();
+		    allSelectKey.setCtrlKey(true);
+		    allSelectKey.setKeyName("B");
+		    menu.setItems(SelectSame);
+		    
+		    loadRightTable.addShowContextMenuHandler(new ShowContextMenuHandler() { //wangjun 2010-3-9
+				
+				@Override
+				public void onShowContextMenu(ShowContextMenuEvent event) {
+					menu.showContextMenu();
+	                event.cancel();
+				}
+			});
+		}
+	    
+	
+	    
+		main.setWidth100();
+        main.setHeight100();
+        main.addMember(toolStrip);
+
+        main.addMember(stack);
+        stack.addMember(section);
+        stack.addMember(section2);
+		return main;
+	}
+	protected IButton addMaxBtn2(final Layout stack, final String percent) {
+			
+			final IButton maxBtn = new IButton();
+			if(!rmax) {
+				
+				maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+				maxBtn.setPrompt(StaticRef.TO_MAX);
+			}
+			else {
+				maxBtn.setIcon(StaticRef.ICON_TOLEFT);
+				maxBtn.setPrompt(StaticRef.TO_NORMAL);
+			}
+			maxBtn.setTitle("");
+			maxBtn.setWidth(24);
+	        maxBtn.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+				public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+					JavaScriptObject jsobject = section.getSection(0).getAttributeAsJavaScriptObject("controls");
+					Canvas[] canvas = null;
+					DynamicForm pageForm = null;
+					if(jsobject != null) {
+						canvas = Canvas.convertToCanvasArray(jsobject);
+					}
+					else {
+						canvas = new Canvas[1];
+					}
+					for(int i = 0; i < canvas.length; i++) {
+						if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+							pageForm = (DynamicForm)canvas[i];
+							break;
+						}
+					}
+					if(!rmax) {
+						section.setWidth100();	
+						
+						maxBtn.setIcon(StaticRef.ICON_TOLEFT);
+						maxBtn.setPrompt(StaticRef.TO_NORMAL);
+						stack.getMember(1).setVisible(false);
+						if(pageForm != null) {
+							pageForm.setVisible(true);
+						}
+					}
+					else {
+						section.setWidth(percent);
+						maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+						maxBtn.setPrompt(StaticRef.TO_MAX);
+						stack.getMember(1).setVisible(true);
+						if(pageForm != null) {
+							pageForm.setVisible(false);
+						}
+					}
+					rmax = !rmax;
+					jsobject = null;
+					canvas = null;
+				}      	
+	        });   
+	        return maxBtn;
+	}
+	protected IButton addMaxBtn(final Layout stack, final String percent) {
+		
+		final IButton maxBtn = new IButton();
+		if(!rmax) {
+			maxBtn.setIcon(StaticRef.ICON_TOLEFT);
+			maxBtn.setPrompt(StaticRef.TO_MAX);
+		}
+		else {
+			maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+			maxBtn.setPrompt(StaticRef.TO_NORMAL);
+		}
+		maxBtn.setTitle("");
+		maxBtn.setWidth(24);
+        maxBtn.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				JavaScriptObject jsobject = section2.getSection(0).getAttributeAsJavaScriptObject("controls");
+				Canvas[] canvas = null;
+				DynamicForm pageForm = null;
+				if(jsobject != null) {
+					canvas = Canvas.convertToCanvasArray(jsobject);
+				}
+				else {
+					canvas = new Canvas[1];
+				}
+				for(int i = 0; i < canvas.length; i++) {
+					if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+						pageForm = (DynamicForm)canvas[i];
+						break;
+					}
+				}
+				if(!rmax) {
+					section2.setWidth100();	
+					maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+					maxBtn.setPrompt(StaticRef.TO_NORMAL);
+					stack.getMember(0).setVisible(false);
+					if(pageForm != null) {
+						pageForm.setVisible(true);
+					}
+				}
+				else {
+					section2.setWidth(percent);
+					maxBtn.setIcon(StaticRef.ICON_TOLEFT);
+					maxBtn.setPrompt(StaticRef.TO_MAX);
+					stack.getMember(0).setVisible(true);
+					if(pageForm != null) {
+						pageForm.setVisible(false);
+					}
+				}
+				rmax = !rmax;
+				jsobject = null;
+				canvas = null;
+			}      	
+        });   
+        return maxBtn;
+	}
+
+
+	private void createLeftFields(final SGTable loadLeftTable) {
+		/**
+		 * 作业单编号 
+		 * 提货仓库 状态 车牌号 车型 收货方 数量[箱] 供应商
+		 * 
+		 */
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO",Util.TI18N.LOAD_NO(),110);
+		ListGridField SHPM_NO = new ListGridField("SHPM_NO",Util.TI18N.SHPM_NO(),110);//
+//		LOAD_NO.setHidden(true);
+		ListGridField LOAD_ID = new ListGridField("LOAD_ID",Util.TI18N.LOAD_WHSE(),120);//
+		LOAD_ID.setHidden(true);
+		ListGridField LOAD_NAME = new ListGridField("LOAD_NAME",Util.TI18N.LOAD_WHSE(),120);//
+		ListGridField STATUS = new ListGridField("LOAD_STATUS_NAME",Util.TI18N.STATUS(),50);// 订单状态
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),60);
+		
+		ListGridField VEHICLE_TYP_ID = new ListGridField("VEHICLE_TYP_ID",Util.TI18N.VEHL_TYP(),60);//VEHICLE_TYP_ID
+		VEHICLE_TYP_ID.setHidden(true);
+		
+		ListGridField VEHICLE_TYP_NAME = new ListGridField("VEHICLE_TYP_NAME",Util.TI18N.VEHL_TYP(),60);//
+		
+		ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME",Util.TI18N.UNLOAD_NAME(),140);//
+		
+		ListGridField TOT_QNTY = new ListGridField("TOT_QNTY",Util.TI18N.QNTY_NUM(),70);//
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_NAME",Util.TI18N.SUPLR_NAME(),140);//
+		
+		loadLeftTable.setFields(LOAD_NO,SHPM_NO,LOAD_ID,LOAD_NAME,STATUS,PLATE_NO,VEHICLE_TYP_ID,VEHICLE_TYP_NAME,UNLOAD_NAME,TOT_QNTY,SUPLR_NAME);
+		
+		
+		loadLeftTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				clickrecord = event.getRecord();
+			}
+			
+		});
+		
+	}
+	
+	private void createRightFields(final SGTable loadRightTable) {
+		
+		/**
+		 *  提货车辆列表
+		 *  车牌号 提货仓库 排队号 提货状态  到库时间 开始装货时间 完成装货时间 离库时间
+		 */
+		
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),70);//
+		PLATE_NO.setTitle(ColorUtil.getRedTitle(Util.TI18N.PLATE_NO()));
+		ListGridField LOAD_WHSE = new ListGridField("LOAD_WHSE_NAME",Util.TI18N.LOAD_WHSE(),120);//
+		ListGridField QUEUE = new ListGridField("QUEUE_SEQ",Util.TI18N.QUEUE(),70);
+		ListGridField DRIVER = new ListGridField("DRIVER",Util.TI18N.DRIVER1(),60);//
+		ListGridField MOBILE = new ListGridField("MOBILE",Util.TI18N.MOBILE(),60);//
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO",Util.TI18N.CUSTOM_ODR_NO(),80);//
+
+		ListGridField LOAD_STATUS = new ListGridField("LOAD_STATUS",Util.TI18N.STATUS(),50);//
+		LOAD_STATUS.setHidden(true);
+		ListGridField LOAD_STATUS_NAME = new ListGridField("LOAD_STATUS_NAME",Util.TI18N.STATUS(),60);//
+		ListGridField ARRIVE_WHSE_TIME = new ListGridField("ARRIVE_WHSE_TIME",Util.TI18N.ARRIVE_WHSE_TIME(),120);
+
+		ListGridField START_LOAD_TIME = new ListGridField("START_LOAD_TIME",Util.TI18N.START_LOAD_TIME(),120);//
+		ListGridField END_LOAD_TIME = new ListGridField("END_LOAD_TIME","完成装货时间",120);//
+		ListGridField LEAVE_WHSE_TIME = new ListGridField("LEAVE_WHSE_TIME",Util.TI18N.LEAVE_WHSE_TIME(),120);//
+		
+		Util.initDateTime(loadRightTable,ARRIVE_WHSE_TIME);
+		Util.initDateTime(loadRightTable,START_LOAD_TIME);
+		Util.initDateTime(loadRightTable,END_LOAD_TIME);
+		Util.initDateTime(loadRightTable,LEAVE_WHSE_TIME);
+		
+//		ListGridField VAN_CIRCS=new ListGridField("VAN_CIRCS_NAME",Util.TI18N.VAN_CIRCS(),120);
+//		ListGridField VEHL_CIRCS=new ListGridField("VEHL_CIRCS_NAME",Util.TI18N.VEHL_CIRCS(),120);
+//		ListGridField TYRE_CIRCS=new ListGridField("TYRE_CIRCS_NAME",Util.TI18N.TYRE_CIRCS(),120);
+//		ListGridField SANIT_CIRCS=new ListGridField("SANIT_CIRCS_NAME",Util.TI18N.SANIT_CIRCS(),120);
+//		ListGridField DIRVER_CIRCS=new ListGridField("DIRVER_CIRCS_NAME",Util.TI18N.DIRVER_CIRCS(),120);
+		
+		loadRightTable.setFields(PLATE_NO,LOAD_WHSE,CUSTOM_ODR_NO,QUEUE,DRIVER,MOBILE,LOAD_STATUS,LOAD_STATUS_NAME,
+				ARRIVE_WHSE_TIME,START_LOAD_TIME,END_LOAD_TIME,LEAVE_WHSE_TIME);
+		
+		loadRightTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+                	right_record = loadRightTable.getSelectedRecord();	
+                	if(ObjUtil.isNotNull(right_record)){
+                		checkButton.enable();
+                	}
+			}
+		});
+		
+		
+	}
+
+
+	protected DynamicForm createSerchForm(SGPanel form) {
+		form.setDataSource(loadJobDS);
+		form.setAutoFetchData(false);
+		form.setAlign(Alignment.LEFT);
+		
+		SGText LOAD_NO=new SGText("LOAD_NO", Util.TI18N.LOAD_NO(),true);
+		SGCombo STATUS = new SGCombo("LOAD_STATUS","提货状态");
+		Util.initStatus(STATUS, StaticRef.TRANS_LOAD_JOB,StaticRef.TRANS_EXPECT);
+		
+		SGText ARRIVE_WHSE_TIME_FROM = new SGText("ARRIVE_WHSE_TIME_FROM",Util.TI18N.ARRIVE_WHSE_TIME()+" 从");
+		SGText ARRIVE_WHSE_TIME_END = new SGText("ARRIVE_WHSE_TIME_END","到");
+		
+		SGText PLATE_NO = new SGText("PLATE_NO", Util.TI18N.PLATE_NO(),true);
+		SGText CUSTOM_ODR_NO = new SGText("CUSTOM_ODR_NO", Util.TI18N.CUSTOM_ODR_NO());
+		Util.initDateTime(searchForm,ARRIVE_WHSE_TIME_FROM);
+		Util.initDateTime(searchForm,ARRIVE_WHSE_TIME_END);
+	 
+		SGText START_LOAD_TIME_FROM = new SGText("START_LOAD_TIME_FROM",Util.TI18N.START_LOAD_TIME()+" 从");
+		SGText START_LOAD_TIME_END = new SGText("START_LOAD_TIME_TO","到");
+		Util.initDateTime(searchForm,START_LOAD_TIME_FROM);
+		Util.initDateTime(searchForm,START_LOAD_TIME_END);
+		
+		form.setItems(LOAD_NO,STATUS ,START_LOAD_TIME_FROM,START_LOAD_TIME_END,PLATE_NO,CUSTOM_ODR_NO,ARRIVE_WHSE_TIME_FROM,ARRIVE_WHSE_TIME_END);
+		return form;
+	}
+
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+		}
+		//--yuanlei 2011-2-16
+		/*if (rightWin != null) {
+			rightWin.destroy();
+		}
+		if (centerWin != null) {
+			centerWin.destroy();
+		}*/
+		if (leftWin != null) {
+			leftWin.destroy();
+		}
+	}
+
+    private VechRegistView getThis(){
+    	return this;
+    }
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		IButton searchButton=createBtn(StaticRef.FETCH_BTN);//查询
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+			   if(searchWin==null){
+				   searchForm = new SGPanel();
+					searchWin = new VechSearchWin(loadJobDS, createSerchForm(searchForm),
+							section2.getSection(0),getThis()).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+//    	IButton arriveButton=createBtn(StaticRef.ARRIREG_BTN);//"到库登记" ,TrsPrivRef.VECHREG_P1_01
+		
+		IButton arriveButton=createUDFBtn(Util.BI18N.ARRIREG(),StaticRef.ICON_CANCEL ,TrsPrivRef.VECHREG_P1_01);//"到库登记" ,TrsPrivRef.VECHREG_P1_01
+		arriveButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				
+				if(loadLeftTable.getRecord(0) != null){
+					loadLeftTable.setData(new RecordList());
+					if(leftWin == null) {
+						leftWin = new VechLeftWin(shpmDS, null, section.getSection(0),loadLeftTable,loadRightTable).getViewPanel();
+					}else {
+						leftWin.show();
+					}
+//						SC.confirm("请确认是否登记下一车?", new BooleanCallback() {
+//						public void execute(Boolean value) {
+//		                    if (value != null && value) {
+//		                    	loadLeftTable.setData(new RecordList());
+//		                    	if(leftWin == null) {
+//		                    		leftWin = new VechLeftWin(shpmDS, form, section.getSection(0),loadLeftTable,loadRightTable).getViewPanel();
+//		                    	}
+//		                    	else {
+//		                    		leftWin.show();
+//		                    	}
+//		                    	
+//		                    }else{
+//		                    	if(leftWin == null) {
+//		                    		leftWin = new VechLeftWin(shpmDS, null, section.getSection(0),loadLeftTable,loadRightTable).getViewPanel();
+//		                    	}
+//		                    	else {
+//		                    		leftWin.show();
+//		                    	}
+//		                    }
+//		                }
+//	
+//		            });
+					
+				}else{
+					if(leftWin == null) {
+	//					leftWin = new VechLeftWin(shpmDS, null, section.getSection(0),loadLeftTable).getViewPanel();
+						leftWin = new VechLeftWin(shpmDS, null, section.getSection(0),loadLeftTable,loadRightTable).getViewPanel();
+					}
+					else {
+						leftWin.show();
+					}
+				
+				}
+			}
+        	
+        });
+		
+		checkButton=createUDFBtn(Util.BI18N.VEHLCHECK(),StaticRef.ICON_CANCEL ,TrsPrivRef.VECHREG_P2_01);//车辆检查
+		checkButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+//				if(centerWin == null) {  --yuanlei 2011-2-16
+//					centerWin =  
+						new VechCenterWin(loadJobDS, null, section.getSection(0),getThis()).getViewPanel();
+//				}
+//				else {
+//					centerWin.show();
+				//}
+			}
+        	
+        });
+		
+		
+		
+		IButton leaveButton=createUDFBtn(Util.BI18N.LEVAREG(),StaticRef.ICON_CONFIRM ,TrsPrivRef.VECHREG_P2_02);//离库登记  ,TrsPrivRef.VECHREG_P2_02
+		leaveButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+//				if(rightWin == null) {  --yuanlei 2011-2-16
+//					rightWin =
+				loadLeftTable.setData(new RecordList());
+				new VechRightWin(loadJobDS, null, section.getSection(0),getThis()).getViewPanel();
+//				}
+//				else {
+//					rightWin.show();
+				//}
+			}
+
+        	
+        });
+		
+		checkButton.disable();
+		toolStrip.setMembersMargin(5);
+		toolStrip.setMembers(searchButton,arriveButton,checkButton,leaveButton);
+		
+	}
+
+}

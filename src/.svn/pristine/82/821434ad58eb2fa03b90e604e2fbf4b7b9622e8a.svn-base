@@ -1,0 +1,315 @@
+package com.rd.client.view.tms;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.PanelFactory;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.tms.ApproveSetDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ButtonItem;
+import com.smartgwt.client.widgets.form.fields.SelectItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangeEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangeHandler;
+import com.smartgwt.client.widgets.form.fields.events.ClickEvent;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 运输管理--运输执行--单据审批设置
+ * @author Administrator
+ *
+ */
+@ClassForNameAble
+public class ApproveSetView extends SGForm implements PanelFactory {
+
+	private DataSource approveSetDS;
+	private SGTable table;
+	private HashMap<String, Boolean> map1;
+	
+	/*public ApproveSetView(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+		approveSetDS = ApproveSetDS.getInstance("SYS_APPROVE_SET");
+		
+		final DynamicForm form = new DynamicForm();
+		form.setWidth("65%");
+		form.setHeight(25);
+		form.setNumCols(12);
+		form.setPadding(4);
+		
+		SelectItem DOC_NAME = new SelectItem("DOC_NAME", ColorUtil.getRedTitle("审批单据"));
+		Util.initComboValue(DOC_NAME, "BAS_CODES", "CODE", "NAME_C", " PROP_CODE = 'APPROVE_DOC'", " SHOW_SEQ ASC", "");
+		DOC_NAME.setTitleOrientation(TitleOrientation.LEFT);
+		DOC_NAME.setColSpan(2);
+		DOC_NAME.addChangeHandler(new ChangeHandler() {
+
+			@Override
+			public void onChange(ChangeEvent event) {
+				if(form.getField("DOC_NAME")!=null){
+					table.discardAllEdits();
+					ListGridRecord[] rec = table.getRecords();
+					for(int i=0;i<rec.length;i++){
+						rec[i].setAttribute("USE_FLAG", false);
+						rec[i].setAttribute("ROLE_ID", "");
+					}
+					table.redraw();
+					Util.db_async.getRecord("SHOW_SEQ,ROLE_ID"," SYS_APPROVE_SET"," where DOC_NO='"+event.getValue()+"' order by SHOW_SEQ ", null, new AsyncCallback<ArrayList<HashMap<String, String>>>(){
+
+						@Override
+						public void onFailure(Throwable caught) {
+							
+						}
+
+						@Override
+						public void onSuccess(ArrayList<HashMap<String, String>> result) {
+							if(result != null && result.size() > 0){
+								ListGridRecord[] rec = table.getRecords();
+								for(int i=0;i<result.size();i++){
+									HashMap<String, String> map = result.get(i);
+									String key = "",value = "";
+									for(int j=0;j<map.size();j++){
+										key = map.get("SHOW_SEQ");
+										value = map.get("ROLE_ID");
+										for(int n=0;n<rec.length;n++){
+											if (key.equals(rec[n].getAttribute("SHOW_SEQ"))) {									
+												rec[n].setAttribute("USE_FLAG", true);
+												if(ObjUtil.isNotNull(value)) {
+													rec[n].setAttribute("ROLE_ID", value);
+												}
+												break;
+											}
+										}
+									}
+								}
+								table.redraw();
+							}
+						}
+					});
+				}
+			}
+		});
+		
+		ButtonItem saveButton = new ButtonItem("保存");
+		setButtonItemEnabled(TrsPrivRef.ApproveSet_P1_01,saveButton,true);
+		saveButton.setIcon(StaticRef.ICON_SAVE);
+		saveButton.setAutoFit(true);
+		saveButton.setStartRow(false);
+		saveButton.setEndRow(false);
+		saveButton.addClickHandler( new com.smartgwt.client.widgets.form.fields.events.ClickHandler(){
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(!ObjUtil.isNotNull(form.getItem("DOC_NAME").getValue())){
+					return;
+				}else{
+					int[] records = table.getAllEditRows();
+					ArrayList<String> sqlList = new ArrayList<String>();
+					StringBuffer sf = new StringBuffer();
+					sf.append("delete from SYS_APPROVE_SET where DOC_NO='"+form.getItem("DOC_NAME").getValue()+"'");
+					sqlList.add(sf.toString());
+					for(int i = 0; i < records.length; i++) {
+						Record rec = table.getEditedRecord(records[i]);
+						map1 = (HashMap<String, Boolean>)table.getEditValues(records[i]);
+						sf = new StringBuffer();
+						if(map1.get("USE_FLAG")){
+							sf.append("insert into SYS_APPROVE_SET(DOC_NO,DOC_NAME,SHOW_SEQ,ROLE_ID,ADDTIME,ADDWHO,EDITTIME,EDITWHO)");
+							sf.append(" values('"+form.getItem("DOC_NAME").getValue()+"',");
+							sf.append("'"+form.getItem("DOC_NAME").getDisplayValue()+"',");
+							if(rec.getAttribute("SHOW_SEQ")==null){
+								sf.append("'"+table.getSelection()[i].getAttribute("SHOW_SEQ")+"'");
+							}else{
+								sf.append("'"+rec.getAttribute("SHOW_SEQ")+"',");
+							}
+							if(rec.getAttribute("ROLE_ID")==null){
+								sf.append("'"+table.getSelection()[i].getAttribute("ROLE_ID")+"'");
+							}else{
+								sf.append("'"+rec.getAttribute("ROLE_ID")+"',");
+							}
+//							sf.append("'"+rec.getAttribute("SHOW_SEQ")+"',");
+//							sf.append("'"+rec.getAttribute("ROLE_ID")+"',");
+							sf.append("sysdate,");
+							sf.append("'"+LoginCache.getLoginUser().getUSER_ID()+"',");
+							sf.append("sysdate,");
+							sf.append("'"+LoginCache.getLoginUser().getUSER_ID()+"')");
+							sqlList.add(sf.toString());
+						}
+					}
+					Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+
+						@Override
+						public void onFailure(Throwable caught) {
+								
+						}
+						
+						@Override
+						public void onSuccess(String result) {
+							MSGUtil.showOperSuccess();
+							ListGridRecord[] rec = table.getRecords();
+							for(int i=0;i<rec.length;i++){
+								rec[i].setAttribute("USE_FLAG", false);
+								rec[i].setAttribute("ROLE_ID", "");
+							}
+							table.redraw();
+							Util.db_async.getRecord("SHOW_SEQ,ROLE_ID"," SYS_APPROVE_SET"," where DOC_NO='"+form.getItem("DOC_NAME").getValue()+"' order by SHOW_SEQ ", null, new AsyncCallback<ArrayList<HashMap<String, String>>>(){
+
+								@Override
+								public void onFailure(Throwable caught) {
+										
+								}
+
+								@Override
+								public void onSuccess(ArrayList<HashMap<String, String>> result) {
+									if(result != null && result.size() > 0){
+										ListGridRecord[] rec = table.getRecords();
+										for(int i=0;i<result.size();i++){
+											HashMap<String, String> map = result.get(i);
+											String key = "",value = "";
+											for(int j=0;j<map.size();j++){
+												key = map.get("SHOW_SEQ");
+												value = map.get("ROLE_ID");
+												for(int n=0;n<rec.length;n++){
+													if (key.equals(rec[n].getAttribute("SHOW_SEQ"))) {									
+														rec[n].setAttribute("USE_FLAG", true);
+														if(ObjUtil.isNotNull(value)) {
+															rec[n].setAttribute("ROLE_ID", value);
+														}
+														break;
+													}
+												}
+											}
+										}
+										table.redraw();
+									}
+								}
+							});
+						}
+					});
+				}
+			}
+		});
+		
+		ButtonItem canButton = new ButtonItem("取消");
+		setButtonItemEnabled(TrsPrivRef.ApproveSet_P1_02,canButton,true);
+		canButton.setIcon(StaticRef.ICON_CANCEL);
+		canButton.setAutoFit(true);
+		canButton.setStartRow(false);
+		canButton.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler(){
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(form.getItem("DOC_NAME").getValue()==null) return;
+				table.discardAllEdits();
+			}
+			
+		});
+		
+		form.setItems(DOC_NAME,saveButton,canButton);
+		
+		table=new SGTable(approveSetDS,"100%","100%");
+		table.setCanEdit(true);
+		table.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		table.setShowFilterEditor(false);
+		table.setShowRowNumbers(false);
+		createMainfo(table);
+		
+		main.addMember(form);
+		main.addMember(table);
+		initVerify();
+		
+		return main;
+	}
+	
+	private void createMainfo(SGTable table) {
+		ListGridField USE_FLAG = new ListGridField("USE_FLAG", "选择", 60);
+		USE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		ListGridField SHOW_SEQ = new ListGridField("SHOW_SEQ", "审批顺序", 80);
+		SHOW_SEQ.setCanEdit(false);
+		ListGridField SHOW_NODE = new ListGridField("SHOW_NODE", "审核节点", 80);
+		SHOW_NODE.setCanEdit(false);
+		ListGridField ROLE_ID = new ListGridField("ROLE_ID", "审批角色", 160);
+		Util.initComboValue(ROLE_ID, "SYS_ROLE", "ID","ROLE_NAME","","");
+		
+		ListGridRecord[] date = new ListGridRecord[]{
+			createRecord(false,"1","一级审批",""),
+			createRecord(false,"2","二级审批",""),
+			createRecord(false,"3","三级审批",""),
+			createRecord(false,"4","四级审批",""),
+			createRecord(false,"5","五级审批",""),
+			createRecord(false,"6","六级审批",""),
+		};
+		
+		table.setEditEvent(ListGridEditEvent.CLICK);
+		table.setFields(USE_FLAG,SHOW_SEQ,SHOW_NODE,ROLE_ID);
+		table.setRecords(date);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+	}
+	
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		
+	}
+
+	private ListGridRecord createRecord(boolean USE_FLAG, String SHOW_SEQ, String SHOW_NODE,String ROLE_ID){  
+        ListGridRecord record = new ListGridRecord(); 
+         record.setAttribute("USE_FLAG", USE_FLAG);
+         record.setAttribute("SHOW_SEQ", SHOW_SEQ);  
+         record.setAttribute("SHOW_NODE", SHOW_NODE);  
+         record.setAttribute("ROLE_ID", ROLE_ID);  
+         return record;  
+     }
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		ApproveSetView view = new ApproveSetView();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}  
+	
+}

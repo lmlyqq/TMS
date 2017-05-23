@@ -1,0 +1,160 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.tms.ClaimApproveDS;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+/**
+ * 运输管理->到货预约提醒
+ * @author lml
+ *
+ */
+public class AppointmentView extends SGForm{
+
+	 private DataSource ds;
+	 private SGTable table; 
+	 private SectionStack section;
+	 private Window searchWin = null;
+	 private DynamicForm searchForm;
+	 
+	 public AppointmentView(String id) {
+		 super(id);
+	 }
+	 
+	 public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+
+	    ToolStrip toolStrip = new ToolStrip();  //按钮布局
+	    toolStrip.setAlign(Alignment.LEFT);
+	    
+	    ds = ClaimApproveDS.getInstance("TRANS_CLAIM_APPROVE");
+		
+	
+		//STACK的左边列表
+		table = new SGTable(ds, "100%", "100%", true, true, false); 
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		section = new SectionStack();
+		final SectionStackSection listItem = new SectionStackSection("列表信息");
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+		listItem.setControls(new SGPage(table, true).initPageBtn());
+	    section.addSection(listItem);
+	    section.setWidth("100%");
+	   
+	    getConfigList();
+
+	
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		main.addMember(section);
+       
+		initVerify();
+        return main;
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+
+	 
+	private void getConfigList() {
+	
+        ListGridField LOAD_NO = new ListGridField("LOAD_NO", "调度单号", 150);
+        ListGridField STATUS_NAME = new ListGridField("STATUS_NAME", "状态", 80);
+        ListGridField TRANS_SRVC_ID = new ListGridField("TRANS_SRVC_ID", "运输服务", 100);
+        ListGridField END_AREA_NAME = new ListGridField("END_AREA_NAME", "终点区域", 150);
+        ListGridField EXEC_ORG_ID_NAME = new ListGridField("EXEC_ORG_ID_NAME", "承运商", 120);
+        ListGridField PLATE_NO = new ListGridField("PLATE_NO", "车牌号", 120);
+        ListGridField VEHICLE_TYP_ID = new ListGridField("VEHICLE_TYP_ID", "车辆类型", 120);
+        ListGridField DRIVER1 = new ListGridField("DRIVER1", "司机", 100);
+        ListGridField MOBILE1 = new ListGridField("MOBILE1", "手机号", 120);
+        ListGridField DEPART_TIME = new ListGridField("DEPART_TIME", "发运时间", 120);
+        ListGridField ESTIMATED_TIME = new ListGridField("ESTIMATED_TIME", ColorUtil.getRedTitle("预计到货时间"), 120);  
+        ListGridField REST_TIME = new ListGridField("REST_TIME",ColorUtil.getRedTitle("剩余时长"), 80);
+        ListGridField TOT_VOL = new ListGridField("TOT_VOL", "总体积", 120);
+        ListGridField TOT_GROSS_W = new ListGridField("TOT_GROSS_W", "总重量", 120);
+        ListGridField EXEC_ORG_ID = new ListGridField("EXEC_ORG_ID", "运作机构", 120);
+        
+        
+        table.setFields(LOAD_NO, STATUS_NAME,TRANS_SRVC_ID, END_AREA_NAME, EXEC_ORG_ID_NAME, PLATE_NO, VEHICLE_TYP_ID
+        		,DRIVER1,MOBILE1,DEPART_TIME,ESTIMATED_TIME,REST_TIME,TOT_VOL,TOT_GROSS_W,EXEC_ORG_ID);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+        toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.setAlign(Alignment.RIGHT);
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.PACK);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new DynamicForm();
+					searchWin = new SearchWin(ds,
+							createSerchForm(searchForm),section.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+	
+     
+
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton);
+	}
+	
+	public void initVerify() {
+		
+		
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+   
+        return form;
+	}
+	
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+	
+	}
+}

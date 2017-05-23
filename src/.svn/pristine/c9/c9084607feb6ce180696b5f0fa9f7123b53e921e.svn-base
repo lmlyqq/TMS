@@ -1,0 +1,123 @@
+package com.rd.client.action.settlement;
+
+import java.util.ArrayList;
+import java.util.Map;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.view.settlement.PayAdjBillView;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+public class SavePayAdjBillAction implements ClickHandler{
+	
+	private SGTable table = null;
+	private PayAdjBillView view;
+	
+	public SavePayAdjBillAction(SGTable p_table,PayAdjBillView view) {
+		this.table = p_table;
+		this.view = view;
+	}
+
+	@Override
+	public void onClick(ClickEvent event) {
+		
+		ArrayList<String> sqlList = new ArrayList<String>();
+		StringBuffer sf = new StringBuffer();
+		Record record=table.getSelectedRecord();
+		if(record!=null){
+			sf = new StringBuffer();
+			Map<String,String> map=table.getEditValues(record);
+			String ADJ_REASON=map.get("ADJ_REASON");
+			String NOTES=map.get("NOTES");
+			String ID=record.getAttribute("ID");
+			sf.append("update BILL_PAY_ADJUST set ");
+			if(ADJ_REASON!=null){
+				sf.append(" ADJ_REASON='"+ADJ_REASON+"',");
+			}else{
+				sf.append("ADJ_REASON is null,");
+			}
+			if(NOTES!=null){	
+				sf.append(" NOTES='"+NOTES+"'");
+			}else{
+				sf.append(" NOTES is null");
+			}
+			sf.append(" where ID='"+ID+"'");
+			sqlList.add(sf.toString());
+		}
+		
+		if(view.itemTable!=null){
+			ListGridRecord[] listRecord = view.itemTable.getRecords();
+			for(int i=0;i<listRecord.length;i++){
+				Record lstRecord=listRecord[i];
+				Map<String,String> map = view.itemTable.getEditValues(lstRecord);
+				String ADJ_REASON1 = map.get("ADJ_REASON1");
+				System.out.println(ADJ_REASON1);
+				String ADJ_REASON2 = map.get("ADJ_REASON2");
+				System.out.println(ADJ_REASON2);
+				String ID=listRecord[i].getAttribute("ID");
+				String ADJ_AMOUNT1=listRecord[i].getAttribute("ADJ_AMOUNT1");
+				String ADJ_AMOUNT2=listRecord[i].getAttribute("ADJ_AMOUNT2");
+				if(ADJ_AMOUNT1!=null&&ADJ_AMOUNT2!=null){
+					if(((!ADJ_AMOUNT1.equals("0"))&&(ADJ_REASON1==null||ADJ_REASON1.equals("")))||((!ADJ_AMOUNT2.equals("0"))&&(ADJ_REASON2==null||ADJ_REASON2.equals("")))){
+						sqlList=null;
+						SC.say("明细金额不为0，请补充原因");
+						return;
+					}else{
+						sf = new StringBuffer();
+						sf.append("update BILL_PAY_ADJDETAILS set ");
+						if(ADJ_REASON1!=null){
+							sf.append("ADJ_REASON1='"+ADJ_REASON1+"',");
+						}else{
+							sf.append("ADJ_REASON1 is null,");
+						}
+						if(ADJ_REASON2!=null){
+							sf.append("ADJ_REASON2='"+ADJ_REASON2+"'");
+						}else{
+							sf.append("ADJ_REASON2 is null");
+						}
+						sf.append(" where ID='"+ID+"'");
+						sqlList.add(sf.toString());
+					}	
+				}else{
+					sf = new StringBuffer();
+					sf.append("update BILL_PAY_ADJDETAILS set ");
+					if(ADJ_REASON1!=null){
+						sf.append("ADJ_REASON1='"+ADJ_REASON1+"',");
+					}else{
+						sf.append("ADJ_REASON1 is null,");
+					}
+					if(ADJ_REASON2!=null){
+						sf.append("ADJ_REASON2='"+ADJ_REASON2+"'");
+					}else{
+						sf.append("ADJ_REASON2 is null");
+					}
+					sf.append(" where ID='"+ID+"'");
+					sqlList.add(sf.toString());
+				}
+			}	
+		}
+		
+		Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+				
+			@Override
+			public void onFailure(Throwable caught) {
+				MSGUtil.sayError(caught.getMessage());
+			}
+
+			@Override
+			public void onSuccess(String result) {
+				table.collapseRecord(table.getSelectedRecord());
+				MSGUtil.showOperSuccess();
+			}
+				
+		});
+		
+	}
+
+}

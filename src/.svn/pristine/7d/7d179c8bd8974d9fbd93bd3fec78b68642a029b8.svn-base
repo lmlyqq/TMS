@@ -1,0 +1,278 @@
+package com.rd.client.win;
+
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.widgets.SGButtonItem;
+import com.rd.client.common.widgets.SGTable;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ContentsType;
+import com.smartgwt.client.types.Encoding;
+import com.smartgwt.client.types.FormMethod;
+import com.smartgwt.client.types.Side;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.HTMLPane;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.CloseClickHandler;
+import com.smartgwt.client.widgets.events.CloseClientEvent;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.StaticTextItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.UploadItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.form.fields.events.ClickEvent;
+import com.smartgwt.client.widgets.form.fields.events.ClickHandler;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 上传文件公用弹出窗口
+ * @author Lang
+ * 
+ */
+public class UploadFileWin extends Window {
+	
+	private int width = 540;
+	private int height = 180;
+	private String top = "38%";
+	private String left = "30%";
+	private String title = "请选择上传数据";
+	public Window window;
+	private IButton refresh;
+	private UploadItem pathItem;
+	private String tplName;
+	private String tabName;
+	private String SpName;
+	private SGTable table;
+	private DynamicForm pageForm;
+	/**
+	 * 
+	 * @param where 过滤条件 机构权限
+	 */
+	
+	public UploadFileWin(){
+		this((IButton)null);
+	}
+	public UploadFileWin(SGTable table){
+		this((IButton)null);
+		this.table=table;
+	}
+	public UploadFileWin(String tplName){
+		this((IButton)null, tplName);
+	}
+
+	public UploadFileWin(IButton refresh){
+		this(refresh, "tpl.xls");
+	};
+	
+	public UploadFileWin(IButton refresh, String tplName){
+		this.refresh = refresh;
+		this.tplName = tplName;
+	};
+	
+	public Window getViewPanel() {
+		return getViewPanel("ORDER");
+	}
+	public Window getViewPanel(String tableName,String Sp) {
+		this.tabName=tableName;
+		this.SpName=Sp;
+		return getViewPanel("ORDER");
+	}
+	public Window getViewPanel(String tableName,String Sp,SGTable table,DynamicForm form) {
+		this.tabName=tableName;
+		this.SpName=Sp;
+		this.table=table;
+		this.pageForm=form;
+		return getViewPanel("ORDER");
+	}
+	/**
+	 * 
+	 * @author Lang
+	 * @param typeName 导入类型
+	 * @return
+	 */
+	public Window getViewPanel(String typeName) {
+	
+		VLayout lay = new VLayout();
+		
+		final DynamicForm uploadForm = new DynamicForm();
+		uploadForm.setNumCols(4);
+        uploadForm.setAction("uploadServlet?purpose=inputExcel&typeName="+typeName+"&ADDWHO="+LoginCache.getLoginUser().getUSER_ID()+"&tabName="+tabName+"&SpName="+SpName);
+       // 
+        uploadForm.setEncoding(Encoding.MULTIPART);
+        uploadForm.setMethod(FormMethod.POST);
+        uploadForm.setTarget("foo");
+        uploadForm.setPadding(5);
+		
+        HTMLPane htmlPane = new HTMLPane();
+		htmlPane.setContentsType(ContentsType.PAGE);
+		htmlPane.setContents("<iframe name='foo' id='foo' style='position:absolute;width:0;height:0;border:0' onload='javascript:displayUploadResult(this)'></iframe>");
+		htmlPane.setWidth("1");
+		htmlPane.setHeight("1");
+		
+		final TextItem text = new TextItem("uploadTextItem");	//用于接收结果的字段
+		text.setWidth(10);
+		text.setHeight(10);
+		text.setCellStyle("display_none");
+		text.setShowTitle(false);
+		
+		pathItem = new UploadItem("filePath","路径");
+		pathItem.setWidth(320);
+		pathItem.setStartRow(true);
+		pathItem.setColSpan(2);
+		
+        SGButtonItem saveItem = new SGButtonItem("确定","确定");
+        saveItem.setIcon(StaticRef.ICON_CONFIRM);
+        saveItem.setWidth(60);
+        saveItem.setAutoFit(false);
+        saveItem.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				if(ObjUtil.isNotNull(pathItem.getValue())){
+					if(pathItem.getValue().toString().endsWith(".xls") || 
+							pathItem.getValue().toString().endsWith(".xlsx")){
+						uploadForm.submitForm();
+						CloseClientEvent.fire(window, window.getConfig());
+					}else{
+						MSGUtil.sayWarning("请选择Excel文件");
+					}
+				}else{
+					MSGUtil.sayWarning("请选择所要上传的文件");
+				}
+				
+			}
+		});
+        
+        text.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				showResult(event.getValue());
+				event.getItem().setValue("");
+			}
+		});
+        
+        SGButtonItem downTpl = new SGButtonItem("下载模板","下载模板");
+        downTpl.setIcon(StaticRef.ICON_IMPORT);
+        downTpl.setWidth(80);
+        downTpl.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				doDownTpl(tplName);
+			}
+		});
+	        
+	    uploadForm.setItems(pathItem,text);
+	    
+	    StaticTextItem notes = new StaticTextItem("notes", "说明");
+	    notes.setTitleOrientation(TitleOrientation.LEFT);
+	    notes.setValue(ColorUtil.getBlueTitle("修改模板后请将所有单元格格式都设为“文本格式”"));
+	    notes.setWrap(false);
+	    notes.setWrapTitle(false);
+	    
+	    lay.setWidth100();
+	    lay.setHeight100();
+        lay.addMember(uploadForm);
+        lay.addMember(htmlPane);
+        
+        TabSet leftTabSet = new TabSet();   
+        leftTabSet.setTabBarPosition(Side.TOP);
+        leftTabSet.setTabBarAlign(Side.LEFT);
+        leftTabSet.setWidth100();
+		Tab Tab1 = new Tab("导入");
+	    Tab1.setPane(lay);	 
+
+	    leftTabSet.addTab(Tab1); 
+        
+        ToolStrip toolStrip = new ToolStrip();//按钮布局
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(4);
+		//toolStrip.addSeparator();
+		toolStrip.setMembersMargin(5);
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.addFormItem(notes);
+        toolStrip.addFormItem(saveItem);
+        toolStrip.addFormItem(downTpl);
+		
+		window = new Window();
+		window.setTitle(title);
+		window.setLeft(left);
+		window.setTop(top);
+		window.setWidth(width);  
+		window.setHeight(height); 
+		window.addItem(leftTabSet);
+		window.addItem(toolStrip);
+		window.setShowCloseButton(true);
+		window.show();
+		window.addCloseClickHandler(new CloseClickHandler() {
+			
+			@Override
+			public void onCloseClick(CloseClientEvent event) {
+				pathItem.setValue("");
+				window.hide();
+			}
+		});
+		
+		return window;
+	}
+	
+	private void showResult(Object result){
+		CloseClientEvent.fire(window, window.getConfig());
+		if(result != null){
+			String resultCode = result.toString().substring(0, 2);
+			if("00".equals(resultCode)){
+				MSGUtil.sayInfo("导入成功, "+result.toString().substring(2));
+				//刷新列表
+				if(refresh != null){
+					com.smartgwt.client.widgets.events.ClickEvent.fire(refresh, refresh.getConfig());
+				}else{
+					table.discardAllEdits();
+					table.invalidateCache();
+					Criteria criteria=new Criteria();
+					criteria.addCriteria("OP_FLAG","M");
+					table.fetchData(criteria,new DSCallback() {
+						
+						@Override
+						public void execute(DSResponse response, Object rawData, DSRequest request) {
+							if(pageForm != null) {
+								pageForm.getField("CUR_PAGE").setValue("1");
+								LoginCache.setPageResult(table, pageForm.getField("TOTAL_COUNT"), pageForm.getField("SUM_PAGE"));
+							}
+							table.setSelectOnEdit(true);
+							
+							if(table.getRecords().length > 0){
+								table.selectRecord(0);
+							}
+						}
+					});
+				}
+				
+			}else if("01".equals(resultCode)){
+				MSGUtil.sayError("<div style='max-height:480px;overflow:auto;'>导入失败, "+result.toString().substring(2)+"</div>");
+			}else{
+				MSGUtil.sayError(result.toString());
+			}
+		}
+	}
+	
+	public native static void doDownTpl(String tplName)/*-{
+		var url = $wnd.location.href;
+		url = url.substring(0, url.lastIndexOf('/'));
+		url = url+'/excel/'+tplName;
+		$wnd.open(url);
+	}-*/;
+}

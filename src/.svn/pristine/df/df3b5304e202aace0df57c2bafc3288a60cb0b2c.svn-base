@@ -1,0 +1,456 @@
+package com.rd.client.common.util;
+/**
+ * 运输管理
+ * @author yuanlei
+ *
+ */
+public class TrsPrivRef {
+
+	//托运单管理
+	public final static String ODRCREATE = "P06_T011";
+	public final static String ODRCREATE_P1 = "P06_T011_P1";//托运单主信息
+	public final static String ODRCREATE_P1_01 = "P06_T011_P1_01";//新增
+	public final static String ODRCREATE_P1_02 = "P06_T011_P1_02";//保存
+	public final static String ODRCREATE_P1_03 = "P06_T011_P1_03";//删除
+	public final static String ODRCREATE_P1_04 = "P06_T011_P1_04";//取消
+	public final static String ODRCREATE_P1_05 = "P06_T011_P1_05";//确认
+	public final static String ODRCREATE_P1_06 = "P06_T011_P1_06";//取消确认 
+	public final static String ODRCREATE_P1_07 = "P06_T011_P1_07";//打印提货单 
+	public final static String ODRCREATE_P1_08 = "P06_T011_P1_08";//导出 
+	public final static String ODRCREATE_P1_09 = "P06_T011_P1_09";//右键权限
+	public final static String ODRCREATE_P1_11 = "P06_T011_P1_11";//打印电子运单
+	public final static String ODRCREATE_P1_12 = "P06_T011_P1_12";//打印子件标贴
+	public final static String ODRCREATE_P1_13 = "P06_T011_P1_13";//订单取消
+//	public final static String ODRCREATE_P1_14 = "P06_T011_P1_14";//复制新增
+	public final static String ODRCREATE_P1_15 = "P06_T011_P1_15";//生成订单组
+	
+	public final static String ODRCREATE_P1_09_01 = "P06_T011_P1_09_01";//汇总
+	public final static String ODRCREATE_P1_09_02 = "P06_T011_P1_09_02";//全选
+	public final static String ODRCREATE_P1_09_03 = "P06_T011_P1_09_03";//反选
+	public final static String ODRCREATE_P1_09_04 = "P06_T011_P1_09_04";//冻结
+	public final static String ODRCREATE_P1_09_05 = "P06_T011_P1_09_05";//取消冻结
+	public final static String ODRCREATE_P1_09_06 = "P06_T011_P1_09_06";//按区域排序
+	public final static String ODRCREATE_P1_09_07 = "P06_T011_P1_09_07";//多家配车
+	public final static String ODRCREATE_P1_09_08 = "P06_T011_P1_09_08";//明细导出
+	public final static String ODRCREATE_P1_09_09 = "P06_T011_P1_09_09";//导入
+	public final static String ODRCREATE_P1_09_10 = "P06_T011_P1_09_10";//加入调度单
+	public final static String ODRCREATE_P1_10 = "P06_T011_P1_10"; //计费 
+	
+	public final static String ODRCREATE_P2 = "P06_T011_P2";//货品明细
+	public final static String ODRCREATE_P2_01 = "P06_T011_P2_01";//新增明细
+	public final static String ODRCREATE_P2_02 = "P06_T011_P2_02";//保存明细
+	public final static String ODRCREATE_P2_03 = "P06_T011_P2_03";//删除明细
+	public final static String ODRCREATE_P2_04 = "P06_T011_P2_04";//取消明细
+	public final static String ODRCREATE_P3 = "P06_T011_P3";//运力需求
+	public final static String ODRCREATE_P4 = "P06_T011_P4";//费用明细
+	public final static String ODRCREATE_P5 = "P06_T011_P5";//投诉
+	public final static String ODRCREATE_P6 = "P06_T011_P6";//业务日志
+	public final static String ODRCREATE_P7 = "P06_T011_P7";//交易历史
+	public final static String ODRCREATE_P8 = "P06_T011_P8";//右键权限
+	public final static String ODRCREATE_P8_01 = "P06_T011_P8_01";//汇总
+	public final static String ODRCREATE_P8_02 = "P06_T011_P8_02";//全选
+	public final static String ODRCREATE_P8_03 = "P06_T011_P8_03";//反选
+	public final static String ODRCREATE_P8_04 = "P06_T011_P8_04";//冻结
+	public final static String ODRCREATE_P8_05 = "P06_T011_P8_05";//取消冻结
+	
+	public final static String ODRGROUP = "P06_T014";
+	public final static String MAKEGROUP_P1_01 = "P06_T014_P1_01";
+	
+	//托运单关闭
+	public final static String ORDERCLOSE = "P06_T015";		//托运单关闭页签
+	public final static String ORDERCLOSE_P1 = "P06_T015_P1";   //按钮功能
+	public final static String ORDERCLOSE_P1_01 = "P06_T015_P1_01";   //关闭
+	public final static String ORDERCLOSE_P1_02 = "P06_T015_P1_02"; 	//取消关闭
+	public final static String ORDERCLOSE_P1_03 = "P06_T015_P1_03"; 	//刷新
+	
+	//作业单管理
+	public final static String SHPMASSIGN = "P06_T023";
+	public final static String SHPMASSIGN_P1 = "P06_T023_P1";         //作运单信息     
+	public final static String SHPMASSIGN_P1_01 = "P06_T023_P1_01";   //派发
+	public final static String SHPMASSIGN_P1_02 = "P06_T023_P1_02";   //冻结
+	public final static String SHPMASSIGN_P1_03 = "P06_T023_P1_03";   //释放
+	public final static String SHPMASSIGN_P1_04 = "P06_T023_P1_04";   //关闭
+	public final static String SHPMASSIGN_P1_05 = "P06_T023_P1_05";   //全选
+	public final static String SHPMASSIGN_P1_06 = "P06_T023_P1_06";   //反选
+	public final static String SHPMASSIGN_P1_07 = "P06_T023_P1_07";   //汇总信息
+	public final static String SHPMASSIGN_P1_08 = "P06_T023_P1_08";   //右键权限
+	public final static String SHPMASSIGN_P1_09 = "P06_T023_P1_09";   //明细导出
+	public final static String SHPMASSIGN_P1_10 = "P06_T023_P1_10";   //拆分
+	public final static String SHPMASSIGN_P1_11 = "P06_T023_P1_11";   //取消拆分
+	public final static String SHPMASSIGN_P1_12 = "P06_T023_P1_12";   //行程拆分
+	public final static String SHPMASSIGN_P1_13 = "P06_T023_P1_13";   //取消行程拆分
+	public final static String SHPMASSIGN_P1_14 = "P06_T023_P1_14";   //yuanlei 2012-09-12 更新批号
+	public final static String SHPMASSIGN_P1_15 = "P06_T023_P1_15";   //yuanlei 2013-01-11 更新作业单的发货仓库
+	public final static String SHPMASSIGN_P1_16 = "P06_T023_P1_16";   //yuanlei 2013-07-19 订单合并
+	public final static String SHPMASSIGN_P1_17 = "P06_T023_P1_17";
+	public final static String SHPMASSIGN_P1_18 = "P06_T023_P1_18";
+	
+	//自提自送查询
+	public final static String SLFCON = "P06_T029";
+	public final static String SLFCON_P1 = "P06_T029_P1";         //作运单信息     
+	public final static String SLFCON_P1_01 = "P06_T029_P1_01";   //派发
+	public final static String SLFCON_P1_02 = "P06_T029_P1_02";   //冻结
+	public final static String SLFCON_P1_03 = "P06_T029_P1_03";   //释放
+	public final static String SLFCON_P1_04 = "P06_T029_P1_04";   //关闭
+	public final static String SLFCON_P1_05 = "P06_T029_P1_05";   //全选
+	public final static String SLFCON_P1_06 = "P06_T029_P1_06";   //反选
+	public final static String SLFCON_P1_07 = "P06_T029_P1_07";   //汇总信息
+	public final static String SLFCON_P1_08 = "P06_T029_P1_08";   //右键权限
+	public final static String SLFCON_P1_09 = "P06_T029_P1_09";   //明细导出
+	public final static String SLFCON_P1_10 = "P06_T029_P1_10";   //拆分
+	public final static String SLFCON_P1_11 = "P06_T029_P1_11";   //取消拆分
+	public final static String SLFCON_P1_12 = "P06_T029_P1_12";   //行程拆分
+	public final static String SLFCON_P1_13 = "P06_T029_P1_13";   //取消行程拆分
+	public final static String SLFCON_P1_14 = "P06_T029_P1_14";   //yuanlei 2012-09-12 更新批号
+	public final static String SLFCON_P1_15 = "P06_T029_P1_15";   //yuanlei 2013-01-11 更新作业单的发货仓库
+	public final static String SLFCON_P1_16 = "P06_T029_P1_16";   //yuanlei 2013-07-19 订单合并
+	public final static String SLFCON_P1_17 = "P06_T029_P1_17";
+	public final static String SLFCON_P1_18 = "P06_T029_P1_18";
+	
+	//作业单补码
+	public final static String SHPMCODE = "P06_T025";
+	public final static String SHPMCODE_P0 = "P06_T025_P1";         //作业单信息 
+	public final static String SHPMCODE_P0_01 = "P06_T025_P1_01";   //保存
+	public final static String SHPMCODE_P0_02 = "P06_T025_P1_02";   //标记异常
+	public final static String SHPMCODE_P0_03 = "P06_T025_P1_03";   //导出	
+	public final static String SHPMCODE_P1 = "P06_T025_P2";         //作业单信息 
+	public final static String SHPMCODE_P1_01 = "P06_T025_P2_01";   //保存
+	public final static String SHPMCODE_P1_02 = "P06_T025_P2_02";   //标记异常
+	public final static String SHPMCODE_P1_03 = "P06_T025_P2_03";   //导出
+	public final static String SHPMCODE_P2 = "P06_T025_P3";         //作业单信息 
+	public final static String SHPMCODE_P2_01 = "P06_T025_P3_01";   //保存
+	public final static String SHPMCODE_P2_02 = "P06_T025_P3_02";   //标记异常
+	public final static String SHPMCODE_P2_03 = "P06_T025_P3_03";   //导出
+	
+	//调度配载
+	public final static String DISPATCH = "P06_T024";
+	public final static String DISPATCH_P1 = "P06_T024_P1";         //待调页签
+	
+	public final static String DISPATCH_P1_1 = "P06_T024_P_1_1";         //车辆页签
+	
+	public final static String DISPATCH_P1_01 = "P06_T024_P1_01";   //查询作业单
+	public final static String DISPATCH_P1_02 = "P06_T024_P1_02";   //加入调度单
+	public final static String DISPATCH_P1_03 = "P06_T024_P1_03";   //刷新
+	public final static String DISPATCH_P1_04 = "P06_T024_P1_04";   //修改作业单信息
+	public final static String DISPATCH_P1_05 = "P06_T024_P1_05";   //拆分
+	public final static String DISPATCH_P1_06 = "P06_T024_P1_06";   //取消拆分
+	public final static String DISPATCH_P1_07 = "P06_T024_P1_07";   //行程拆分
+	public final static String DISPATCH_P1_08 = "P06_T024_P1_08";   //取消行程拆分
+	
+	public final static String DISPATCH_P2 = "P06_T024_P2";         //调度单信息页签
+	public final static String DISPATCH_P2_01 = "P06_T024_P2_01";   //查询调度单
+	public final static String DISPATCH_P2_02 = "P06_T024_P2_02";   //生成调度单
+	public final static String DISPATCH_P2_03 = "P06_T024_P2_03";   //保存
+	public final static String DISPATCH_P2_04 = "P06_T024_P2_04";   //删除
+	public final static String DISPATCH_P2_05 = "P06_T024_P2_05";   //取消
+	public final static String DISPATCH_P2_06 = "P06_T024_P2_06";   //发运确认
+	public final static String DISPATCH_P2_07 = "P06_T024_P2_07";   //取消发运
+	public final static String DISPATCH_P2_08 = "P06_T024_P2_08";   //打印提货单
+	public final static String DISPATCH_P2_09 = "P06_T024_P2_09";   //打印送货单
+	public final static String DISPATCH_P2_10 = "P06_T024_P2_10";   //导出
+	
+	public final static String DISPATCH_P2_11 = "P06_T024_P2_11";   //货品信息
+	public final static String DISPATCH_P2_12 = "P06_T024_P2_12";   //路线预览
+	public final static String DISPATCH_P2_13 = "P06_T024_P2_13";   //配车确认
+	public final static String DISPATCH_P2_14 = "P06_T024_P2_14";   //取消确认
+	public final static String DISPATCH_P2_15 = "P06_T024_P2_15";   //配车审核
+	public final static String DISPATCH_P2_16 = "P06_T024_P2_16";   //取消审核
+	
+	public final static String DISPATCH_P2_17 = "P06_T024_P2_17";   //移除作业单
+	public final static String DISPATCH_P2_18 = "P06_T024_P2_18";   //发运确认
+	public final static String DISPATCH_P2_19 = "P06_T024_P2_19";   //取消发运
+	public final static String DISPATCH_P2_20 = "P06_T024_P2_20";   //保存
+	public final static String DISPATCH_P2_21 = "P06_T024_P2_21";   //按发货数量拆分
+	public final static String DISPATCH_P2_22 = "P06_T024_P2_22";   //按毛重拆分	
+	public final static String DISPATCH_P2_23 = "P06_T024_P2_23";   //按体积拆分
+	
+	public final static String DISPATCH_P2_24 = "P06_T024_P2_24";   //右键权限（待调）
+	public final static String DISPATCH_P2_25 = "P06_T024_P2_25";   //待调导出
+	public final static String DISPATCH_P2_26 = "P06_T024_P2_26";   //明细导出
+	public final static String DISPATCH_P2_27 = "P06_T024_P2_27";   //右键权限（调度）
+	public final static String DISPATCH_P2_28 = "P06_T024_P2_28";   //右键权限（调度明细）
+	public final static String DISPATCH_P2_29 = "P06_T024_P2_29";   //相关作业单信息
+	public final static String DISPATCH_P2_30 = "P06_T024_P2_30";   //刷新(调度刷新)
+	public final static String DISPATCH_P2_31 = "P06_T024_P2_31";   //打回
+	public final static String DISPATCH_P2_32 = "P06_T024_P2_32";   //剔除未发货
+	public final static String DISPATCH_P2_33 = "P06_T024_P2_33";   //打印提货单(待调右键)
+//	public final static String DISPATCH_P2_34 = "P06_T024_P2_34";   //保存
+	
+	public final static String DISPATCH_P3 = "P06_T024_P3";         //费用明细
+	public final static String DISPATCH_P4 = "P06_T024_P4";         //业务日志
+	
+	//车辆登记
+	public final static String VECHREG ="P06_T031";
+	public final static String VECHREG_P1 = "P06_T031_P1";         //作业单信息
+	public final static String VECHREG_P1_01 = "P06_T031_P1_01";   //到库登记
+	public final static String VECHREG_P1_02 = "P06_T031_P1_02";   //清除
+	public final static String VECHREG_P2 = "P06_T031_P2";         //提货车辆信息
+	public final static String VECHREG_P2_01 = "P06_T031_P2_01";   //车辆检查
+	public final static String VECHREG_P2_02 = "P06_T031_P2_02";   //离库登记
+	public final static String VECHREG_P2_03 = "P06_T031_P2_03";   //清除
+	
+	
+	//提货装车
+	public final static String LOADJOB ="P06_T032";
+	public final static String LOADJOB_P2="P06_T032_P2";			//作业单信息
+	public final static String LOADJOB_P4="P06_T032_P4";			//调度单信息
+	public final static String LOADJOB_P0 ="P06_T032";             //按钮功能
+	public final static String LOADJOB_P0_01 ="P06_T032_P1_01";    //刷新
+	public final static String LOADJOB_P0_02 ="P06_T032_P1_02";    //开始装货
+	public final static String LOADJOB_P0_03 ="P06_T032_P1_03";    //完成装货
+	public final static String TRACK_P3 = "P06_T032_P3"; //提货装车
+	public final static String TRACK_P3_01 = "P06_T032_P3_01";
+	public final static String TRACK_P3_02 = "P06_T032_P3_02";
+	public final static String TRACK_P0_08 = "P06_T032_P2_08"; //移除作业单
+	
+	
+	//运输跟踪
+	public final static String TRACK = "P06_T033";
+	public final static String TRACK_P0_01 = "P06_T033_P0_01"; //导出作业单
+	public final static String TRACK_P0_07="P06_T033_P0_07";	//导出调度单
+	public final static String TRACK_P0_02 = "P06_T033_P0_02"; //全选同一车
+	public final static String TRACK_P1 = "P06_T033_P1"; //在途跟踪
+	public final static String TRACK_P1_01 = "P06_T033_P1_01"; //新增
+	public final static String TRACK_P1_02 = "P06_T033_P1_02"; //保存
+	public final static String TRACK_P1_03 = "P06_T033_P1_03"; //取消
+	public final static String TRACK_P2 = "P06_T033_P2"; //到货签收
+	public final static String TRACK_P2_01 = "P06_T033_P2_01"; //确认签收
+	public final static String TRACK_P2_02 = "P06_T033_P2_02"; //取消签收
+	public final static String TRACK_P2_03 = "P06_T033_P2_03"; //拒收
+	public final static String TRACK_P2_04 = "P06_T033_P2_04"; //标记签收（预签收）
+	public final static String TRACK_P2_05 = "P06_T033_P2_05"; //取消拒收
+	public final static String TRACK_P0_03 = "P06_T033_P0_03"; //车辆定位
+//	public final static String TRACK_P0_04 = "P06_T033_P0_04"; //入分拣库
+//	public final static String TRACK_P0_05 = "P06_T033_P0_05"; //出分拣库
+	public final static String TRACK_P0_06 = "P06_T033_P0_06"; //GPS车辆定位
+	public final static String TRACK_P1_04 = "P06_T033_P1_04"; //yuanlei 2012-09-24 导出 
+	public final static String TRACK_P7 = "P06_T033_P7";  //货损货差
+	public final static String TRACK_P7_01 = "P06_T033_P7_01";  //新增
+	public final static String TRACK_P7_02 = "P06_T033_P7_02";  //保存
+	public final static String TRACK_P7_03 = "P06_T033_P7_03";  //删除
+	public final static String TRACK_P7_04 = "P06_T033_P7_04";  //取消
+	public final static String TRACK_P7_05 = "P06_T033_P7_05";  //确认
+	public final static String TRACK_P4="P06_T033_P4";  //作业单
+	public final static String TRACK_P5="P06_T033_P5";  //调度单
+	public final static String TRACK_P6="P06_T033_P6";	//卸货地
+	
+	//托运单回单
+	public final static String ODRCLAIM = "P06_T035";
+	public final static String ODRCLAIM_P0 = "P06_T035_P0"; //按钮功能
+	public final static String ODRCLAIM_P0_01 = "P06_T035_P0_01";//确认回单	
+	public final static String ODRCLAIM_P0_02 = "P06_T035_P0_02";//取消回单
+	public final static String ODRCLAIM_P0_03 = "P06_T035_P0_03";//取消
+	public final static String ODRCLAIM_P0_04 = "P06_T035_P0_04";//导出
+	public final static String ODRCLAIM_P0_05 = "P06_T035_P0_05";//上传影像
+//	public final static String ODRCLAIM_P0_06 = "P06_T035_P0_06";//全选
+//	public final static String ODRCLAIM_P0_07 = "P06_T035_P0_07";//反选
+	public final static String ODRCLAIM_P0_08 = "P06_T035_P0_08";//调度相关信息
+	public final static String ODRCLAIM_P0_09 = "P06_T035_P0_09";//全选同一车
+	public final static String ODRCLAIM_P0_10 = "P06_T035_P0_10";//右键权限
+	public final static String ODRCLAIM_P1 = "P06_T035_P1"; //货损货差按钮
+	public final static String ODRCLAIM_P1_01 = "P06_T035_P1_01";//新增
+	public final static String ODRCLAIM_P1_02 = "P06_T035_P1_02";//保存
+	public final static String ODRCLAIM_P1_03 = "P06_T035_P1_03";//删除
+	public final static String ODRCLAIM_P1_04 = "P06_T035_P1_04";//取消
+	
+	//作业单回单
+	public final static String SHPMCLAIM = "P06_T034";
+	public final static String SHPMCLAIM_P0 = "P06_T034_P0"; //按钮功能
+	public final static String SHPMCLAIM_P0_01 = "P06_T034_P0_01";//确认回单	
+	public final static String SHPMCLAIM_P0_02 = "P06_T034_P0_02";//取消回单
+	public final static String SHPMCLAIM_P0_03 = "P06_T034_P0_03";//取消
+	public final static String SHPMCLAIM_P0_04 = "P06_T034_P0_04";//导出
+	public final static String SHPMCLAIM_P0_05 = "P06_T034_P0_05";//上传影像
+	public final static String SHPMCLAIM_P0_06 = "P06_T034_P0_06";//全选同一车
+	public final static String SHPMCLAIM_P0_07 = "P06_T034_P0_07";//设备回收
+	public final static String SHPMCLAIM_P1 = "P06_T034_P1"; //货损货差按钮
+	public final static String SHPMCLAIM_P1_01 = "P06_T034_P1_01";//新增
+	public final static String SHPMCLAIM_P1_02 = "P06_T034_P1_02";//保存
+	public final static String SHPMCLAIM_P1_03 = "P06_T034_P1_03";//删除
+	public final static String SHPMCLAIM_P1_04 = "P06_T034_P1_04";//取消
+	
+	//大屏幕显示
+	public final static String SCREENVIEW = "P06_T036";
+	public final static String SCREENVIEW_P1 = "P06_T036_P1"; //正在装货
+	public final static String SCREENVIEW_P2 = "P06_T036_P2"; //等待装货
+
+	//预警信息
+	public final static String WARNVIEW = "P06_T04";
+	public final static String WARNVIEW_P1 = "P06_T04_P1"; //应发未发
+	public final static String WARNVIEW_P2 = "P06_T04_P2"; //应到未到
+	public final static String WARNVIEW_P3 = "P06_T04_P3"; //应回未回
+	
+	//配载结果查询
+	public final static String DISPATCHRESULT = "P06_T09";
+	public final static String DISPATCHRESULT_P1 = "P06_T09_P1";  //删除
+	
+	//可用车辆上报
+	public final static String VEHREPORT_P1 = "P06_T08_P1";       //已报车型车辆
+	public final static String VEHREPORT_P1_01 = "P06_T08_P1_01"; //审核
+	public final static String VEHREPORT_P1_02 = "P06_T08_P1_02"; //取消审核
+	public final static String VEHREPORT_P2 = "P06_T08_P2";       //可用车型
+	public final static String VEHREPORT_P2_01 = "P06_T08_P2_01"; //新增            
+	public final static String VEHREPORT_P2_02 = "P06_T08_P2_02"; //保存     
+	public final static String VEHREPORT_P2_03 = "P06_T08_P2_03"; //删除     
+	public final static String VEHREPORT_P2_04 = "P06_T08_P2_04"; //取消     
+	public final static String VEHREPORT_P2_05 = "P06_T08_P2_05"; //上报     
+	public final static String VEHREPORT_P2_06 = "P06_T08_P2_06"; //取消上报    
+	public final static String VEHREPORT_P3 = "P06_T08_P3";    //可用车辆
+	public final static String VEHREPORT_P3_01 = "P06_T08_P3_01"; //新增            
+	public final static String VEHREPORT_P3_02 = "P06_T08_P3_02"; //保存     
+	public final static String VEHREPORT_P3_03 = "P06_T08_P3_03"; //删除     
+	public final static String VEHREPORT_P3_04 = "P06_T08_P3_04"; //取消     
+	public final static String VEHREPORT_P3_05 = "P06_T08_P3_05"; //上报     
+	public final static String VEHREPORT_P3_06 = "P06_T08_P3_06"; //取消上报   
+	
+	//原始订单
+	public final static String SFODRCREATE = "P06_T010";
+	public final static String SFODRCREATE_P1 = "P06_T010_P1";//托运单主信息
+	public final static String SFODRCREATE_P1_01 = "P06_T010_P1_01";//新增
+	public final static String SFODRCREATE_P1_02 = "P06_T010_P1_02";//保存
+	public final static String SFODRCREATE_P1_03 = "P06_T010_P1_03";//删除
+	public final static String SFODRCREATE_P1_04 = "P06_T010_P1_04";//取消
+	public final static String SFODRCREATE_P1_05 = "P06_T010_P1_05";//确认
+	public final static String SFODRCREATE_P1_08 = "P06_T010_P1_08";//导出 
+	public final static String SFODRCREATE_P1_09 = "P06_T010_P1_09";//右键权限
+	public final static String SFODRCREATE_P1_09_01 = "P06_T010_P1_09_01";//全选
+	public final static String SFODRCREATE_P1_09_02 = "P06_T010_P1_09_02";//反选
+	public final static String SFODRCREATE_P1_09_03 = "P06_T010_P1_09_03";//导入
+	public final static String SFODRCREATE_P1_10 = "P06_T010_P1_10";//审核
+	public final static String SFODRCREATE_P1_12 = "P06_T010_P1_11";//退回
+	
+	public final static String SFODRCREATE_P2 = "P06_T010_P2";//货品明细
+	public final static String SFODRCREATE_P2_01 = "P06_T010_P2_01";//新增明细
+	public final static String SFODRCREATE_P2_02 = "P06_T010_P2_02";//保存明细
+	public final static String SFODRCREATE_P2_03 = "P06_T010_P2_03";//删除明细
+	public final static String SFODRCREATE_P2_04 = "P06_T010_P2_04";//取消明细
+	public final static String SFODRCREATE_P3 = "P06_T010_P3";//业务日志
+	
+	//配载视图
+	public final static String DISVIEW="P06_T026";  //配载视图
+	public final static String DISVIEW_P1="P06_T026_P1"; //作业单
+	public final static String DISVIEW_P1_01="P06_T026_P1_01"; //生成直送调度单
+	
+	//客户结算单
+	public final static String RECVIEW="P08_R052";   //客户结算单
+	public final static String RECVIEW_P1="P08_R052_P1";  //按钮功能
+	public final static String RECVIEW_P1_01="P08_R052_P1_01";  //导出
+	
+	//供应商结算单
+	public final static String RSUP="P08_R053";  //供应商结算单
+	public final static String RSUP_P1="P08_R053_P1";//按钮功能
+	public final static String RSUP_P1_01="P08_R053_P1_01"; //导出
+	
+	public final static String FEEWARN="P09_F027";      //费用警告信息
+	public final static String FEEWARN_P1="P09_F027_P1";   //按钮功能
+	public final static String FEEWARN_P1_01="P09_F027_P1_01";//计费
+	
+	// 转仓功能
+	public final static String CHGRDC = "P06_T028";
+	public final static String CHGRDC_P1 = "P06_T028_P1";    //作业单页签
+	public final static String CHGRDC_P2 = "P06_T028_P2";    //转仓单页签
+	public final static String CHGRDC_P3 = "P06_T028_P3";    //按钮功能
+	public final static String CHGRDC_P3_01 = "P06_T028_P3_01";    //查询作业单
+	public final static String CHGRDC_P3_02 = "P06_T028_P3_02";    //查询转仓单
+	public final static String CHGRDC_P3_03 = "P06_T028_P3_03";    //生成转仓单
+	public final static String CHGRDC_P3_04 = "P06_T028_P3_04";    //删除
+	public final static String CHGRDC_P3_05 = "P06_T028_P3_05";    //转仓完成
+	public final static String CHGRDC_P3_06 = "P06_T028_P3_06";    //转仓
+	public final static String CHGRDC_P3_07 = "P06_T028_P3_07";		//取消转仓
+	public final static String CHGRDC_P3_08 = "P06_T028_P3_08";		//取消完成
+	
+	//车辆调度
+	public final static String Vehicle="P06_T027";
+	public final static String Vehicle_P1="P06_T027_P1";            //按钮功能
+	public final static String Vehicle_P1_01 = "P06_T027_P1_01";    //查询调度单
+	public final static String Vehicle_P1_02 = "P06_T027_P1_02";    //生出调度单
+	public final static String Vehicle_P1_03 = "P06_T027_P1_03";    //保存
+	public final static String Vehicle_P1_04 = "P06_T027_P1_04";    //删除
+	public final static String Vehicle_P1_05 = "P06_T027_P1_05";	//取消
+	public final static String Vehicle_P1_06 = "P06_T027_P1_06";	//发送确认
+	public final static String Vehicle_P1_07 = "P06_T027_P1_07";    //取消发送
+	public final static String Vehicle_P2="P06_T027_P2";            //待调作业单
+	public final static String Vehicle_P2_01="P06_T027_P2_01";		//加入调度单
+	public final static String Vehicle_P2_02="P06_T027_P2_02";		//刷新
+	public final static String Vehicle_P2_03="P06_T027_P2_03";		//保存
+	public final static String Vehicle_P2_04="P06_T027_P2_04";		//打印提货单
+	public final static String Vehicle_P2_05="P06_T027_P2_05";		//分量拆分
+	public final static String Vehicle_P2_06="P06_T027_P2_06";		//取消拆分
+	public final static String Vehicle_P2_07="P06_T027_P2_07";		//行程拆分
+	public final static String Vehicle_P2_08="P06_T027_P2_08";		//取消行程拆分
+	public final static String Vehicle_P2_09="P06_T027_P2_09";		//导出
+	public final static String Vehicle_P2_10="P06_T027_P2_10";		//明细导出
+	public final static String Vehicle_P3="P06_T027_P3";            //列表信息
+	public final static String Vehicle_P3_01="P06_T027_P3_01";		//打印调度单
+	public final static String Vehicle_P3_02="P06_T027_P3_02";		//打印调度单
+	public final static String Vehicle_P3_03="P06_T027_P3_03";		//相关作业单信息
+	public final static String Vehicle_P3_04="P06_T027_P3_04";		//货品信息
+	public final static String Vehicle_P3_05="P06_T027_P3_05";		//配车审核
+	public final static String Vehicle_P3_06="P06_T027_P3_06";		//取消审核
+	public final static String Vehicle_P3_07="P06_T027_P3_07";		//刷新
+	public final static String Vehicle_P3_08="P06_T027_P3_08";		//导出
+	
+	//设备回收管理
+	public final static String GpsReclaim="P06_T037";
+	public final static String GpsReclaim_P1="P06_T037_P1";    //按钮
+	public final static String GpsReclaim_P1_01 = "P06_T037_P1_01";    //确认
+	public final static String GpsReclaim_P1_02 = "P06_T037_P1_02";    //取消
+	
+	//换车记录
+	public final static String ChangeRecord="P06_T039";
+	public final static String ChangeRecord_P0="P06_T039_P0";    //按钮
+	public final static String ChangeRecord_P0_01 = "P06_T039_P0_01"; //确认
+	
+	public final static String ChangeRecord_P0_02 = "P06_T039_P0_02";   //右键权限
+	public final static String ChangeRecord_P0_03 = "P06_T039_P0_03";   //拆分
+	public final static String ChangeRecord_P0_04 = "P06_T039_P0_04";   //取消拆分
+	
+	
+	
+	//货损赔偿单审批
+	public final static String ClaimApprove="P06_T052";
+	public final static String ClaimApprove_P0="P06_T052_P0";  
+	public final static String ClaimApprove_P0_01 = "PP06_T052_P0_01";    //审批
+	public final static String ClaimApprove_P1="P06_T052_P1";         //主信息
+	public final static String ClaimApprove_P2="P06_T052_P2";         //图片信息
+	public final static String ClaimApprove_P0_03 = "P06_T052_P0_03";//保存
+	public final static String ClaimApprove_P0_04 = "P06_T052_P0_04";//取消
+	public final static String ClaimApprove_P0_05 = "P06_T052_P0_05";//审核
+	
+	//年审管理
+	public final static String VehVerify="P06_T049";
+	public final static String VehVerify_P1="P06_T049_P1";
+	public final static String VehVerify_P1_01="P06_T049_P1_01";      //新增
+	public final static String VehVerify_P1_02="P06_T049_P1_02";      //保存
+	public final static String VehVerify_P1_03="P06_T049_P1_03";	  //删除
+	public final static String VehVerify_P1_04="P06_T049_P1_04";	  //取消
+	public final static String VehVerify_P1_05="P06_T049_P1_05";	  //导出
+	public final static String VehVerify_P1_06="P06_T049_P1_06";	  //导入
+	
+	public final static String BillAdjust="P06_T053";
+	public final static String BillAdjust_P0="P06_T053_P0";
+	public final static String BillAdjust_P0_01="P06_T053_P0_01";	  //生成请款单
+	public final static String BillAdjust_P0_02="P06_T053_P0_02";	  //导出
+	
+	//请款单管理
+	public final static String BillPayment="P06_T056";
+	public final static String BillPayment_P1_01="P06_T056_P1_01";    //核销
+	public final static String BillPayment_P1_02="P06_T056_P1_02";    //导出
+	public final static String BillPayment_P1_03="P06_T056_P1_03";    //审批
+	
+	//应收调整单
+	public final static String BillRecjust="P06_T057";
+	public final static String BillRecjust_P1_01="P06_T057_P1_01";    //生成发票
+	public final static String BillRecjust_P1_02="P06_T057_P1_02";	  //导出
+	
+	//车辆检查
+	public final static String VehicleCheck="P06_T030";
+	public final static String VehicleCheck_P1_01="P06_T030_P1_01";   //确认
+	public final static String VehicleCheck_P1_02="P06_T030_P1_02";	  //取消确认
+	
+	//单据审批设置
+	public final static String ApproveSet="P06_T051";
+	public final static String ApproveSet_P1_01="P06_T051_P1_01";   //保存
+	public final static String ApproveSet_P1_02="P06_T051_P1_02";	//取消
+	
+}

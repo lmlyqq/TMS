@@ -1,0 +1,226 @@
+package com.rd.client.view.report;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.report.R_TRUNK_MOVEMENT_PREVIEW_DS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+/**
+ * 报表管理-->作业报表-->干线流向货量预览表
+ * @author wangjun
+ *
+ */
+@ClassForNameAble
+public class R_TrunkMovementPreview extends SGForm implements PanelFactory {
+	public SGTable table;
+	private DataSource ds;
+	private SectionStack section;
+	private Window searchWin;
+	private SGPanel searchForm;
+	
+	/*public R_TrunkMovementPreview(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		//页面总布局
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+		ds = R_TRUNK_MOVEMENT_PREVIEW_DS.getInstance("R_TRUNK_MOVEMENT_VIEW","R_TRUNK_MOVEMENT_VIEW");
+		
+		//放置按钮
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		//设置详细信息布局
+		HStack stack = new HStack();
+		stack.setWidth100();
+		stack.setHeight100();
+		
+		table= new SGTable(ds, "100%", "100%");
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		createFields(table);
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		section = new SectionStack();
+		section.setWidth("100%");
+		section.setHeight("100%");
+		
+		final SectionStackSection listItem = new SectionStackSection("列表信息");//
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+	    listItem.setControls(new SGPage(table, true).initPageBtn());
+	    section.addSection(listItem);
+		
+	    main.setWidth100();
+        main.setHeight100();
+        main.addMember(toolStrip);
+		main.addMember(section);
+        
+		return main;
+	}
+
+	private void createFields(SGTable table) {
+
+		ListGridField REFENENCE1 = new ListGridField("REFENENCE1",Util.TI18N.REFENENCE1(),120);
+		ListGridField LOAD_AREA_NAME2 = new ListGridField("LOAD_AREA_NAME2","起运地",100);
+		//ListGridField TRANS_SRVC_ID_NAME = new ListGridField("TRANS_SRVC_ID_NAME",Util.TI18N.TRANS_SRVC_ID(),90);	
+		ListGridField UNLOAD_AREA_NAME2 = new ListGridField("UNLOAD_AREA_NAME2","目的地",100);	
+		ListGridField ADDTIME = new ListGridField("ADDTIME",Util.TI18N.ADDTIME(),140);	
+		ListGridField TOT_QNTY = new ListGridField("TOT_QNTY", Util.TI18N.LD_QNTY(),100);//订单数量  
+		ListGridField TOT_GROSS_W = new ListGridField("TOT_GROSS_W",Util.TI18N.LD_GWGT(),100);
+		ListGridField TOT_VOL = new ListGridField("TOT_VOL",Util.TI18N.LD_VOL(),100);
+		ListGridField STATUS_NAME = new ListGridField("STATUS_NAME",Util.TI18N.STATUS(),90);
+		
+		table.setFields(REFENENCE1,LOAD_AREA_NAME2,UNLOAD_AREA_NAME2,ADDTIME,TOT_QNTY,TOT_GROSS_W,TOT_VOL,STATUS_NAME);
+		
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		IButton searchButton=createBtn(StaticRef.FETCH_BTN);//查询
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+			   if(searchWin==null){
+				   searchForm=new SGPanel();
+					searchWin = new SearchWin( ds, createSerchForm(searchForm),
+							section.getSection(0)).getViewPanel();
+					searchWin.setWidth(600);
+					searchWin.setHeight(320);
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+		 //导出按钮
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN);
+        expButton.addClickHandler(new ExportAction(table, "addtime desc"));
+        
+		toolStrip.setMembersMargin(5);
+		toolStrip.setMembers(searchButton,expButton);
+		
+	}
+
+	protected DynamicForm createSerchForm(SGPanel form) {
+		
+		/**
+		 * 	客户        客户单号	订单时间 从   到       发运时间 从   到     执行机构   订单类型	供应商	 未完成订单	销售未提    确认未配车    配车未发货	发货未到				
+		 * 
+		 */
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setWidth100();
+		form.setCellPadding(2);
+		
+		SGDateTime ORD_ADDTIME_FROM = new SGDateTime("ADDTIME", Util.TI18N.ORD_ADDTIME_FROM());//创建时间 从  到  
+		SGDateTime ORD_ADDTIME_TO = new SGDateTime("ADDTIME_TO", "到");
+		
+		ComboBoxItem START_AREA=new ComboBoxItem("START_AREA_NAME",Util.TI18N.START_AREA_ID_NAME());//起点区域
+		START_AREA.setTitleOrientation(TitleOrientation.TOP);
+		TextItem START_AREA_ID=new TextItem("START_AREA_ID", Util.TI18N.START_ARAE());
+		START_AREA_ID.setVisible(false);
+		Util.initArea(START_AREA, START_AREA_ID);
+		
+		ComboBoxItem END_AREA=new ComboBoxItem("END_AREA_NAME",Util.TI18N.END_AREA_ID_NAME());//
+		END_AREA.setTitleOrientation(TitleOrientation.TOP);
+		TextItem END_AREA_ID=new TextItem("END_AREA_ID", Util.TI18N.END_AREA());
+		END_AREA_ID.setVisible(false);
+		Util.initArea(END_AREA, END_AREA_ID);
+		
+		SGCombo STATUS_FROM = new SGCombo("STATUS_FROM",Util.TI18N.SHPM_STSTUS());
+		Util.initStatus(STATUS_FROM, StaticRef.SHPMNO_STAT, "20");
+		SGCombo STATUS_TO = new SGCombo("STATUS_TO","到");//wangjun 2011-4-6
+		Util.initStatus(STATUS_TO, StaticRef.SHPMNO_STAT, "20");
+		
+//		TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID");
+//		EXEC_ORG_ID.setVisible(false);
+//		SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+//		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "50%");
+//		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+//		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+//		
+//		SGCheck C_ORG_FLAG=new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());// 包含下级机构	
+//		C_ORG_FLAG.setColSpan(2);
+//		C_ORG_FLAG.setValue(true);
+		
+		form.setItems(ORD_ADDTIME_FROM,ORD_ADDTIME_TO,START_AREA,START_AREA_ID, END_AREA,END_AREA_ID,STATUS_FROM,STATUS_TO);
+		
+		return form;
+		
+	}
+
+	
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+
+	@Override
+	public void initVerify() {
+
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id) {
+		setFUNCID(id);
+		R_TrunkMovementPreview view = new R_TrunkMovementPreview();
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+	
+}

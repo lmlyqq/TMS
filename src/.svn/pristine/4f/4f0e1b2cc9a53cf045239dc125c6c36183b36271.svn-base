@@ -1,0 +1,136 @@
+package com.rd.client.view.tms.graphdispatch;
+
+import com.rd.client.common.widgets.SGForm;
+//import com.smartgwt.client.types.Cursor;
+//import com.smartgwt.client.types.Overflow;
+import com.smartgwt.client.widgets.Canvas;
+//import com.smartgwt.client.widgets.drawing.DrawPane;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+public class GraphDispatchView extends SGForm {
+
+	public GraphDispatchView(String id) {
+		super(id);
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		HLayout main = new HLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+		VLayout left = new VLayout();
+		left.setWidth(48);
+		left.setHeight100();
+
+		VLayout right = new VLayout();
+		right.setWidth(900);
+		right.setHeight100();
+		//right.addMember(createXYPath());
+		
+		main.addMember(left);
+		main.addMember(right);
+		
+		return main;
+	}
+
+	@Override
+	public void initVerify() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		// TODO Auto-generated method stub
+	}
+	
+	/*private DrawPane createXYPath() {
+		DrawPane drawPane = new DrawPane();   
+		drawPane.setHeight(600);   
+        drawPane.setWidth(900);   
+        drawPane.setLeft(50);   
+        drawPane.setShowEdges(true);   
+        drawPane.setEdgeSize(2);   
+        drawPane.setBackgroundColor("papayawhip");   
+        drawPane.setOverflow(Overflow.HIDDEN);   
+        drawPane.setCursor(Cursor.AUTO);   
+           
+        drawPane.addDrawHandler(new DrawHandler() {
+
+			@Override
+			public void onDraw(DrawEvent event) {
+				// TODO Auto-generated method stub
+				DrawPane drawPane = (DrawPane) event.getSource();   
+				
+				//小时
+				DrawLabel hourLabel = new DrawLabel();   
+				hourLabel.setDrawPane(drawPane);   
+				hourLabel.setLeft(350);   
+				hourLabel.setTop(175);   
+				hourLabel.setContents("小时");   
+				hourLabel.draw();   
+                   
+                DrawPath hourPath = new DrawPath();   
+                hourPath.setDrawPane(drawPane);   
+                hourPath.setPoints(   
+                        new Point(10,50),   
+                        new Point(60,50),   
+                        new Point(110,50),   
+                        new Point(160,50),   
+                        new Point(210,50),   
+                        new Point(260,50),   
+                        new Point(310,50),   
+                        new Point(360,50),   
+                        new Point(410,50),   
+                        new Point(970,50)   
+                );   
+                hourPath.draw();   
+                
+                //分钟
+                DrawLabel minuteLabel = new DrawLabel();   
+                minuteLabel.setDrawPane(drawPane);   
+                minuteLabel.setLeft(350);   
+                minuteLabel.setTop(175);   
+                minuteLabel.setContents("分钟");   
+                minuteLabel.draw();   
+                   
+                DrawPath minutePath = new DrawPath();   
+                minutePath.setDrawPane(drawPane);   
+                minutePath.setPoints(   
+                        new Point(10,50),   
+                        new Point(60,50),   
+                        new Point(110,50),   
+                        new Point(160,50),   
+                        new Point(210,50),   
+                        new Point(260,50),   
+                        new Point(310,50),   
+                        new Point(360,50),   
+                        new Point(410,50),   
+                        new Point(970,50)   
+                );   
+                minutePath.draw();   
+			}
+        	;
+        });
+        drawPane.draw();
+        return drawPane;
+	}*/
+}

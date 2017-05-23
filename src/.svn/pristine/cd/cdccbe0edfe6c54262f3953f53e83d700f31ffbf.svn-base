@@ -1,0 +1,477 @@
+package com.rd.client.view.base;
+
+
+import java.util.HashMap;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.base.gpseq.DeleteDetailAction;
+import com.rd.client.action.tms.changerecord.CancelChangeAction;
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.NewOilFormAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.action.SaveOilFormAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.BasQilCardDetailDs;
+import com.rd.client.ds.base.BasQilCardDs;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 基础资料->温控设备
+ * @author lml
+ *
+ */
+@ClassForNameAble
+public class BasOilCardView extends SGForm implements PanelFactory {
+
+	private DataSource mainDS;
+	private DataSource downDS;
+	public SGTable gpsTable;
+	public SGTable downTable;
+	private SectionStack stack;
+	private Window searchWin;
+	private SGPanel searchForm;
+	public ValuesManager vm;
+	public SGPanel panel;
+	public Record record;
+	private SectionStackSection areaListItem;
+	private SectionStack areaSectionStack;
+	private HashMap<String,String> detail_ck_map ;
+	private HashMap<String,String> detail_map;
+	public HashMap<String, IButton> add_detail_map;
+	public HashMap<String, IButton> save_detail_map;
+	public HashMap<String, IButton> del_detail_map;	
+	public TabSet bottomTabSet;	
+
+	
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+	/*public BasTempEqView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		vm = new ValuesManager();
+		VLayout main = new VLayout();
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		ToolStrip downtoolStrip = new ToolStrip();
+		downtoolStrip.setAlign(Alignment.RIGHT);
+		detail_ck_map = new HashMap<String,String>();
+		detail_map = new HashMap<String,String>();
+		
+		mainDS = BasQilCardDs.getInstance("BAS_OILCARD", "BAS_OILCARD");
+		gpsTable = new SGTable(mainDS, "100%", "35%", false, true, false);
+		gpsTable.setCanEdit(true);
+		gpsTable.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+
+		
+		downDS = BasQilCardDetailDs.getInstance("BAS_OILCARD_RECHARGE","BAS_OILCARD_RECHARGE");
+		downTable = new SGTable(downDS,"70%","100%",false,true,false);
+		downTable.setCanEdit(false);	
+
+		//下边布局
+		bottomTabSet = new TabSet();
+		bottomTabSet.setWidth100();
+		bottomTabSet.setHeight("65%");	
+		
+		
+		if(isPrivilege(BasPrivRef.TEMPEQ_P1)) {
+
+			Tab tab1 = new Tab("使用记录");//使用记录
+			HLayout recivelay = new HLayout();
+			createTableList(downTable);
+			downtoolStrip.setHeight("10%");
+			recivelay.addMember(downTable);
+			recivelay.addMember(createdownInfo());
+			areaSectionStack=new SectionStack();
+			tab1.setPane(areaSectionStack);
+			areaListItem = new SectionStackSection("使用记录");
+			areaListItem.setItems(recivelay);
+			areaListItem.setExpanded(true);
+			areaListItem.setControls(new SGPage(downTable,true).initPageBtn());
+			areaSectionStack.addSection(areaListItem);
+			bottomTabSet.addTab(tab1);
+
+		}
+		
+
+	
+		
+		downTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				Record selectedRecord  = event.getRecord();
+                vm.editRecord(selectedRecord);            
+			}
+		});
+		
+		
+		gpsTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(del_map, true);
+				enableOrDisables(add_detail_map, true);
+				enableOrDisables(del_detail_map, false);
+				enableOrDisables(save_detail_map, false);
+			}
+		});
+		
+		gpsTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+		        enableOrDisables(save_map, true);
+			}
+		});
+		
+		downTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_detail_map, false);
+				enableOrDisables(del_detail_map, false);
+		        enableOrDisables(save_detail_map, true);
+				
+			}
+		});
+		
+		downTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(add_detail_map, true);
+				enableOrDisables(del_detail_map,true);
+				 enableOrDisables(save_detail_map, false);
+				
+			}
+		});
+		
+		getConfigList();
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		Canvas[] widget = new Canvas[1];
+		String[] title = new String[1];
+		widget[0] = gpsTable;
+		title[0] = "油卡记录";
+		
+		stack = createUDFSection(widget, title, true, true);
+		
+		main.setWidth100();
+	    main.setHeight100();
+	    main.addMember(toolStrip);
+		main.addMember(stack);
+		main.addMember(bottomTabSet);
+			
+		initVerify();
+		
+		gpsTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				
+				System.out.println("1111");
+				
+				Record selectedRecord  = event.getRecord();
+				
+				Criteria findValues = new Criteria();
+          
+				findValues.addCriteria("OILCARD", selectedRecord.getAttribute("ID"));
+				
+				findValues.addCriteria("OP_FLAG", "M");
+          
+				downTable.fetchData(findValues);
+			
+			}
+
+		});	
+		
+		return main;
+	}	
+	
+	//充值记录  菜单
+	private Canvas createdownInfo() {
+		
+		VLayout hLayout =new VLayout();
+		hLayout.setHeight("100%");
+		hLayout.setWidth("31%");
+		panel = new SGPanel();
+		vm.addMember(panel);
+		vm.setDataSource(downDS);
+		
+		ToolStrip downtoolStrip = new ToolStrip();
+		downtoolStrip.setAlign(Alignment.RIGHT);
+		
+		//创建按钮布局
+		createBtnWidget(downtoolStrip);
+		
+		//回收记录/右边布局
+		SGText RECHAGE_TIME = new SGText("RECHAGE_TIME", "充值时间");
+		Util.initDateTime(panel, RECHAGE_TIME);
+		SGText RECHARGER = new SGText("RECHARGER", "充值人");
+		
+		SGText RECHARGE_AMOUNT = new SGText("RECHARGE_AMOUNT", "充值金额",true);
+		SGText PRE_AMOUNT = new SGText("PRE_AMOUNT", "上期充值");
+		
+		panel.setItems(RECHAGE_TIME,RECHARGER,RECHARGE_AMOUNT,PRE_AMOUNT);
+		panel.setHeight("41%");
+		downBtnWidget(downtoolStrip);
+	
+		hLayout.addMember(panel);
+		hLayout.addMember(downtoolStrip);
+
+		return hLayout;
+	}
+	
+	
+	//上边 按钮
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.TEMPEQ);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(mainDS, createSerchForm(searchForm), stack.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();	
+				}
+			}
+        });
+        
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.TEMPEQ_P0_01);
+        newButton.addClickHandler(new NewAction(gpsTable,cache_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.TEMPEQ_P0_02);
+        saveButton.addClickHandler(new SaveAction(gpsTable, check_map, this, 1));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.TEMPEQ_P0_03);
+        delButton.addClickHandler(new DeleteAction(gpsTable,downTable,"ID", this));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.TEMPEQ_P0_04);
+        canButton.addClickHandler(new CancelAction(gpsTable,this));
+        
+        add_map.put(BasPrivRef.TEMPEQ_P0_01, newButton);
+        del_map.put(BasPrivRef.TEMPEQ_P0_03, delButton);
+        save_map.put(BasPrivRef.TEMPEQ_P0_02, saveButton);
+        save_map.put(BasPrivRef.TEMPEQ_P0_04, canButton);
+        
+        enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton);
+        
+	}
+	
+	//从表 按钮
+	public void downBtnWidget(ToolStrip downtoolStrip) {
+		downtoolStrip.setWidth("100%");
+		downtoolStrip.setHeight("30");
+		downtoolStrip.setPadding(2);
+		downtoolStrip.setSeparatorSize(12);
+		downtoolStrip.addSeparator();
+		downtoolStrip.setMembersMargin(4);
+		downtoolStrip.setAlign(Alignment.LEFT);
+	        
+		IButton newSubButton = createUDFBtn(Util.BI18N.NEW(), StaticRef.ICON_NEW,BasPrivRef.TEMPEQ_P0_05);
+        newSubButton.addClickHandler(new NewOilFormAction(panel, detail_map, this));
+
+        IButton savSubButton = createUDFBtn(Util.BI18N.SAVE(), StaticRef.ICON_SAVE,BasPrivRef.TEMPEQ_P0_06);
+        savSubButton.addClickHandler(new SaveOilFormAction(downTable,gpsTable,panel,detail_ck_map,this));
+       
+        IButton delSubButton = createUDFBtn(Util.BI18N.DELETE(), StaticRef.ICON_DEL,BasPrivRef.TEMPEQ_P0_07); 
+        delSubButton.addClickHandler(new DeleteDetailAction(downTable,this,vm,4));
+        
+        IButton canSubButton = createUDFBtn(Util.BI18N.CANCEL(), StaticRef.ICON_CANCEL,BasPrivRef.TEMPEQ_P0_08); 
+        canSubButton.addClickHandler(new CancelChangeAction(vm,downTable,this,5));
+        
+        //从表按钮联动
+        add_detail_map = new HashMap<String, IButton>();
+        save_detail_map = new HashMap<String, IButton>();
+        del_detail_map = new HashMap<String, IButton>();
+        add_detail_map.put(BasPrivRef.TEMPEQ_P0_05, newSubButton);
+        del_detail_map.put(BasPrivRef.TEMPEQ_P0_07, delSubButton);
+        save_detail_map.put(BasPrivRef.TEMPEQ_P0_06, savSubButton);
+        save_detail_map.put(BasPrivRef.TEMPEQ_P0_08, canSubButton);
+        enableOrDisables(add_detail_map, true);
+        enableOrDisables(del_detail_map, false);
+        enableOrDisables(save_detail_map, false);
+        
+        downtoolStrip.setMembersMargin(4);
+        downtoolStrip.setMembers(newSubButton, savSubButton, delSubButton, canSubButton);
+       
+	}
+	
+	//上边 主题菜单
+	private void getConfigList() {
+		
+		ListGridField OILCARD = new ListGridField("OILCARD", "油卡号", 130);
+		OILCARD.setTitle(ColorUtil.getRedTitle("油卡号"));
+
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO", "当前车牌号", 130);
+		
+		ListGridField STATUS = new ListGridField("STATUS", Util.TI18N.STATUS(), 90);
+		Util.initCodesComboValue(STATUS,"EQUIP_STS");
+		
+		ListGridField DRIVER = new ListGridField("DRIVER", "司机名", 130);
+		DRIVER.setCanEdit(true);
+		
+		gpsTable.setFields(OILCARD,PLATE_NO,STATUS,DRIVER);
+	}
+	
+	//下边 主题菜单
+	private void createTableList(SGTable table){
+		
+		ListGridField RECHAGE_TIME = new ListGridField("RECHAGE_TIME", "充值时间", 100);
+		Util.initDate(downTable, RECHAGE_TIME);
+		ListGridField RECHARGER = new ListGridField("RECHARGER", "充值人", 70);
+		ListGridField RECHARGE_AMOUNT = new ListGridField("RECHARGE_AMOUNT", "充值金额", 90);
+		ListGridField PRE_AMOUNT = new ListGridField("PRE_AMOUNT", "上期金额", 90);
+		
+		table.setFields(RECHAGE_TIME,RECHARGER,RECHARGE_AMOUNT,PRE_AMOUNT);
+	}
+
+	//上边 查询菜单
+	public DynamicForm createSerchForm(SGPanel form) {
+		
+		form.setDataSource(mainDS);
+		form.setAutoFetchData(false);
+		form.setAlign(Alignment.LEFT);
+		SGText OILCARD = new SGText("OILCARD", "油卡号");
+		
+		SGText PLATE_NO = new SGText("PLATE_NO", "车牌号");
+		
+		SGCombo STATUS = new SGCombo("STATUS", "状态",true);
+		Util.initCodesComboValue(STATUS,"EQUIP_STS");	
+		
+		SGText DRIVER = new SGText("DRIVER", "司机姓名");
+			
+		form.setItems(OILCARD,PLATE_NO,STATUS,DRIVER);
+		
+		return form;
+	}
+	
+	@Override
+	public void initVerify() {
+		
+		cache_map.put("STATUS", "DF252F0637784E9EA575CCACB64050FC");//状态初始化
+		
+		detail_ck_map.put("TABLE", "BAS_OILCARD_RECHARGE");
+		detail_ck_map.put("RECHAGE_TIME",StaticRef.CHK_DATE + "充值时间");
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		gpsTable.destroy();
+		stack.destroy();
+	}
+	
+	@Override
+	public void initBtn(int initBtn) {
+		if(initBtn == 1){
+			enableOrDisables(add_detail_map, true);
+		}
+		else if(initBtn == 2){
+			enableOrDisables(add_detail_map, false);
+			enableOrDisables(save_detail_map, true);
+			enableOrDisables(del_detail_map, false);
+		}
+		else if(initBtn ==3){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, true);
+		}else if(initBtn ==4){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, false);
+		}else if(initBtn ==5){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			
+		}
+	}
+	
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		BasOilCardView view = new BasOilCardView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+		
+	
+}

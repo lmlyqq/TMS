@@ -1,0 +1,105 @@
+package com.rd.client.action.settlement;
+
+import com.smartgwt.client.data.RecordList;
+import com.smartgwt.client.util.BooleanCallback;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.view.settlement.CustomFeeSettView;
+
+/**
+ * 供应商费用结算--调度单展现--费用删除按钮
+ * @author fangliangmeng
+ *
+ */
+public class DeleteReceFeeAction implements ClickHandler {
+
+	
+	private CustomFeeSettView view;
+	private ListGridRecord record;
+	
+	public DeleteReceFeeAction(CustomFeeSettView view){
+		this.view = view;
+	}
+	private ListGrid table;
+	private String delId ;
+	
+	 
+	@Override
+	public void onClick(ClickEvent event) {	
+		table = view.feeTable;
+		record = table.getSelectedRecord();
+		
+		if(ObjUtil.isNotNull(record)) {
+			SC.confirm(Util.MI18N.DELETE_CONFIRM(), new BooleanCallback() {
+				public void execute(Boolean value) {
+					doDelete();
+                }
+            });
+		}
+		
+	}
+	
+	private void doDelete(){
+		delId = table.getSelectedRecord().getAttributeAsString("ID");
+		
+		if("20".equals(table.getSelectedRecord().getAttributeAsString("RECE_STAT"))){
+			MSGUtil.sayError("费用已收款，不能删除！");
+			return;
+		}
+		
+		StringBuffer sql = new StringBuffer();
+		sql.append("delete from trans_bill_rece where ID='");
+		sql.append(delId);
+		sql.append("'");
+        
+        Util.async.excuteSQL(sql.toString(), new AsyncCallback<String>() {
+			
+			@Override
+			public void onSuccess(String result) {
+				if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+					MSGUtil.showOperSuccess();
+					RefreshRecord();
+				}else{
+					MSGUtil.sayError(result.substring(2));
+				}
+				
+			}
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+	}
+	
+	private void RefreshRecord() {
+		RecordList list = table.getRecordList();
+		RecordList newList = new  RecordList();
+		int row = 0; //fanglm 2011-3-3 删除记录后定位至上一条记录
+		for(int i = 0; i < list.getLength(); i++) {
+			
+            if(!list.get(i).getAttributeAsString("ID").equals(delId))
+            	newList.add(list.get(i));
+            else if(i > 0 )
+            	row = i - 1 ;
+		}
+		table.setData(newList);
+	
+		if(newList.getLength() > 0){
+			table.selectRecord(row);
+		}else{
+			view.initLoadFeeBtn(1);
+		}
+
+	}
+}
+	

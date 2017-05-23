@@ -1,0 +1,76 @@
+package com.rd.client.action.tms.changerecord;
+
+import java.util.Map;
+
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.view.tms.ChangeRecordView;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+public class NewChangeAction implements ClickHandler{
+
+	private ValuesManager form;
+	private ListGrid loadTable;
+	private Map<String, String> initMap;
+	private ChangeRecordView view;
+	
+	public NewChangeAction(ValuesManager form,ListGrid loadTable,Map<String, String> initMap,ChangeRecordView view){
+		this.loadTable = loadTable;
+		this.form = form;
+		this.initMap = initMap;
+		this.view = view;
+	}
+	
+	@Override
+	public void onClick(ClickEvent event) {
+		if(view != null) {
+			view.isModify = true;
+			view.initAddBtn();
+			if(view.isMax) {
+				view.expend();
+			}
+		}
+		form.editNewRecord();
+		if(initMap != null) {
+//			Object[] iter = initMap.keySet().toArray();
+//			String key = "",i18n_key = "";
+//			String value = "";
+//			for(int i = 0; i < iter.length; i++) {
+//				key = (String)iter[i];
+//				
+//				if(key.indexOf("CUSTOMER_ID") >= 0 ){
+//					form.setValue("CUSTOMER_ID", LoginCache.getDefCustomer().get("CUSTOMER_ID")); //要求初始化客户时，查找默认客户
+//					form.setValue("CUSTOMER_NAME", LoginCache.getDefCustomer().get("CUSTOMER_NAME"));
+//				}else{
+//					i18n_key = key + "_NAME";   //前台显示的是NAME的值，而后台取的是ID，所以前台展示和后台ID的差别在于对应的字段多出一个_NAME
+//					value = initMap.get(key);
+//					form.setValue(key, ObjUtil.ifNull(value, initMap.get(i18n_key)));
+//				}
+//			}
+		}
+		if(view.shpmTable!=null){
+			ListGridRecord[] records = view.shpmTable.getSelection();
+			if(records.length==0){
+				MSGUtil.sayWarning("请勾选作业单");
+				view.initCancelBtn();
+				return;
+			}
+			if(records.length>1){
+				MSGUtil.sayWarning("部分换车不允许勾选全部作业单");
+				view.initCancelBtn();
+				return;
+			}
+		}
+		form.setValue("LOAD_NO1", loadTable.getSelectedRecord().getAttribute("LOAD_NO"));
+		form.setValue("PLATE_NO1", loadTable.getSelectedRecord().getAttribute("PLATE_NO"));
+		form.setValue("VEHICLE_TYP_ID1", loadTable.getSelectedRecord().getAttribute("VEHICLE_TYP_ID"));
+		form.setValue("DRIVER1", loadTable.getSelectedRecord().getAttribute("DRIVER1"));
+		form.setValue("MOBILE1", loadTable.getSelectedRecord().getAttribute("MOBILE1"));
+		form.setValue("OP_FLAG", StaticRef.INS_FLAG);
+	}
+
+}

@@ -1,0 +1,834 @@
+/**
+ * 
+ */
+package com.rd.client.common.widgets;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.google.gwt.core.client.JavaScriptObject;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.VisibilityMode;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Splitbar;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ButtonItem;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.layout.Layout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 主界面的扩展类，包含一些通用的方法
+ * @author yuanlei
+ *
+ */
+public abstract class SGForm extends VLayout{
+	
+	public String OP_FLAG = "M";
+	public HashMap<String, String> cache_map = new HashMap<String, String>();   //新增按钮时的初始值
+	public HashMap<String, String> check_map = new HashMap<String, String>();   //校验唯一性
+	public HashMap<String,IButton> add_map = new HashMap<String,IButton>(); //新增、
+	public HashMap<String,IButton> save_map = new HashMap<String, IButton>(); //保存、取消按钮
+	public HashMap<String, IButton> del_map = new HashMap<String, IButton>(); //删除按钮
+	public boolean isModify = false;
+	public int itemRow;
+	public boolean isMax = true;
+	protected String fid;
+	public String privObj;
+	public Criteria findValues = new Criteria();
+	private IButton maxBtn;
+	private Layout stack;
+	private String width = "20%";
+	
+	/*public SGForm(String id) {	
+		setFUNCID(id);
+	    setWidth100();
+	    setHeight100();	        
+	    Canvas panel = getViewPanel();
+	    addMember(panel);
+	}*/
+	
+	protected void setFUNCID(String id) {
+		fid = id;
+	}
+	
+	protected String getFUNCID() {
+		return fid;
+	}
+	
+	public abstract void onDestroy();
+    public abstract Canvas getViewPanel();
+    public abstract void createForm(DynamicForm form);
+    public abstract void createBtnWidget(ToolStrip strip);
+    public abstract void initVerify();
+    /**
+     * @author yuanlei
+     * @param table
+     * @param fldList 字段名称
+     * @param titList 表头名称
+     * @param attrList字段属性
+     */
+    public void createListField(SGTable table, List<String> fldList, List<String> titList, List<String> widList, List<ListGridFieldType> typList) {
+    	if(table != null && fldList != null) {
+    		ListGridField[] field = new ListGridField[fldList.size()];
+    		for(int i = 0; i < fldList.size(); i++) {
+    			field[i] = new ListGridField(fldList.get(i).toString(), titList.get(i).toString(), Integer.parseInt(widList.get(i).toString()));
+    			if(typList.get(i) != null) {
+    				field[i].setType(typList.get(i));
+    			}
+     			table.setFields(field);
+    		}
+    	}
+    }
+    
+    public void createListField(SGTable table, LinkedHashMap<String, String> map) {
+    	if(table != null && map != null) {
+    		String[] flds = map.get("FIELD").split(",");
+    		String[] width = map.get("WIDTH").split(",");
+    		String[] name = map.get("NAME").split(",");
+    		ListGridField[] field = new ListGridField[flds.length];
+    		for(int i = 0; i < flds.length; i++) {
+    			field[i] = new ListGridField(flds[i], name[i], Integer.parseInt(width[i]));
+    			field[i].setCanEdit(false);
+     			table.setFields(field);
+    		}
+    	}
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建列表信息和主信息的SECTION，不使用分页
+     * @return
+     */
+    public SectionStack createSimpleSection(SGTable table, DynamicForm form) {
+    	
+    	SectionStack section = new SectionStack();
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+    	
+	    SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+	    listItem.setItems(table);
+	    listItem.setExpanded(true); 
+	    section.addSection(listItem);
+	    
+	    if(form != null) {
+	    	SectionStackSection detailItem = new SectionStackSection(Util.TI18N.MAININFO());
+        	detailItem.setItems(form);
+        	detailItem.setExpanded(true);
+        	section.addSection(detailItem);
+	    }
+    	return section;
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建查询条件、列表信息和主信息的SECTION,如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @return
+     */
+    public SectionStack createSection(DynamicForm search, ListGrid table, DynamicForm form, ButtonItem searchBtn) {
+    	
+    	SectionStack section = new SectionStack();
+    	
+    	if(search != null) {
+		    SectionStackSection searchItem = new SectionStackSection(Util.TI18N.SEARCHINFO());
+		    searchItem.setItems(search);
+		    searchItem.setExpanded(true);
+		    section.addSection(searchItem);
+    	}
+    	
+	    if(table != null) {
+		    SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		    listItem.setItems(table);
+		    listItem.setExpanded(true);
+		    section.addSection(listItem);
+		    if(searchBtn != null) {
+		    	new PageUtil(listItem, table, searchBtn);
+		    }
+	    }
+	    
+	    if(form != null) {
+	        SectionStackSection detailItem = new SectionStackSection(Util.TI18N.MAININFO());
+	        detailItem.setItems(form);
+	        detailItem.setExpanded(true);
+	        section.addSection(detailItem);
+	    }
+	      
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(false);
+    	return section;
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建查询条件、列表信息和主信息的SECTION，不使用分页
+     * @return
+     */
+    public SectionStack createSection(DynamicForm search, ListGrid table, DynamicForm form) {
+    	
+    	return createSection(search, table, form, null);
+    }
+    
+    /**
+     * 创建使用自定义控件的SECTION，如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @author yuanlei
+     * @param obj
+     * @param title
+     * @param searchBtn
+     * @return
+     */
+    public SectionStack createUDFSection(Canvas[] obj, String[] title,  ButtonItem searchBtn) {
+    	SectionStack section = new SectionStack();
+    	boolean isCreated = false;
+    	if(obj != null && obj.length > 0 && title != null && obj.length == title.length) {
+    		for(int i = 0; i < obj.length; i++) {
+    		    if(obj[i] != null) {
+    		        SectionStackSection items = new SectionStackSection(title[i]);
+    		        items.setItems(obj[i]);
+    		        items.setExpanded(true);
+    		        section.addSection(items);
+    		        
+    		        if(searchBtn != null) {
+    		        	if(obj[i].getScClassName().equals("ListGrid") && !isCreated) {
+    		        		new PageUtil(items, (SGTable)obj[i], searchBtn);
+    		        		isCreated = !isCreated;
+    		        	}
+        		    }
+    		    }
+    		}
+    	}
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(false);
+    	return section;
+    }
+    
+    /**
+     * 创建使用自定义控件的SECTION，如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @author yuanlei
+     * @param obj
+     * @param title
+     * @param searchBtn
+     * @return
+     */
+    public SectionStack createUDFSection(Canvas[] obj, String[] title,  boolean isPaged, boolean isVisible) {
+    	SectionStack section = new SectionStack();
+    	boolean isCreated = false;
+    	if(obj != null && obj.length > 0 && title != null && obj.length == title.length) {
+    		for(int i = 0; i < obj.length; i++) {
+    		    if(obj[i] != null) {
+    		        SectionStackSection items = new SectionStackSection(title[i]);
+    		        items.setItems(obj[i]);
+    		        items.setExpanded(true);
+    		        section.addSection(items);
+    		        
+    		        if(isPaged) {
+    		        	if(obj[i].getScClassName().equals("ListGrid") && !isCreated) {
+    		        		items.setControls(new SGPage((SGTable)obj[i], isVisible).initPageBtn());
+    		        		isCreated = !isCreated;
+    		        	}
+        		    }
+    		    }
+    		}
+    	}
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(false);
+    	return section;
+    }
+    
+    /**
+     * 创建使用自定义控件的SECTION
+     * @author yuanlei
+     * @return
+     */
+    public SectionStack createUDFSection(Canvas[] obj, String[] title) {
+    	
+    	return createUDFSection(obj, title, null);
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建列表信息和主信息的SECTION;如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @return
+     */
+    public SectionStack createSection(SGTable table, DynamicForm form, ButtonItem searchBtn) {
+    	
+    	SectionStack section = new SectionStack();
+    	if(table != null) {
+		    SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		    listItem.setItems(table);
+		    listItem.setExpanded(true); 
+		    section.addSection(listItem);
+		    /*if(searchBtn != null) {
+		    	new PageUtil(listItem, table, searchBtn);
+		    }*/
+    	}
+	    if(form != null) {
+	    	SectionStackSection detailItem = new SectionStackSection(Util.TI18N.MAININFO());
+	    	detailItem.setItems(form);
+	    	detailItem.setExpanded(true);
+	    	section.addSection(detailItem);
+	    }
+	      
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+    	return section;
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建列表信息和主信息的SECTION;如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @param table     LISTGRID
+     * @param form      FORM布局    
+     * @param isPaged   是否使用分页
+     * @param isVisible 分页是否可见
+     * @return
+     */
+    public SectionStack createSection(SGTable table, DynamicForm form, boolean isPaged, boolean isVisible) {
+    	
+    	SectionStack section = new SectionStack();
+    	if(table != null) {
+		    SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		    listItem.setItems(table);
+		    listItem.setExpanded(true); 
+		    section.addSection(listItem);
+		    if(isPaged) {
+		    	listItem.setControls(new SGPage(table, isVisible).initPageBtn());
+		    }
+    	}
+	    if(form != null) {
+	    	SectionStackSection detailItem = new SectionStackSection(Util.TI18N.MAININFO());
+	    	detailItem.setItems(form);
+	    	detailItem.setExpanded(true);
+	    	section.addSection(detailItem);
+	    }
+	      
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+    	return section;
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建列表信息和主信息的SECTION;如果ButtonItem值不为NULL，则列表使用分页，否则不分页
+     * @param table     LISTGRID
+     * @param form      FORM布局    
+     * @param isPaged   是否使用分页
+     * @param isVisible 分页是否可见
+     * @return
+     */
+    public SectionStack createSection(ListGrid table, DynamicForm form, boolean isPaged, boolean isVisible) {
+    	
+    	SectionStack section = new SectionStack();
+    	if(table != null) {
+		    SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+		    listItem.setItems(table);
+		    listItem.setExpanded(true); 
+		    section.addSection(listItem);
+		    if(isPaged) {
+		    	listItem.setControls(new SGPage(table, isVisible).initPageBtn());
+		    }
+    	}
+	    if(form != null) {
+	    	SectionStackSection detailItem = new SectionStackSection(Util.TI18N.MAININFO());
+	    	detailItem.setItems(form);
+	    	detailItem.setExpanded(true);
+	    	section.addSection(detailItem);
+	    }
+	      
+    	section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+    	return section;
+    }
+    
+    /**
+     * @author yuanlei
+     * 创建列表信息和主信息的SECTION,不使用分页
+     * @return
+     */
+    public SectionStack createSection(SGTable table, DynamicForm form) {
+    	
+    	return createSection(table, form, null);
+    }
+    
+    /**
+     * 创建界面的按钮
+     * @author yuanlei
+     * @param btn_type  按钮类型
+     * @return
+     */
+    public IButton createBtn(String btn_type) {
+    	String btn_name = "",icon_dir = "";
+    	if(btn_type.equals(StaticRef.CREATE_BTN)) {
+    		btn_name = Util.BI18N.NEW();
+    		icon_dir = StaticRef.ICON_NEW;
+    	}
+    	else if(btn_type.equals(StaticRef.SAVE_BTN)) {
+    		btn_name = Util.BI18N.SAVE();
+    		icon_dir = StaticRef.ICON_SAVE;
+    	}
+    	else if(btn_type.equals(StaticRef.DELETE_BTN)) {
+    		btn_name = Util.BI18N.DELETE();
+    		icon_dir = StaticRef.ICON_DEL;
+    	}
+    	else if(btn_type.equals(StaticRef.CANCEL_BTN)) {
+    		btn_name = Util.BI18N.CANCEL();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}
+    	else if(btn_type.equals(StaticRef.FETCH_BTN)) {
+    		btn_name = Util.BI18N.SEARCH();
+    		icon_dir = StaticRef.ICON_SEARCH;
+    	}
+    	else if(btn_type.equals(StaticRef.CLEAR_BTN)) {
+    		btn_name = Util.BI18N.CLEAR();
+    		icon_dir = StaticRef.ICON_CLEAR;
+    	}
+    	else if(btn_type.equals(StaticRef.IMPORT_BTN)) {
+    		btn_name = Util.BI18N.IMPORT();
+    		icon_dir = StaticRef.ICON_IMPORT;
+    	}
+    	else if(btn_type.equals(StaticRef.EXPORT_BTN)) {
+    		btn_name = Util.BI18N.EXPORT();
+    		icon_dir = StaticRef.ICON_EXPORT;
+    	}
+    	else if(btn_type.equals(StaticRef.PRINT_BTN)) {
+    		btn_name = Util.BI18N.PRINT();
+    		icon_dir = StaticRef.ICON_PRINT;
+    	}
+    	else if(btn_type.equals(StaticRef.PRVIEW_BTN)) {
+    		btn_name = Util.BI18N.PRINTVIEW();
+    		icon_dir = StaticRef.ICON_PVIEW;
+    	}
+    	else if(btn_type.equals(StaticRef.FREEZE_BTN)){
+    		btn_name = Util.BI18N.FREEZE();
+    		icon_dir = StaticRef.ICON_CONFIRM;
+    	}
+    	else if(btn_type.equals(StaticRef.FREE_BTN)){
+    		btn_name = Util.BI18N.FREE();
+    		icon_dir= StaticRef.ICON_CONFIRM;
+    		
+    	}else if(btn_type.equals(StaticRef.CONFIRM_ORDER_BTN)){
+    		btn_name = Util.BI18N.CONFIRMORDER();
+    		icon_dir= StaticRef.ICON_SAVE;
+    	}else if(btn_type.equals(StaticRef.MANY_ORDER_BTN)){
+    		btn_name = Util.BI18N.MANYORDER();
+    		icon_dir= StaticRef.ICON_NEW;
+    	}else if(btn_type.equals(StaticRef.CANCEL_ORDER_BTN)){
+    		btn_name = Util.BI18N.CANCELORDER();
+    		icon_dir= StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.PUT_IMAGE_BTN)){
+    		btn_name = Util.BI18N.PUTIMAGE();
+    		icon_dir= StaticRef.ICON_END;//
+    		
+    	}else if(btn_type.equals(StaticRef.PAYOUT_BTN)){
+    		btn_name = Util.BI18N.PAYOUT();
+    		icon_dir = StaticRef.ICON_CONFIRM;
+    	}else if(btn_type.equals(StaticRef.CLOSE_BTN)){
+    		btn_name = Util.BI18N.CLOSE();
+    		icon_dir = StaticRef.ICON_CONFIRM;
+    	}else if(btn_type.equals(StaticRef.CREATE_CONDITION_BTN)){
+    		btn_name = Util.BI18N.NEWDETAIL();
+    		icon_dir = StaticRef.ICON_NEW;
+    	}else if(btn_type.equals(StaticRef.SAVE_CONDITION_BTN)){
+    		btn_name = Util.BI18N.SAVEDETAIL();
+    		icon_dir = StaticRef.ICON_SAVE;
+    	}else if(btn_type.equals(StaticRef.DELETE_CONDITION_BTN)){
+    		btn_name = Util.BI18N.REMOVEDETAIL();
+    		icon_dir = StaticRef.ICON_DEL;
+    	}else if(btn_type.equals(StaticRef.CANCEL_CONDITION_BTN)){
+    		btn_name = Util.BI18N.CANCELDETAIL();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.STALOAD_BTN)){
+    		btn_name = Util.BI18N.STALOAD();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.FINLOAD_BTN)){
+    		btn_name = Util.BI18N.FINLOAD();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.ARRIREG_BTN)){
+    		btn_name = Util.BI18N.ARRIREG();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.VEHLCHECK_BTN)){
+    		btn_name = Util.BI18N.VEHLCHECK();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.LEVAREG_BTN)){
+    		btn_name = Util.BI18N.LEVAREG();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.REFRESH_BTN)){
+    		btn_name = Util.BI18N.REFRESH();
+    		icon_dir = StaticRef.ICON_CLEAR;
+    	}else if(btn_type.equals(StaticRef.CANCEL_LOAD_BTN)){
+    		btn_name = Util.BI18N.CANCELLOAD();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.EXPORT_DETAIL_BTN)){
+    		btn_name = Util.BI18N.EXPORT_DETAIL();
+    		icon_dir = StaticRef.ICON_EXPORT;
+    	}
+    	
+		IButton button = new IButton(btn_name);
+		//button.setIcon(icon_dir);
+		button.setWidth(80);
+		//button.setAutoFit(true);
+		return button;
+    }
+    
+    
+    /**
+     * 创建界面的按钮
+     * @author yuanlei
+     * @param btn_type  按钮类型
+     * @return
+     */
+    public  IButton createBtn(String btn_type, String privl) {
+    	String btn_name = "",icon_dir = "",access_key = "";
+    	if(btn_type.equals(StaticRef.CREATE_BTN)) {
+    		btn_name = Util.BI18N.NEW();
+    		icon_dir = StaticRef.ICON_NEW;
+    		access_key = "N";
+    	}
+    	else if(btn_type.equals(StaticRef.SAVE_BTN)) {
+    		btn_name = Util.BI18N.SAVE();
+    		icon_dir = StaticRef.ICON_SAVE;
+    		access_key = "S";
+    	}
+    	else if(btn_type.equals(StaticRef.DELETE_BTN)) {
+    		btn_name = Util.BI18N.DELETE();
+    		icon_dir = StaticRef.ICON_DEL;
+    		access_key = "D";
+    	}
+    	else if(btn_type.equals(StaticRef.CANCEL_BTN)) {
+    		btn_name = Util.BI18N.CANCEL();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    		access_key = "C";
+    	}
+    	else if(btn_type.equals(StaticRef.FETCH_BTN)) {
+    		btn_name = Util.BI18N.SEARCH();
+    		icon_dir = StaticRef.ICON_SEARCH;
+    		access_key = "F";
+    	}
+    	else if(btn_type.equals(StaticRef.CLEAR_BTN)) {
+    		btn_name = Util.BI18N.CLEAR();
+    		icon_dir = StaticRef.ICON_CLEAR;
+    	}
+    	else if(btn_type.equals(StaticRef.IMPORT_BTN)) {
+    		btn_name = Util.BI18N.IMPORT();
+    		icon_dir = StaticRef.ICON_IMPORT;
+    	}
+    	else if(btn_type.equals(StaticRef.EXPORT_BTN)) {
+    		btn_name = Util.BI18N.EXPORT();
+    		icon_dir = StaticRef.ICON_EXPORT;
+    	}
+    	else if(btn_type.equals(StaticRef.PRINT_BTN)) {
+    		btn_name = Util.BI18N.PRINT();
+    		icon_dir = StaticRef.ICON_PRINT;
+    	}
+    	else if(btn_type.equals(StaticRef.PRVIEW_BTN)) {
+    		btn_name = Util.BI18N.PRINTVIEW();
+    		icon_dir = StaticRef.ICON_PVIEW;
+    	}
+    	else if(btn_type.equals(StaticRef.FREEZE_BTN)){
+    		btn_name = Util.BI18N.FREEZE();
+    		icon_dir = StaticRef.ICON_CONFIRM;
+    	}
+    	else if(btn_type.equals(StaticRef.FREE_BTN)){
+    		btn_name = Util.BI18N.FREE();
+    		icon_dir= StaticRef.ICON_CONFIRM;
+    		
+    	}else if(btn_type.equals(StaticRef.CONFIRM_ORDER_BTN)){
+    		btn_name = Util.BI18N.CONFIRMORDER();
+    		icon_dir= StaticRef.ICON_SAVE;
+    	}else if(btn_type.equals(StaticRef.MANY_ORDER_BTN)){
+    		btn_name = Util.BI18N.MANYORDER();
+    		icon_dir= StaticRef.ICON_NEW;
+    	}else if(btn_type.equals(StaticRef.CANCEL_ORDER_BTN)){
+    		btn_name = Util.BI18N.CANCELORDER();
+    		icon_dir= StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.PUT_IMAGE_BTN)){
+    		btn_name = Util.BI18N.PUTIMAGE();
+    		icon_dir= StaticRef.ICON_UPLOAD;//
+    		
+    	}else if(btn_type.equals(StaticRef.PAYOUT_BTN)){
+    		btn_name = Util.BI18N.PAYOUT();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.CLOSE_BTN)){
+    		btn_name = Util.BI18N.CLOSE();
+    		icon_dir = StaticRef.ICON_CLEAR;
+    	}else if(btn_type.equals(StaticRef.REFRESH_BTN)){
+    		btn_name = Util.BI18N.REFRESH();
+    		icon_dir = StaticRef.ICON_CLEAR;
+    	}else if(btn_type.equals(StaticRef.PUTIN_BTN)){
+    		btn_name = Util.BI18N.PUTIN();
+    		icon_dir = StaticRef.ICON_NEW;
+    	}else if(btn_type.equals(StaticRef.CANCEL_LOAD_BTN)){
+    		btn_name = Util.BI18N.CANCELLOAD();
+    		icon_dir = StaticRef.ICON_CANCEL;
+    	}else if(btn_type.equals(StaticRef.COPY_BTN)){
+    		btn_name = Util.BI18N.COPY();
+    		icon_dir = StaticRef.ICON_COPY;
+    	}else{
+    		btn_name = btn_type;
+    		icon_dir = StaticRef.ICON_CONFIRM;
+    	}
+    	
+		IButton button = new IButton(btn_name);
+		button.setAccessKey(access_key);
+		//button.setIcon(icon_dir);
+		button.setWidth(80);
+		//button.setAutoFit(true);
+		if(!isPrivilege(privl)) {
+			button.disable();
+		}
+		return button;
+    }
+    
+    public IButton createUDFBtn(String btn_name, String icon_dir) {
+    	IButton button = new IButton(btn_name);
+    	button.setShowRollOver(true);
+    	button.setShowDisabled(true);
+    	button.setShowDownIcon(true);
+		//button.setAutoFit(true);
+		//button.setIcon(icon_dir);
+//		button.setAccessKey("G");
+		button.setWidth(80);
+		return button;
+    }
+    
+    public IButton createUDFBtn(String btn_name, String icon_dir, String privl) {
+    	IButton button = new IButton(btn_name);
+    	button.setShowRollOver(true);
+    	button.setShowDisabled(true);
+    	button.setShowDownIcon(true);
+		//button.setAutoFit(true);
+		//button.setIcon(icon_dir);
+		button.setWidth(80);
+		if(!isPrivilege(privl)) {
+			button.disable();
+		}
+		return button;
+    }
+    
+	@SuppressWarnings("unchecked")
+	public void enableOrDisables(final HashMap tmps, boolean b) {
+		if (tmps != null) {
+			Iterator it = tmps.entrySet().iterator();
+			while (it.hasNext()) {
+				Map.Entry m=(Map.Entry)it.next();
+				String key = (String)m.getKey();
+				if (tmps.get(key) instanceof IButton) {
+					IButton action = (IButton) tmps.get(key);
+					setButtonEnabled(key, action, b);
+				} else if (tmps.get(key) instanceof ButtonItem) {
+					ButtonItem button = (ButtonItem) tmps.get(key);
+					setButtonItemEnabled(key, button, b);
+				}
+
+			}
+		}
+	}
+
+	public void setButtonEnabled(String id, IButton action, boolean b) {
+		if (isPrivilege(id)) {// 有权限
+			if(b){
+				action.enable();
+				action.setShowDisabled(true);
+			}else{
+				action.disable();
+				action.setShowDisabled(true);
+			}
+		}else{
+			action.setDisabled(true);
+		}
+	}
+	
+	public void setButtonItemEnabled(String id, ButtonItem action, boolean b) {
+		if (isPrivilege(id)) {// 有权限
+			if(b){
+				action.setDisabled(false);
+			}else{
+				action.setDisabled(true);
+			}
+		}else{
+			action.setDisabled(true);
+		}
+	}
+	
+	protected IButton addMaxBtn(final SectionStack tableSection, final Layout stack, final String percent) {
+		return addMaxBtn(tableSection, stack, percent, false);
+	}
+	
+	protected IButton addMaxBtn(final SectionStack tableSection, final Layout stack, final String percent,boolean bolMax) {
+		
+		maxBtn = new IButton();
+//		this.tableSection = tableSection;
+		this.stack = stack;
+//		this.percent = percent;
+		if(!bolMax) {
+			maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+			maxBtn.setPrompt(StaticRef.TO_MAX);
+		}
+		else {
+			maxBtn.setIcon(StaticRef.ICON_TOLEFT);
+			maxBtn.setPrompt(StaticRef.TO_NORMAL);
+		}
+		
+		isMax = bolMax; 
+		maxBtn.setTitle("");
+		maxBtn.setWidth(24);
+        maxBtn.addClickHandler(new com.smartgwt.client.widgets.events.ClickHandler() {
+			public void onClick(com.smartgwt.client.widgets.events.ClickEvent event) {
+				//expend();
+			}      	
+        });   
+        return maxBtn;
+	}
+	
+	protected void addSplitBar(final Layout stack, String width) {
+		this.stack = stack;
+		this.width = width;
+		Splitbar bar = new Splitbar();
+		bar.setWidth(10);
+		
+		if(isMax) {
+			bar.setBackgroundImage(StaticRef.ICON_GOLEFT);
+			
+		}
+		else {
+			bar.setBackgroundImage(StaticRef.ICON_GORIGHT);
+
+		}
+		
+		bar.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				expend();
+			}
+			
+		});		
+		stack.addMember(bar);
+	}
+	
+	protected void addSplitBar(final Layout stack) {
+		addSplitBar(stack, width);
+	}
+	
+	public void expend(String p_width) {
+		this.width = p_width;
+		if(stack == null)
+			return;
+		SectionStack lst_section = (SectionStack)stack.getMember(0);
+		Splitbar bar = (Splitbar)stack.getMember(1);
+		JavaScriptObject jsobject = lst_section.getSection(0).getAttributeAsJavaScriptObject("controls");
+		Canvas[] canvas = null;
+		DynamicForm pageForm = null;
+		if(jsobject != null) {
+			canvas = Canvas.convertToCanvasArray(jsobject);
+		}
+		else {
+			canvas = new Canvas[1];
+		}
+		for(int i = 0; i < canvas.length; i++) {
+			if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+				pageForm = (DynamicForm)canvas[i];
+				break;
+			}
+		}
+		if(!isMax) {
+			lst_section.setWidth("100%");	
+			bar.setBackgroundImage(StaticRef.ICON_GOLEFT);
+			stack.getMember(2).setVisible(false);
+			if(pageForm != null) {
+				pageForm.setVisible(true);
+			}
+		}
+		else {
+			lst_section.setWidth(width);
+			bar.setBackgroundImage(StaticRef.ICON_GORIGHT);
+			stack.getMember(2).setVisible(true);
+			if(pageForm != null) {
+				pageForm.setVisible(false);
+			}
+		}
+		isMax = !isMax;
+		jsobject = null;
+		canvas = null;
+	}
+	
+	public void expend() {
+		expend(width);
+	}
+	
+	/**
+	 * 列表增加双击最大化事件
+	 * @author fanglm
+	 * @param table
+	 * @param listItem
+	 * @param layOut
+	 * @param sectionStack
+	 */
+	public void addDoubeclick(SGTable table,final SectionStackSection listItem,final Canvas layOut,final SectionStack sectionStack){
+		layOut.setVisible(false);
+		table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				JavaScriptObject canvas = listItem
+				.getAttributeAsJavaScriptObject("controls");
+				Canvas[] page_form = Canvas.convertToCanvasArray(canvas);
+				if (isMax) {
+					sectionStack.setWidth(200);
+					layOut.setVisible(true);
+					page_form[1].setVisible(false);
+					
+					maxBtn.setIcon(StaticRef.ICON_TORIGHT);
+					maxBtn.setPrompt(StaticRef.TO_MAX);
+				    isMax = !isMax;
+				}
+			}
+		});
+	}
+	
+	public void initAddBtn(){
+		enableOrDisables(add_map, false);
+		enableOrDisables(del_map, false);
+		enableOrDisables(save_map, true);
+	}
+	
+	public void initSaveBtn(){
+		enableOrDisables(add_map, true);
+		enableOrDisables(del_map, true);
+		enableOrDisables(save_map, false);
+	}
+	public void initCancelBtn(){
+		enableOrDisables(add_map, true);
+		enableOrDisables(del_map, false);
+		enableOrDisables(save_map, false);
+	}
+	public void initBtn(int initBtn){
+		
+	}
+	public boolean isPrivilege(String priv_id) {
+		if(StaticRef.SUPER_ROLE.equals(LoginCache.getLoginUser().getROLE_ID())) { 
+			return true;
+		}
+		if(ObjUtil.isNotNull(privObj) && privObj.indexOf(priv_id) >= 0) {
+			return true;
+		}
+		return false;
+	}
+
+}

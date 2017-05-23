@@ -1,0 +1,561 @@
+package com.rd.client.action.settlement;
+
+import java.util.ArrayList;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.view.settlement.CustomFeeSettView;
+import com.rd.client.view.settlement.SettlementView;
+import com.rd.client.view.settlement.SuplrFeeSettView;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+/**
+ * 财务管理--结算管理--供应商结算管理--审核、取消审核按钮
+ * @author fanglm
+ * @create time 2011-01-21 20:22
+ */
+public class AuditAction implements ClickHandler{
+
+	private SGTable table;
+	private boolean isAud = true;
+	private String NO_AUDIT = "10"; //未审核
+	private String AUDITED = "20"; //已审核
+	private ListGridRecord[] records;
+	private SuplrFeeSettView view;
+	private CustomFeeSettView cView;
+	private String fee_typ = "PAY";
+	private SettlementView settView;
+	
+	public AuditAction (SGTable table,boolean isAud,SuplrFeeSettView view,String fee_typ){
+		this.table = table;
+		this.isAud = isAud;
+		this.view = view;
+		this.fee_typ = fee_typ;
+	}
+	
+	public AuditAction(SettlementView settView,boolean isAud){
+		this.settView = settView;
+		
+	}
+	public AuditAction (SGTable table,boolean isAud,CustomFeeSettView view,String fee_typ){
+		this.table = table;
+		this.isAud = isAud;
+		this.cView = view;
+		this.fee_typ = fee_typ;
+	}
+	
+	@Override
+	public void onClick(ClickEvent event) {
+		
+		records = table.getSelection();
+		String loginUser = LoginCache.getLoginUser().getUSER_ID();
+		
+		if(settView != null){
+			doAsSettle(loginUser);
+		}else{
+			if(fee_typ.equals("PAY")){
+				//if(view.titName.equals("按调度单")){
+					records = view.loadTable.getSelection();
+					doAsLoad(loginUser);
+				/*}else if(view.titName.equals("按作业单")){
+					records = view.headTable.getSelection();
+					doAsShpm(loginUser);
+					
+				}else if(view.titName.equals("按作业单明细")){
+					records = table.getSelection();
+					doAsShpmDetail(loginUser);
+				}*/
+				
+				view.disAudit(isAud, !isAud);
+//				if(isAud){
+//					view.disAccount(true,true);
+//				}else{
+//					view.disAccount(true, false);
+//				}
+			}else{
+				doAsOrder(loginUser);
+				cView.disAudit(isAud, !isAud);
+//				if(isAud){
+//					cView.disAccount(true,true);
+//				}else{
+//					cView.disAccount(true, false);
+//				}
+			}
+		}
+		
+
+	}
+	
+	private void doAsLoad(String loginUser){
+		
+		//StringBuffer feeid = new StringBuffer();
+		ArrayList<String> sqlList = new ArrayList<String>();
+		
+		for(int i=0;i<records.length;i++){
+			if(Util.iff(records[i].getAttribute("PAY_STAT_NAME"),"未核销").equals("已核销")){
+				MSGUtil.sayError("费用已核销，不能取消审核");
+				return;
+			}
+			StringBuffer sql = new StringBuffer();
+			sql.append("update TRANS_BILL_PAY set audit_stat='");
+			if(isAud){
+				sql.append(AUDITED);
+				sql.append("',audit_time = sysdate");
+				sql.append(",auditor='");
+				sql.append(loginUser);
+				sql.append("',editwho='");
+				sql.append(loginUser);
+				sql.append("',edittime=sysdate ");
+			}else{
+				sql.append(NO_AUDIT);
+				sql.append("',audit_time = null");
+				sql.append(",auditor='',editwho='");
+				sql.append(loginUser);
+				sql.append("',edittime=sysdate ");
+			}
+			
+			sql.append(" where load_no = '");
+			sql.append(records[i].getAttributeAsString("LOAD_NO"));
+			//sql.append("' and fee_id in (");
+			//sql.append(feeid.substring(1));
+			//sql.append(")");
+			sql.append("'");
+			sqlList.add(sql.toString());
+			
+			sql = new StringBuffer();
+			sql.append("update TRANS_LOAD_HEADER set AUDIT_STAT ='");
+			if(isAud){
+				sql.append(AUDITED);
+				sql.append("',audit_time = sysdate");
+			}else{
+				sql.append(NO_AUDIT);
+				sql.append("',audit_time = null");
+			}
+			sql.append(" where load_no = '");
+			sql.append(records[i].getAttributeAsString("LOAD_NO"));
+			sql.append("'");
+			sqlList.add(sql.toString());
+			
+			sql = new StringBuffer();
+			sql.append("update BMS_LOAD_HEADER set AUDIT_STAT ='");
+			if(isAud){
+				sql.append(AUDITED);
+				sql.append("',audit_time = sysdate");
+			}else{
+				sql.append(NO_AUDIT);
+				sql.append("',audit_time = null");
+			}
+			sql.append(" where load_no = '");
+			sql.append(records[i].getAttributeAsString("LOAD_NO"));
+			sql.append("'");
+			sqlList.add(sql.toString());
+		}
+		
+		Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+			
+			@Override
+			public void onSuccess(String result) {
+				if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+					MSGUtil.showOperSuccess();
+					
+					for(int i=0;i<records.length;i++){
+						if(isAud){
+							records[i].setAttribute("AUDIT_STAT", AUDITED);
+							records[i].setAttribute("AUDIT_STAT_NAME", "已审核");
+							view.initLoadFeeBtn(5);
+						}else{
+							records[i].setAttribute("AUDIT_STAT", NO_AUDIT);
+							records[i].setAttribute("AUDIT_STAT_NAME", "未审核");
+							view.initLoadFeeBtn(4);
+						}
+						view.loadTable.updateData(records[i]);
+					}
+					view.loadTable.redraw();
+				}else{
+					MSGUtil.sayError(result.substring(2));
+					view.disAudit(!isAud, isAud);
+				}
+				
+				
+			}
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				
+			}
+		});
+	}
+	
+//	private void doAsShpm(String loginUser){
+//		StringBuffer feeid = new StringBuffer();
+//		for(int i=0;i<records.length;i++){
+//			feeid.append(",'");
+//			feeid.append(records[i].getAttributeAsString("SHPM_NO"));
+//			feeid.append("'");
+//		}
+//		
+//		StringBuffer sql = new StringBuffer();
+//		sql.append("update bill_detail_pay set audit_stat='");
+//		if(isAud){
+//			sql.append(AUDITED);
+//			sql.append("',audit_time = sysdate");
+//			sql.append(",auditor='");
+//			sql.append(loginUser);
+//			sql.append("',editwho='");
+//			sql.append(loginUser);
+//			sql.append("',edittime=sysdate ");
+//		}else{
+//			sql.append(NO_AUDIT);
+//			sql.append("',audit_time = null");
+//			sql.append(",auditor='',editwho='");
+//			sql.append(loginUser);
+//			sql.append("',edittime=sysdate ");
+//		}
+//		
+//		sql.append(" where  1= 1 ");
+//		sql.append(" and doc_no in (");
+//		sql.append(feeid.substring(1));
+//		sql.append(")");
+//		
+//		Util.async.excuteSQL(sql.toString(), new AsyncCallback<String>() {
+//			
+//			@Override
+//			public void onSuccess(String result) {
+//				if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+//					MSGUtil.showOperSuccess();
+//					
+//					for(int i=0;i<records.length;i++){
+//						if(isAud){
+//							records[i].setAttribute("AUDIT_STAT", AUDITED);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "已审核");
+//						}else{
+//							records[i].setAttribute("AUDIT_STAT", NO_AUDIT);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "未审核");
+//						}
+//						view.headTable.updateData(records[i]);
+//					}
+//					view.headTable.redraw();
+//					
+//				}else{
+//					MSGUtil.sayError(result.substring(2));
+//					view.disAudit(!isAud, isAud);
+//				}
+//				
+//				
+//			}
+//			
+//			@Override
+//			public void onFailure(Throwable caught) {
+//				
+//			}
+//		});
+//	}
+//
+//	
+//	private void doAsShpmDetail(String loginUser){
+//		HashMap<String, Object> listmap = new HashMap<String, Object>();
+//		HashMap<String, String> id_map = new HashMap<String, String>(); //托运单 
+//		StringBuffer accId = new StringBuffer();
+//		StringBuffer canId = new StringBuffer();
+//		for(int i=0;i<records.length;i++){
+//			int row = table.getRecordIndex(records[i]) + 1;
+//			if("未审核".equals(records[i].getAttributeAsString("AUDIT_STAT_NAME"))){
+//				canId.append(row);
+//				canId.append(",");
+//			}else{
+//				accId.append(row);
+//				accId.append(",");
+//			}
+//			id_map.put(Integer.toString(i+1), records[i].getAttribute("ID"));
+//		}
+//		
+//		if(isAud && accId.length() > 0){
+//			SC.warn("第" + accId.substring(0, accId.length()-1) + "行记录状态为【已审核】,不能执行审核操作！");
+//			return;
+//		}
+//		
+//		if(!isAud && canId.length() > 0){
+//			SC.warn("第" + canId.substring(0, canId.length()-1) + "行记录状态为【未审核】,不能执行取消审核操作！");
+//			return;
+//		}
+//		/*StringBuffer sql = new StringBuffer();
+//		sql.append("update trans_bill_detail set audit_stat='");
+//		if(isAud){
+//			sql.append(AUDITED);
+//			sql.append("',audit_time = sysdate");
+//			sql.append(",auditor='");
+//			sql.append(loginUser);
+//			sql.append("',editwho='");
+//			sql.append(loginUser);
+//			sql.append("',edittime=sysdate ");
+//		}else{
+//			sql.append(NO_AUDIT);
+//			sql.append("',audit_time = null");
+//			sql.append(",auditor='',editwho='");
+//			sql.append(loginUser);
+//			sql.append("',edittime=sysdate ");
+//		}
+//		
+//		sql.append(" where id in(");
+//		sql.append(idStr.substring(0, idStr.length()-1));
+//		sql.append(")");*/
+//		listmap.put("1", id_map);
+//		if(isAud) {
+//			listmap.put("2", "AUDIT");
+//		}
+//		else {
+//			listmap.put("2", "CANCEL_AUDIT");
+//		}
+//		listmap.put("3", LoginCache.getLoginUser().getUSER_ID());
+//		String json = Util.mapToJson(listmap);
+//		
+//		Util.async.execProcedure(json, "SP_SETT_AUDIT(?,?,?,?)", new AsyncCallback<String>() {
+//			
+//			@Override
+//			public void onSuccess(String result) {
+//				if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+//					MSGUtil.showOperSuccess();
+//					
+//					for(int i=0;i<records.length;i++){
+//						if(isAud){
+//							records[i].setAttribute("AUDIT_STAT", AUDITED);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "已审核");
+//						}else{
+//							records[i].setAttribute("AUDIT_STAT", NO_AUDIT);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "未审核");
+//						}
+//						table.updateData(records[i]);
+//					}
+//					table.redraw();
+//					
+//				}else{
+//					MSGUtil.sayError(result.substring(2));
+//					view.disAudit(!isAud, isAud);
+//				}
+//				
+//				
+//			}
+//			
+//			@Override
+//			public void onFailure(Throwable caught) {
+//				// TODO Auto-generated method stub
+//				
+//			}
+//		});
+//	}
+	
+	private void doAsOrder(String loginUser){
+		ArrayList<String> sqlList = new ArrayList<String>();
+		StringBuffer sql = new StringBuffer();
+		sql.append("update TRANS_BILL_RECE set audit_stat='");
+		if(isAud){
+			sql.append(AUDITED);
+			sql.append("',audit_time = sysdate");
+			sql.append(",auditor='");
+			sql.append(loginUser);
+			sql.append("',editwho='");
+			sql.append(loginUser);
+			sql.append("',edittime=sysdate ");
+		}else{
+			sql.append(NO_AUDIT);
+			sql.append("',audit_time = null");
+			sql.append(",auditor='',editwho='");
+			sql.append(loginUser);
+			sql.append("',edittime=sysdate ");
+		}
+		sql.append(" where DOC_NO = '");
+		System.out.println();
+		sql.append(cView.table.getSelectedRecord().getAttributeAsString("ODR_NO"));
+		sql.append("'");
+		sqlList.add(sql.toString());
+		
+		
+		sql = new StringBuffer();
+		sql.append("update TRANS_ORDER_HEADER set AUDIT_STAT ='");
+		if(isAud){
+			sql.append(AUDITED);
+			sql.append("',audit_time = sysdate");
+		}else{
+			sql.append(NO_AUDIT);
+			sql.append("',audit_time = null");
+		}
+		sql.append(" where ODR_NO = '");
+		sql.append(cView.table.getSelectedRecord().getAttributeAsString("ODR_NO"));
+		sql.append("'");
+		sqlList.add(sql.toString());
+		
+		sql = new StringBuffer();
+		sql.append("update BMS_ORDER_HEADER set AUDIT_STAT ='");
+		if(isAud){
+			sql.append(AUDITED);
+			sql.append("',audit_time = sysdate");
+		}else{
+			sql.append(NO_AUDIT);
+			sql.append("',audit_time = null");
+		}
+		sql.append(" where ODR_NO = '");
+		sql.append(cView.table.getSelectedRecord().getAttributeAsString("ODR_NO"));
+		sql.append("'");
+		sqlList.add(sql.toString());
+		
+		Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+
+			@Override
+			public void onFailure(Throwable caught) {
+				
+			}
+
+			@Override
+			public void onSuccess(String result) {
+				if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+					MSGUtil.showOperSuccess();
+					if(isAud){
+						cView.table.getSelectedRecord().setAttribute("AUDIT_STAT", AUDITED);
+						cView.table.getSelectedRecord().setAttribute("AUDIT_STAT_NAME", "已审核");
+						cView.initLoadFeeBtn(5);
+					}else{
+						cView.table.getSelectedRecord().setAttribute("AUDIT_STAT", NO_AUDIT);
+						cView.table.getSelectedRecord().setAttribute("AUDIT_STAT_NAME", "未审核");
+						cView.initLoadFeeBtn(4);
+					}
+					cView.table.redraw();
+				}else{
+					MSGUtil.sayError(result.substring(2));
+					cView.disAudit(!isAud, isAud);
+				}
+			}
+			
+		});
+//		Util.async.excuteSQL(sql.toString(), new AsyncCallback<String>() {
+//			
+//			@Override
+//			public void onSuccess(String result) {
+//				if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+//					MSGUtil.showOperSuccess();
+//					records = cView.feeTable.getRecords();
+//					for(int i=0;i<records.length;i++){
+//						if(isAud){
+//							records[i].setAttribute("AUDIT_STAT", AUDITED);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "已审核");
+//						}else{
+//							records[i].setAttribute("AUDIT_STAT", NO_AUDIT);
+//							records[i].setAttribute("AUDIT_STAT_NAME", "未审核");
+//						}
+//						cView.feeTable.updateData(records[i]);
+//					}
+//					cView.feeTable.redraw();
+//					
+//				}else{
+//					MSGUtil.sayError(result.substring(2));
+//					cView.disAudit(!isAud, isAud);
+//				}
+//				
+//				
+//			}
+//			
+//			@Override
+//			public void onFailure(Throwable caught) {
+//				
+//			}
+//		});
+	}
+	
+	private void doAsSettle(String loginUser){
+		if(settView.table.getSelectedRecord() == null){
+			SC.warn("没有选择结算单，不能执行【审核】！");
+			return;
+		}else{
+			
+			ArrayList<String> sqlList = new ArrayList<String>();
+			
+			StringBuffer sql = new StringBuffer();
+			sql.append("update bill_settle_info set audit_stat='");
+			if(isAud){
+				sql.append(AUDITED);
+				sql.append("',audit_time = sysdate");
+				sql.append(",auditer='");
+				sql.append(loginUser);
+				sql.append("',editwho='");
+				sql.append(loginUser);
+				sql.append("',edittime=sysdate ");
+			}else{
+				sql.append(NO_AUDIT);
+				sql.append("',audit_time = null");
+				sql.append(",auditer='',editwho='");
+				sql.append(loginUser);
+				sql.append("',edittime=sysdate ");
+			}
+			
+			sql.append(" where sett_no = '");
+			sql.append(settView.table.getSelectedRecord().getAttributeAsString("SETT_NO"));
+			sql.append("'");
+			
+			sqlList.add(sql.toString());
+			
+			sql = new StringBuffer();
+			sql.append("update bill_detail_rec set account_stat='");
+			if(isAud){
+				sql.append(AUDITED);
+			}else{
+				sql.append(NO_AUDIT);
+			}
+			sql.append("' where sett_no='");
+			sql.append(settView.table.getSelectedRecord().getAttributeAsString("SETT_NO"));
+			sql.append("'");
+			
+			sqlList.add(sql.toString());
+			sql = new StringBuffer();
+			sql.append("update bill_detail_pay set account_stat='");
+			if(isAud){
+				sql.append(AUDITED);
+			}else{
+				sql.append(NO_AUDIT);
+			}
+			sql.append("' where sett_no='");
+			sql.append(settView.table.getSelectedRecord().getAttributeAsString("SETT_NO"));
+			sql.append("'");
+			
+			
+			Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+				
+				@Override
+				public void onSuccess(String result) {
+					if(StaticRef.SUCCESS_CODE.equals(result.substring(0,2))){
+						MSGUtil.showOperSuccess();
+						records = settView.feeTable.getRecords();
+						for(int i=0;i<records.length;i++){
+							if(isAud){
+								records[i].setAttribute("AUDIT_STAT", AUDITED);
+								records[i].setAttribute("AUDIT_STAT_NAME", "已审核");
+							}else{
+								records[i].setAttribute("AUDIT_STAT", NO_AUDIT);
+								records[i].setAttribute("AUDIT_STAT_NAME", "未审核");
+							}
+							settView.feeTable.updateData(records[i]);
+						}
+						settView.feeTable.redraw();
+						
+					}else{
+						MSGUtil.sayError(result.substring(2));
+//						cView.disAccount(!isAcc, isAcc);
+					}
+					
+					
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					// TODO Auto-generated method stub
+					
+				}
+			});
+		}
+	}
+}

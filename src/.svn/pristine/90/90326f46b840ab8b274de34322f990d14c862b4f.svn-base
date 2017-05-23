@@ -1,0 +1,271 @@
+package com.rd.client.view.system;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.common.widgets.TreeTable;
+import com.rd.client.ds.base.OrgDS;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VisibilityMode;
+import com.smartgwt.client.util.BooleanCallback;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.form.fields.ButtonItem;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.StaticTextItem;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+import com.smartgwt.client.widgets.toolbar.ToolStripButton;
+
+/**
+ * 接口管理->手动接口
+ * 
+ * @author yuanlei
+ * 
+ */
+@SuppressWarnings("unused")
+public class ManualInterfaceView extends SGForm {
+
+	private DataSource ds;
+	private DataSource cusDS;// lijun添加---->客户列表数据源
+	private DataSource SupplierDS;//lijun
+	private TreeTable tree;
+	private SGTable SupplierTable;//lijun
+	private SGTable cusTable;//lijun 
+	private DynamicForm form;
+	private SGPanel base_form;
+	private ValuesManager form_group;
+
+	private Window searchWin = null;
+	private static String ORG_ID;// lijun 组织机构ID
+
+	//private String cust_id;//lijun
+	private SGPanel searchForm = new SGPanel();
+	private SectionStack lst_section;
+	private ComboBoxItem PARENT_ORG_ID;
+	private TextAreaItem item;
+	
+	public ManualInterfaceView(String id) {
+		super(id);
+	}
+
+	public Canvas getViewPanel() {
+
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		form_group = new ValuesManager();
+
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+
+		ToolStrip toolStrip = new ToolStrip(); // 按钮布局
+		toolStrip.setAlign(Alignment.LEFT);
+		ds = OrgDS.getInstance("BAS_ORG");
+
+		// STACK的右边布局
+		TabSet rightTabSet = new TabSet();
+		rightTabSet.setWidth100();
+		rightTabSet.setHeight100();
+		rightTabSet.setMargin(0);
+
+		Tab tab1 = new Tab("U8托运单接口");
+		SectionStack section = new SectionStack();
+		section.setWidth100();
+		section.setHeight100();
+		SectionStackSection mainItem = new SectionStackSection("接口日志");
+
+		// 组织明细的FORM布局
+		createBtnWidget(toolStrip);
+		
+		form = new DynamicForm();
+		form.setBackgroundColor(ColorUtil.BG_COLOR);
+		form.setAlign(Alignment.LEFT);
+		form.setNumCols(1);
+		form.setWidth100();
+		form.setHeight100();
+		form.setTitleSuffix("");
+		form.setTitleWidth(1);
+		createForm(form);
+		mainItem.setItems(toolStrip,form);
+		mainItem.setExpanded(true);
+
+		section.setSections(mainItem);
+		section.setVisibilityMode(VisibilityMode.MULTIPLE);
+		section.setAnimateSections(false);
+		tab1.setPane(section);
+		rightTabSet.addTab(tab1);
+
+		/*Tab tab2 = new Tab("客户列表");
+		cusDS = CustomerDS.getInstance("V_ORG_CUSTOMER");
+		SGTable table = new SGTable(cusDS, "100%", "70%");
+		tab2.setPane(customerList());
+		rightTabSet.addTab(tab2);
+
+		Tab tab3 = new Tab("供应商列表");
+		SupplierDS = SupplierListDS.getInstall("V_ORG_SUPPLIER");
+		SGTable table = new SGTable(SupplierDS,"100%","70%");
+		tab3.setPane(supplierList());
+		rightTabSet.addTab(tab3);*/
+
+		// 创建按钮布局
+		
+		//main.addMember(toolStrip);
+		main.addMember(rightTabSet);
+
+		return main;
+	}
+
+	private VLayout customerList() {
+		VLayout layout = new VLayout();
+
+		cusTable = new SGTable(cusDS);
+		cusTable.setEditEvent(ListGridEditEvent.CLICK);
+		cusTable.setShowRowNumbers(true);
+
+		ListGridField CUSTOMER_CODE = new ListGridField("CUSTOMER_CODE",
+				Util.TI18N.CUSTOMER_CODE(),80);
+
+		ListGridField CUSTOMER_CNAME = new ListGridField("CUSTOMER_CNAME",
+				Util.TI18N.CUSTOMER_CNAME(),80);
+
+		cusTable.setFields(CUSTOMER_CODE, CUSTOMER_CNAME);
+		
+		layout.addMember(cusTable);
+
+		return layout;
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+		// 1
+		item = new TextAreaItem();
+		item.setShowTitle(false);
+		item.setHeight("100%");
+		item.setWidth("500");
+
+		form.setFields(item);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth100();
+		toolStrip.setHeight("25");
+		toolStrip.setPadding(2);
+		
+		DynamicForm form = new DynamicForm();
+		form.setTitleWidth(180);
+		form.setWidth(542);
+		form.setHeight100();
+		form.setNumCols(3);
+		
+		final SGText CUSTOM_ODR_NO = new SGText("CUSTOM_ODR_NO","U8发货单号(批量用逗号分隔)");
+		CUSTOM_ODR_NO.setWidth("360");
+		CUSTOM_ODR_NO.setTitleOrientation(TitleOrientation.LEFT);
+			
+		IButton searchButton = new IButton();
+        searchButton.setTitle("执行(洋河)");
+        searchButton.setIcon(StaticRef.ICON_SAVE);
+        searchButton.setAutoFit(true);
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(!ObjUtil.isNotNull(CUSTOM_ODR_NO.getValue())) {
+					MSGUtil.sayError("请输入U8发货单号!");
+					return;
+				}
+			    SC.confirm("确定拉取U8发货单", new BooleanCallback() {
+					public void execute(Boolean value) {
+	                    if (value != null && value) {
+	                    	String type = "";
+	                    	String custom_odr_no = CUSTOM_ODR_NO.getValue().toString();
+	                    	Util.async.getU8Order("YH", custom_odr_no, new AsyncCallback<String>() {
+
+								@Override
+								public void onFailure(Throwable caught) {
+									;
+								}
+
+								@Override
+								public void onSuccess(String result) {
+									item.setValue(result);
+								}
+                    			
+                    		});	                    	
+	                    }
+	                }
+	            });
+			}
+			
+		});
+		
+		IButton searchButton2 = new IButton();
+		 searchButton2.setTitle("执行(双沟)");
+		 searchButton2.setIcon(StaticRef.ICON_SAVE);
+		 searchButton2.setAutoFit(true);
+		 searchButton2.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(!ObjUtil.isNotNull(CUSTOM_ODR_NO.getValue())) {
+					MSGUtil.sayError("请输入U8发货单号!");
+					return;
+				}
+			    SC.confirm("确定拉取U8发货单", new BooleanCallback() {
+					public void execute(Boolean value) {
+	                    if (value != null && value) {
+	                    	String type = "";
+	                    	String custom_odr_no = CUSTOM_ODR_NO.getValue().toString();
+	                    	Util.async.getU8Order("SG", custom_odr_no, new AsyncCallback<String>() {
+
+								@Override
+								public void onFailure(Throwable caught) {
+									;
+								}
+
+								@Override
+								public void onSuccess(String result) {
+									item.setValue(result);
+								}
+                    			
+                    		});	                    	
+	                    }
+	                }
+	            });
+			} 
+		 });
+		
+		 form.setItems(CUSTOM_ODR_NO);
+		 toolStrip.setMembers(form,searchButton,searchButton2);
+	}
+
+	public void initVerify() {
+	}
+
+	@Override
+	public void onDestroy() {
+	}
+}

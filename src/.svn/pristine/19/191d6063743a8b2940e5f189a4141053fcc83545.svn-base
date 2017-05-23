@@ -1,0 +1,716 @@
+package com.rd.client.view.base;
+
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.user.client.Cookies;
+import com.rd.client.PanelFactory;
+import com.rd.client.action.base.gpseq.DeleteDetailAction;
+import com.rd.client.action.base.tempeq.NewTempDetailAction;
+import com.rd.client.action.base.tempeq.SaveTempDetailAction;
+import com.rd.client.action.tms.changerecord.CancelChangeAction;
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.FormUtil;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.BasTempEqDetailDS;
+import com.rd.client.ds.base.BasTempEqLogDS;
+import com.rd.client.ds.base.BasTempEqReclaimDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.rd.client.win.UploadFileWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridEditEvent;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VerticalAlignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.tab.events.TabSelectedEvent;
+import com.smartgwt.client.widgets.tab.events.TabSelectedHandler;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 基础资料->温控设备
+ * @author lml
+ *
+ */
+@ClassForNameAble
+public class BasTempEqView extends SGForm implements PanelFactory {
+
+	private DataSource mainDS;
+	private DataSource areaDs;
+	private DataSource downDS;
+	public SGTable gpsTable;
+	public SGTable areaTable;
+	public SGTable downTable;
+	private SectionStack stack;
+	private Window searchWin;
+	private SGPanel searchForm;
+	public ValuesManager vm;
+	public SGPanel panel;
+	public Record record;
+	private SectionStackSection areaListItem;
+	private SectionStack areaSectionStack;
+	private HashMap<String,String> detail_ck_map ;
+	private HashMap<String,String> detail_map;
+	
+	public HashMap<String, IButton> add_detail_map;
+	public HashMap<String, IButton> save_detail_map;
+	public HashMap<String, IButton> del_detail_map;
+	
+	public TabSet bottomTabSet;
+	
+	private Window uploadWin;
+	public DynamicForm pageForm; 
+	public SGCheck ABNORMAL_FLAG;
+	public SGCombo ABNORMAL_REASON;
+	
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+	
+	/*public BasTempEqView(String id) {
+		super(id);
+	}*/
+	
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		vm = new ValuesManager();
+		VLayout main = new VLayout();
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		ToolStrip downtoolStrip = new ToolStrip();
+		downtoolStrip.setAlign(Alignment.RIGHT);
+		detail_ck_map = new HashMap<String,String>();
+		detail_map = new HashMap<String,String>();
+		
+		mainDS = BasTempEqDetailDS.getInstance("BAS_TEMPEQ", "BAS_TEMPEQ");
+		gpsTable = new SGTable(mainDS, "100%", "35%", true, true, false);
+		gpsTable.setCanEdit(true);
+		//gpsTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+		gpsTable.setEditEvent(ListGridEditEvent.DOUBLECLICK);
+		gpsTable.setShowFilterEditor(false);
+		areaDs = BasTempEqLogDS.getInstance("BAS_TEMP_RECORDS","BAS_TEMP_RECORDS");
+		areaTable = new SGTable(areaDs,"100%","100%",false,true,false);
+		areaTable.setCanEdit(false);	
+		downDS = BasTempEqReclaimDS.getInstance("V_BAS_TEMP_RECLAIM","BAS_TEMP_RECLAIM");
+		downTable = new SGTable(downDS,"70%","100%",false,true,false);
+		downTable.setCanEdit(false);	
+		
+		gpsTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				record = event.getRecord();
+				if(bottomTabSet.getSelectedTabNumber()==0){
+//					areaTable.invalidateCache();
+//					areaTable.discardAllEdits();
+					final Criteria findValues = new Criteria();
+		            findValues.addCriteria("EQUIP_NO", record.getAttribute("ID"));
+		            findValues.addCriteria("OP_FLAG", areaTable.OP_FLAG);
+		            areaTable.PKEY = "EQUIP_NO";
+		            areaTable.PVALUE = record.getAttribute("EQUIP_NO");
+		            areaTable.fetchData(findValues, new DSCallback() {
+
+		    			@SuppressWarnings("unchecked")
+		    			@Override
+		    			public void execute(DSResponse response, Object rawData,
+		    					DSRequest request) {
+		    				if(pageForm != null) {
+		    					pageForm.getField("CUR_PAGE").setValue("1");
+		    					pageForm.getField("TOTAL_COUNT").setValue(Cookies.getCookie("TOTALROWS"));
+		    					pageForm.getField("SUM_PAGE").setValue(Cookies.getCookie("TOTALPAGES"));
+		    					String sqlwhere = Cookies.getCookie("SQLWHERE");
+		    					if(ObjUtil.isNotNull(sqlwhere) && sqlwhere.length() > 1) {
+		    						areaTable.setProperty("WHERE", sqlwhere.substring(1,sqlwhere.length()-1));
+		    						//LoginCache.setPageResult(table, pageForm.getField("TOTAL_COUNT"), pageForm.getField("SUM_PAGE"));
+		    					}
+		    				}
+		    				LinkedHashMap<String, String> map = (LinkedHashMap<String, String>) findValues.getValues();
+		    				if(map.get("criteria") != null) {
+		    					map.remove("criteria");
+		    				}
+		    				if(map.get("_constructor") != null) {
+		    					map.remove("_constructor");
+		    				}
+		    				if(map.get("C_ORG_FLAG") != null) {
+		    					Object obj = map.get("C_ORG_FLAG");
+		    					Boolean c_org_flag = (Boolean)obj;
+		    					map.put("C_ORG_FLAG",c_org_flag.toString());
+		    				}			
+		    			
+		    			}
+		    			
+		    		});
+			
+				}
+				
+				else if(bottomTabSet.getSelectedTabNumber()==1){	
+					downTable.invalidateCache();
+					downTable.discardAllEdits();
+					Criteria findValues = new Criteria();
+		            findValues.addCriteria("EQUIP_NO", record.getAttribute("ID"));
+		            findValues.addCriteria("OP_FLAG", downTable.OP_FLAG);
+		            downTable.PKEY = "EQUIP_NO";
+		            downTable.PVALUE = record.getAttribute("EQUIP_NO");
+		            downTable.fetchData(findValues);
+									
+				}
+				enableOrDisables(del_map, true);
+				enableOrDisables(add_detail_map, true);
+			}
+
+		});
+				
+		//下边布局
+		bottomTabSet = new TabSet();
+		bottomTabSet.setWidth100();
+		bottomTabSet.setHeight("65%");	
+		
+		
+		
+		if(isPrivilege(BasPrivRef.TEMPEQ_P1)) {
+			Tab tab1 = new Tab("使用记录");//使用记录
+			VLayout recivelay = new VLayout();
+			createTableList(areaTable);
+			areaSectionStack=new SectionStack();
+			areaListItem = new SectionStackSection("使用记录");
+			areaListItem.setItems(areaTable);
+			areaListItem.setExpanded(true);
+			areaSectionStack.addSection(areaListItem);
+			pageForm = new SGPage(areaTable,true).initPageBtn();
+			areaListItem.setControls(pageForm);
+			areaSectionStack.setWidth("100%");
+			recivelay.addMember(areaSectionStack);
+			tab1.setPane(recivelay);
+			bottomTabSet.addTab(tab1);
+			
+		 }
+		if(isPrivilege(BasPrivRef.TEMPEQ_P2)) {
+			Tab tab2 = new Tab("回收记录");//回收记录
+			VLayout recivelay = new VLayout();
+			recivelay.addMember(createdownInfo());
+			vm.addMember(panel);
+			vm.setDataSource(downDS);
+			createDownTable(downTable);
+			HLayout hlayout=new HLayout();
+			hlayout.addMember(downTable);
+			hlayout.addMember(recivelay);
+			tab2.setPane(hlayout);
+			downBtnWidget(downtoolStrip);
+			recivelay.addMember(downtoolStrip);
+			bottomTabSet.addTab(tab2);
+			
+		 }
+		
+		downTable.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				Record selectedRecord  = event.getRecord();
+                vm.editRecord(selectedRecord);
+			}
+		});
+		
+		
+		gpsTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(del_map, true);
+				enableOrDisables(add_detail_map, true);
+				enableOrDisables(del_detail_map, false);
+				enableOrDisables(save_detail_map, false);
+			}
+		});
+		gpsTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+		        enableOrDisables(save_map, true);
+			}
+		});
+		
+		downTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				enableOrDisables(add_detail_map, false);
+				enableOrDisables(del_detail_map, false);
+		        enableOrDisables(save_detail_map, true);
+				
+			}
+		});
+		
+		downTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				enableOrDisables(add_detail_map, true);
+				enableOrDisables(del_detail_map,true);
+				 enableOrDisables(save_detail_map, false);
+				
+			}
+		});
+		
+		
+		getConfigList();
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		Canvas[] widget = new Canvas[1];
+		String[] title = new String[1];
+		widget[0] = gpsTable;
+		title[0] = "模版信息";
+		
+		stack = createUDFSection(widget, title, true, true);
+		
+		main.setWidth100();
+	    main.setHeight100();
+	    main.addMember(toolStrip);
+		main.addMember(stack);
+		main.addMember(bottomTabSet);
+			
+		initVerify();
+		
+
+		bottomTabSet.addTabSelectedHandler(new TabSelectedHandler() {
+			
+			@Override
+			public void onTabSelected(TabSelectedEvent event) {
+				
+				String title=event.getTab().getTitle();
+				if(record!=null){
+				
+					if(title.equals("使用记录")){
+//						areaTable.invalidateCache();
+//						areaTable.discardAllEdits();
+						final Criteria findValues = new Criteria();
+			            findValues.addCriteria("EQUIP_NO", record.getAttribute("ID"));
+			            findValues.addCriteria("OP_FLAG", areaTable.OP_FLAG);
+			            areaTable.PKEY = "EQUIP_NO";
+			            areaTable.PVALUE = record.getAttribute("EQUIP_NO");
+			            areaTable.fetchData(findValues,new DSCallback() {
+
+			    			@SuppressWarnings("unchecked")
+			    			@Override
+			    			public void execute(DSResponse response, Object rawData,
+			    					DSRequest request) {
+			    				if(pageForm != null) {
+			    					pageForm.getField("CUR_PAGE").setValue("1");
+			    					pageForm.getField("TOTAL_COUNT").setValue(Cookies.getCookie("TOTALROWS"));
+			    					pageForm.getField("SUM_PAGE").setValue(Cookies.getCookie("TOTALPAGES"));
+			    					String sqlwhere = Cookies.getCookie("SQLWHERE");
+			    					if(ObjUtil.isNotNull(sqlwhere) && sqlwhere.length() > 1) {
+			    						areaTable.setProperty("WHERE", sqlwhere.substring(1,sqlwhere.length()-1));
+			    						//LoginCache.setPageResult(table, pageForm.getField("TOTAL_COUNT"), pageForm.getField("SUM_PAGE"));
+			    					}
+			    				}
+			    				LinkedHashMap<String, String> map = (LinkedHashMap<String, String>) findValues.getValues();
+			    				if(map.get("criteria") != null) {
+			    					map.remove("criteria");
+			    				}
+			    				if(map.get("_constructor") != null) {
+			    					map.remove("_constructor");
+			    				}
+			    				if(map.get("C_ORG_FLAG") != null) {
+			    					Object obj = map.get("C_ORG_FLAG");
+			    					Boolean c_org_flag = (Boolean)obj;
+			    					map.put("C_ORG_FLAG",c_org_flag.toString());
+			    				}			
+			    			
+			    			}
+			    			
+			    		});
+					
+					}
+				
+					else if(title.equals("回收记录")){
+						downTable.invalidateCache();
+						downTable.discardAllEdits();
+						Criteria findValues = new Criteria();
+			            findValues.addCriteria("EQUIP_NO", record.getAttribute("ID"));
+			            findValues.addCriteria("OP_FLAG", downTable.OP_FLAG);
+			            downTable.PKEY = "EQUIP_NO";
+			            downTable.PVALUE = record.getAttribute("EQUIP_NO");
+			            downTable.fetchData(findValues);
+			            
+					}
+				
+				}
+			}
+		});
+		
+		
+		return main;
+	}
+
+
+	private void createDownTable(SGTable table) {
+		ListGridField CLAIM_TIME = new ListGridField("CLAIM_TIME","设备归还时间",120);
+		Util.initDate(downTable, CLAIM_TIME);
+		ListGridField ADDWHO = new ListGridField("ADDWHO","操作人",60);
+		ListGridField ABNORMAL_FLAG = new ListGridField("ABNORMAL_FLAG","设备异常",60);
+		ABNORMAL_FLAG.setType(ListGridFieldType.BOOLEAN);
+		ListGridField ABNORMAL_REASON = new ListGridField("ABNORMAL_REASON_NAME","异常原因",100);
+		ListGridField DUTY_TO = new ListGridField("DUTY_TO_NAME","责任方",100);
+		ListGridField NOTES = new ListGridField("NOTES","异常描述",160);
+		
+		table.setFields(CLAIM_TIME,ADDWHO,ABNORMAL_FLAG,ABNORMAL_REASON,DUTY_TO,NOTES);
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(2);
+        toolStrip.setSeparatorSize(12);
+        toolStrip.addSeparator();
+         
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.TEMPEQ);
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchForm = new SGPanel();
+					searchWin = new SearchWin(mainDS, createSerchForm(searchForm), stack.getSection(0)).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        });
+        
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.TEMPEQ_P0_01);
+        newButton.addClickHandler(new NewAction(gpsTable,cache_map,this));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.TEMPEQ_P0_02);
+        saveButton.addClickHandler(new SaveAction(gpsTable, check_map, this, 1));
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.TEMPEQ_P0_03);
+        delButton.addClickHandler(new DeleteAction(gpsTable,areaTable,"EQUIP_NO",this));
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.TEMPEQ_P0_04);
+        canButton.addClickHandler(new CancelAction(gpsTable,areaTable,this));
+        
+        IButton expButton = createBtn(StaticRef.EXPORT_BTN,BasPrivRef.TEMPEQ_P0_10);
+        expButton.addClickHandler(new ExportAction(gpsTable,""));
+        
+        IButton inputButton = createBtn(StaticRef.IMPORT_BTN, BasPrivRef.TEMPEQ_P0_09);
+		inputButton.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if(uploadWin == null){
+					JavaScriptObject jsobject = stack.getSection(0).getAttributeAsJavaScriptObject("controls");
+					Canvas[] canvas = null;
+					DynamicForm pageForm=null;
+					if(jsobject != null) {
+						canvas = Canvas.convertToCanvasArray(jsobject);
+					}
+					for(int i = 0; i < canvas.length; i++) {
+						if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+							pageForm = (DynamicForm)canvas[i];
+							break;
+						}
+					}
+					uploadWin = new UploadFileWin().getViewPanel("tempeq.xls","TMP_TEMPEQ_IMPORT","SP_IMPORT_TEMPEQ",gpsTable,pageForm);
+				}else{
+					uploadWin.show();
+				}
+			}
+		});
+        
+        add_map.put(BasPrivRef.TEMPEQ_P0_01, newButton);
+        del_map.put(BasPrivRef.TEMPEQ_P0_03, delButton);
+        save_map.put(BasPrivRef.TEMPEQ_P0_02, saveButton);
+        save_map.put(BasPrivRef.TEMPEQ_P0_04, canButton);
+        
+        enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        enableOrDisables(save_map, false);
+        
+        toolStrip.setMembersMargin(4);
+        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton,expButton,inputButton);
+        
+	}
+	
+	public void downBtnWidget(ToolStrip downtoolStrip) {
+		downtoolStrip.setWidth("100%");
+		downtoolStrip.setHeight("20");
+		downtoolStrip.setPadding(2);
+		downtoolStrip.setSeparatorSize(12);
+		downtoolStrip.addSeparator();
+		downtoolStrip.setMembersMargin(4);
+		downtoolStrip.setAlign(Alignment.LEFT);
+		
+		IButton newSubButton = createUDFBtn(Util.BI18N.NEW(), StaticRef.ICON_NEW,BasPrivRef.TEMPEQ_P0_05);
+        newSubButton.addClickHandler(new NewTempDetailAction(vm, downTable, detail_map, this,2));
+        
+        IButton savSubButton = createUDFBtn(Util.BI18N.SAVE(), StaticRef.ICON_SAVE,BasPrivRef.TEMPEQ_P0_06);
+        savSubButton.addClickHandler(new SaveTempDetailAction(downTable,vm,detail_ck_map, this,3));
+        
+        IButton delSubButton = createUDFBtn(Util.BI18N.DELETE(), StaticRef.ICON_DEL,BasPrivRef.TEMPEQ_P0_07); 
+        delSubButton.addClickHandler(new DeleteDetailAction(downTable,this,vm,4));
+        
+        IButton canSubButton = createUDFBtn(Util.BI18N.CANCEL(), StaticRef.ICON_CANCEL,BasPrivRef.TEMPEQ_P0_08); 
+        canSubButton.addClickHandler(new CancelChangeAction(vm,downTable,this,5));
+        
+        //从表按钮联动
+        add_detail_map = new HashMap<String, IButton>();
+        save_detail_map = new HashMap<String, IButton>();
+        del_detail_map = new HashMap<String, IButton>();
+        add_detail_map.put(BasPrivRef.TEMPEQ_P0_05, newSubButton);
+        del_detail_map.put(BasPrivRef.TEMPEQ_P0_07, delSubButton);
+        save_detail_map.put(BasPrivRef.TEMPEQ_P0_06, savSubButton);
+        save_detail_map.put(BasPrivRef.TEMPEQ_P0_08, canSubButton);
+        enableOrDisables(add_detail_map, false);
+        enableOrDisables(del_detail_map, false);
+        enableOrDisables(save_detail_map, false);
+        
+        downtoolStrip.setMembersMargin(4);
+        downtoolStrip.setMembers(newSubButton, savSubButton, delSubButton, canSubButton);
+	
+	}
+	
+	private Canvas createdownInfo() {
+		HLayout hLayout =new HLayout();
+		hLayout.setHeight("100%");
+		hLayout.setWidth("40%");
+		panel = new SGPanel();
+		
+		//回收记录/右边布局
+		SGText CLAIM_TIME = new SGText("CLAIM_TIME", "设备归还时间");
+		Util.initDateTime(panel, CLAIM_TIME);
+		ABNORMAL_FLAG = new SGCheck("ABNORMAL_FLAG", "设备异常");
+		
+		ABNORMAL_REASON = new SGCombo("ABNORMAL_REASON", "异常原因",true);
+		Util.initCodesComboValue(ABNORMAL_REASON,"GPS_ABNORMAL");
+//		ABNORMAL_REASON.setDisabled(true);
+		SGCombo DUTY_TO = new SGCombo("DUTY_TO", "责任方");
+		
+		TextAreaItem NOTES = new TextAreaItem("NOTES", "异常描述");
+		NOTES.setStartRow(true);
+		NOTES.setColSpan(4);
+		NOTES.setHeight(50);
+		NOTES.setWidth(FormUtil.longWidth);
+		NOTES.setTitleOrientation(TitleOrientation.TOP);
+		NOTES.setTitleVAlign(VerticalAlignment.TOP);
+		
+//		ABNORMAL_FLAG.addChangedHandler(new ChangedHandler() {
+//			
+//			@Override
+//			public void onChanged(ChangedEvent event){
+//				if(ObjUtil.isNotNull(ABNORMAL_FLAG)){
+//					ABNORMAL_REASON.setDisabled(false);
+//				}
+//			}
+//		});
+		
+		panel.setItems(CLAIM_TIME,ABNORMAL_FLAG,ABNORMAL_REASON,DUTY_TO,NOTES);
+		hLayout.addMember(panel);
+		
+		return hLayout;
+	}
+	
+	private void getConfigList() {
+		ListGridField EQUIP_NO = new ListGridField("EQUIP_NO", Util.TI18N.EQUIP_NO(), 110);
+		EQUIP_NO.setTitle(ColorUtil.getRedTitle(Util.TI18N.EQUIP_NO()));
+		ListGridField PURCHASE_DATE = new ListGridField("PURCHASE_DATE", Util.TI18N.PURCHASE_DATE(), 120);
+		Util.initDate(gpsTable, PURCHASE_DATE);
+		ListGridField STATUS = new ListGridField("STATUS", Util.TI18N.STATUS(), 90);
+		Util.initCodesComboValue(STATUS,"EQUIP_STS");
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO", "当前调度单", 120);
+		LOAD_NO.setCanEdit(false);
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO", "当前车牌号", 100);
+		PLATE_NO.setCanEdit(false);
+		ListGridField USE_COMPANY = new ListGridField("USE_COMPANY", "使用单位", 120);
+		//initCustComboValue(USE_COMPANY,"","","");
+		ListGridField EQUIP_MANAGER = new ListGridField("EQUIP_MANAGER", "责任人", 80);
+		//Util.initCodesComboValue(EQUIP_MANAGER,"DUTY_TO");
+		ListGridField WORTH = new ListGridField("WORTH", "设备价值", 100);
+		ListGridField CUR_POSITION = new ListGridField("CUR_POSITION", "当前所在地", 100);
+		ListGridField ACTIVE_FLAG = new ListGridField("ACTIVE_FLAG",Util.TI18N.ACTIVE_FLAG(),60);
+		ACTIVE_FLAG.setType(ListGridFieldType.BOOLEAN);
+		
+		gpsTable.setFields(EQUIP_NO,PURCHASE_DATE,STATUS,USE_COMPANY,EQUIP_MANAGER,WORTH,CUR_POSITION,LOAD_NO,PLATE_NO,ACTIVE_FLAG);
+		
+	}
+	
+	private void createTableList(SGTable table){
+		ListGridField ADDTIME = new ListGridField("ADDTIME", "使用时间", 120);
+		ListGridField NOTES = new ListGridField("NOTES", "备注", 250);
+		ListGridField LOAD_NOS = new ListGridField("LOAD_NO", "调度单号", 110);
+		ListGridField PLATE_NOS = new ListGridField("PLATE_NO", "车牌号", 90);
+		ListGridField SUPLR_NAME = new ListGridField("SUPLR_NAME", "承运商", 90);
+		ListGridField DRIVER = new ListGridField("DRIVER", "司机", 60);
+		ListGridField MOBILE = new ListGridField("MOBILE", "电话", 110);
+		ListGridField LOAD_ADDRESS = new ListGridField("LOAD_ADDRESS", "出发地", 120);
+		ListGridField UNLOAD_ADDRESS = new ListGridField("UNLOAD_ADDRESS", "目的地", 120);
+		table.setFields(ADDTIME,NOTES,LOAD_NOS,PLATE_NOS,SUPLR_NAME,DRIVER,MOBILE,LOAD_ADDRESS,UNLOAD_ADDRESS);
+	}
+	
+//	private void initCustComboValue(ListGridField USECOMPANY,String append, String orderby, final String string) {
+//		final ListGridField combo = USECOMPANY;
+//		final String swhere = " WHERE CUSTOMER_FLAG='Y' AND ENABLE_FLAG='Y' " + append;
+//
+//			Util.async.getComboValue("BAS_CUSTOMER", "ID", "SHORT_NAME", swhere, orderby, new AsyncCallback<LinkedHashMap<String, String>>() {
+//	
+//				public void onFailure(Throwable caught) {	
+//					;
+//				}
+//				public void onSuccess(LinkedHashMap<String, String> result) {
+//					if(result != null && result.size() > 0) {
+//						combo.setValueMap(result);
+//						combo.setDefaultValue(string);
+//						LoginCache.getBizCodes().put(swhere, result);
+//					}
+//				}					
+//			});
+//	}
+
+	public DynamicForm createSerchForm(SGPanel form) {
+		form.setDataSource(mainDS);
+		form.setAutoFetchData(false);
+		form.setAlign(Alignment.LEFT);
+		
+		
+		SGText EQUIP_NO = new SGText("EQUIP_NO", "设备号");
+		SGText LOAD_NO = new SGText("LOAD_NO", "调度单");
+		SGText PLATE_NO = new SGText("PLATE_NO", "车牌号");
+		
+		SGCombo STATUS = new SGCombo("STATUS", "状态",true);
+		Util.initCodesComboValue(STATUS,"EQUIP_STS");
+		SGText USE_COMPANY = new SGText("USE_COMPANY", "使用单位");
+		SGCombo EQUIP_MANAGER = new SGCombo("EQUIP_MANAGER", "责任人");
+		Util.initCodesComboValue(EQUIP_MANAGER,"DUTY_TO");
+		
+		form.setItems(EQUIP_NO,LOAD_NO,PLATE_NO,STATUS,USE_COMPANY,EQUIP_MANAGER);
+		
+		return form;
+	}
+	
+	@Override
+	public void initVerify() {
+		check_map.put("TABLE", "BAS_TEMPEQ");
+		
+		check_map.put("EQUIP_NO", StaticRef.CHK_NOTNULL + Util.TI18N.EQUIP_NO());
+		check_map.put("EQUIP_NO", StaticRef.CHK_UNIQUE + Util.TI18N.EQUIP_NO());
+		check_map.put("PURCHASE_DATE",StaticRef.CHK_DATE+ Util.TI18N.PURCHASE_DATE());
+		
+		cache_map.put("ACTIVE_FLAG", "Y");
+		cache_map.put("STATUS", "DF252F0637784E9EA575CCACB64050FC");
+		
+		detail_ck_map.put("TABLE", "BAS_TEMP_RECLAIM");
+		detail_ck_map.put("CLAIM_TIME",StaticRef.CHK_DATE+ "设备归还时间");
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+		gpsTable.destroy();
+		areaTable.destroy();
+		stack.destroy();
+	}
+	
+	@Override
+	public void initBtn(int initBtn) {
+		if(initBtn == 1){
+			enableOrDisables(add_detail_map, true);
+		}
+		else if(initBtn == 2){
+			enableOrDisables(add_detail_map, false);
+			enableOrDisables(save_detail_map, true);
+			enableOrDisables(del_detail_map, false);
+		}
+		else if(initBtn ==3){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, true);
+		}else if(initBtn ==4){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			enableOrDisables(del_detail_map, false);
+		}else if(initBtn ==5){
+			enableOrDisables(add_detail_map, true);
+			enableOrDisables(save_detail_map, false);
+			if(areaTable.getRecords().length > 0){
+				enableOrDisables(del_detail_map, true);
+			}else{
+				enableOrDisables(del_detail_map, false);
+			}
+			areaTable.OP_FLAG = StaticRef.MOD_FLAG;
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		BasTempEqView view = new BasTempEqView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+		
+	
+}

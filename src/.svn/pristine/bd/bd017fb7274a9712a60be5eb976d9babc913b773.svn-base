@@ -1,0 +1,823 @@
+package com.rd.client.view.settlement;
+
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.action.settlement.NewInvoiceFormAction;
+import com.rd.client.common.action.CancelFormAction;
+import com.rd.client.common.action.DeleteFormAction;
+import com.rd.client.common.action.NewFormAction;
+import com.rd.client.common.action.SaveFormAction;
+import com.rd.client.common.obj.FormUtil;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGDateTime;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGLText;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.BillSettleDS;
+import com.rd.client.ds.settlement.ReceLogDS;
+import com.rd.client.ds.settlement.TransBillInvoiceDS;
+import com.rd.client.ds.settlement.TransBillReceDS;
+import com.rd.client.win.BussWin;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VerticalAlignment;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.form.fields.PickerIcon;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.form.fields.events.FormItemClickHandler;
+import com.smartgwt.client.widgets.form.fields.events.FormItemIconClickEvent;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HLayout;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 财务管理--结算管理--发票管理
+ * @author fanglm 
+ * @create time 2012-06-13 10:55
+ *
+ */
+public class InvoiceView extends SGForm {
+	
+	public SGTable table;
+	public SGTable itemTable;//作业单列表
+	public SGTable invoiceTable;
+	public ListGrid feeTable;//费用列表
+	private Window searchWin;
+	public SGPanel searchForm = new SGPanel();
+	private SectionStack sectionStack;
+	private  SectionStackSection  listItem;
+	private DataSource ds;	
+	private SGPanel InvoiceForm;
+	
+	public String load_no;
+	public String odr_no;
+	public String shpm_no;
+	private DynamicForm pageForm;
+	
+	public SGPanel feeInfo;
+	
+	public SGTable headTable;
+	public Record selectRecord;
+	
+	public int pageNum = 0;
+	
+	private ValuesManager vm;
+	private DataSource billDS;
+	private DataSource invoiceDS;
+	private DataSource verifiDs;
+	
+	
+	//按钮权限
+	public HashMap<String, IButton> ins_fee_btn;
+	public HashMap<String, IButton> sav_fee_btn;
+	public HashMap<String, IButton> del_fee_btn;
+	
+	//按钮权限
+	public HashMap<String, IButton> ins_invo_btn;
+	public HashMap<String, IButton> sav_invo_btn;
+	public HashMap<String, IButton> del_invo_btn;
+	
+	
+	
+	public IButton checkBut;
+	public InvoiceView(String id) {
+		super(id);
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		vm = new ValuesManager();
+		
+		ds = BillSettleDS.getInstance("BILL_REC_INVOICE","BILL_REC_INVOICE");
+		billDS = TransBillReceDS.getInstance("BILL_REC_INVOICEDETAILS","BILL_REC_INVOICEDETAILS");
+		invoiceDS = TransBillInvoiceDS.getInstance("BILL_REC_INVOICEINFO","BILL_REC_INVOICEINFO");
+		verifiDs =ReceLogDS.getInstance("BILL_REC_RECELOG", "BILL_REC_RECELOG");
+		
+		//主布局
+		VLayout main = new VLayout();
+		main.setHeight100();
+		main.setWidth("99%");
+		
+		// 左边列表
+		table = new SGTable(ds, "100%", "100%", false, true, false);
+		createListField();
+		table.setCanExpandRecords(false);
+		sectionStack = new SectionStack();
+		listItem = new SectionStackSection("发票组列表");
+		listItem.setItems(table);
+		listItem.setExpanded(true);
+		sectionStack.addSection(listItem);
+		pageForm = new SGPage(table,true).initPageBtn();
+		listItem.setControls(pageForm);
+		sectionStack.setWidth("100%");
+		// 右边布局
+		// 一
+		HLayout hOut = new HLayout();
+		hOut.setWidth100();
+		hOut.setHeight("100%");
+		
+		
+		VLayout layOut = new VLayout();
+		layOut.setWidth("69%");
+		layOut.setHeight("100%");
+		layOut.addMember(sectionStack);
+		
+		VLayout layOut2 = new VLayout();
+		layOut2.setWidth("30%");
+		layOut2.setHeight("100%");
+		layOut2.setAlign(Alignment.CENTER);
+		createInfo();
+		vm.addMember(feeInfo);
+		feeInfo.setHeight("40%");
+		layOut2.addMember(feeInfo);
+		DynamicForm exeform=new DynamicForm();
+		exeform.setHeight("10%");
+		layOut2.addMember(exeform);
+		
+		hOut.addMember(layOut);
+		hOut.addMember(layOut2);
+		
+		
+		
+		TabSet mainTab = new TabSet();
+		mainTab.setWidth100();
+		mainTab.setHeight100();
+		mainTab.setMargin(1);
+		
+		Tab item = new Tab("发票明细");
+		item.setPane(createfeeTable());
+		
+		VLayout vlay1 = new VLayout();
+		vlay1.setWidth100();
+		vlay1.setHeight100();
+
+	
+		
+		Tab invTab = new Tab("发票信息");
+        createInvoiceTable();
+        HLayout hlout=new HLayout();  
+        invoiceTable.setWidth("69%");
+        hlout.addMember(invoiceTable);
+        hlout.addMember(createInvoiceForm());
+		vlay1.addMember(hlout);
+		vlay1.addMember(createInvoBtn());
+		
+		invTab.setPane(vlay1);
+		
+		
+		VLayout vlay = new VLayout();
+		vlay.setWidth100();
+		vlay.setHeight100();
+		
+		vlay.addMember(createVerifiTable());
+		//vlay.addMember(createFeeBtn());
+		
+		
+		Tab verifi = new Tab("核销信息");
+		verifi.setPane(vlay);
+		
+		
+		
+		mainTab.addTab(item);
+		mainTab.addTab(invTab);
+		mainTab.addTab(verifi);
+		
+		
+		// 按钮布局
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		createBtnWidget(toolStrip);
+		
+		main.addMember(toolStrip);
+		main.addMember(hOut);
+		main.addMember(mainTab);
+		
+		initVerify();
+		
+		return main;
+	}
+	
+	private void createListField() {
+		
+		table.setShowRowNumbers(true);
+		
+		table.setCanEdit(false);
+		ListGridField BUSS_ID = new ListGridField("BUSS_ID", "客户ID",100);
+		BUSS_ID.setHidden(true);
+		ListGridField BUSS_NAME = new ListGridField("BUSS_NAME", "客户名称",100);
+		ListGridField BELONG_BUSS_NAME = new ListGridField("BELONG_BUSS_NAME","项目名称",100);
+		ListGridField BELONG_MONETH = new ListGridField("BELONG_MONETH", "所属期",60);
+		ListGridField BILL_TO = new ListGridField("BILL_TO", "开票对象",100);
+		ListGridField ACT_AMOUNT = new ListGridField("ACT_AMOUNT","应收金额",60);
+		ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT", "税金",60);
+		
+		ListGridField SUBTAX_AMOUNT = new ListGridField("SUBTAX_AMOUNT", "应收金额（不含税）",110);
+		ListGridField STATUS = new ListGridField("STATUS","审核状态",60);
+		Util.initCodesComboValue(STATUS,"APPROVE_STS");
+		ListGridField BILL_STATUS= new ListGridField("BILL_STATUS","开票状态",60);
+		Util.initComboValue(BILL_STATUS, "BAS_CODES", "CODE", "NAME_C", " prop_code='INVOICE_STS'", " order by show_seq asc","");
+		ListGridField REC_STATUS = new ListGridField("REC_STATUS","核销状态",60);
+		//Util.initCodesComboValue(REC_STATUS,"BAS_CODES","CODE","NAME_C"," where PROP_CODE='RECE_STAT' ","","");
+		Util.initComboValue(REC_STATUS, "BAS_CODES", "CODE", "NAME_C", " prop_code='RECE_STAT'", " order by show_seq asc","");
+		ListGridField BILL_BY = new ListGridField("BILL_BY", "开票人",60);
+		ListGridField BILL_TIME = new ListGridField("BILL_TIME1", "开票时间",100);
+		ListGridField RECE_BY = new ListGridField("RECE_BY","核销人",60);
+		ListGridField RECE_TIME= new ListGridField("RECE_TIME1","核销时间",100);
+		ListGridField NOTES = new ListGridField("NOTES","备注",80);
+		ListGridField INVOICE_NO = new ListGridField("INVOICE_NO","发票编号",100);
+		INVOICE_NO.setHidden(true);
+	
+		table.setFields(BUSS_ID,INVOICE_NO,BUSS_NAME,BELONG_BUSS_NAME,BELONG_MONETH,BILL_TO,ACT_AMOUNT,
+				TAX_AMOUNT,SUBTAX_AMOUNT,STATUS,BILL_STATUS,REC_STATUS,BILL_BY
+                ,BILL_TIME,RECE_BY,RECE_TIME,NOTES);
+		
+		table.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				initBtn(event.getRecord());
+				feeInfo.editRecord(event.getRecord());
+			}
+		});
+
+		table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				 enableOrDisables(add_map, false);
+			     enableOrDisables(del_map, false);
+			     enableOrDisables(save_map, true);	
+			     
+			}
+		});
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				feeInfo.setValue("OP_FLAG", "M");
+				Criteria criteria = new Criteria();
+				criteria.addCriteria("OP_FLAG","M");
+				criteria.addCriteria("INVOICE_NO",event.getRecord().getAttributeAsString("INVOICE_NO"));
+				criteria.addCriteria("INVOICE_NUM",event.getRecord().getAttributeAsString("INVOICE_NO"));
+				feeTable.fetchData(criteria);
+				itemTable.fetchData(criteria,new DSCallback() {
+					
+					@Override
+					public void execute(DSResponse response, Object rawData, DSRequest request) {
+						//initVerifiBtn(1);
+					}
+				});
+				invoiceTable.fetchData(criteria, new DSCallback() {
+					
+					@Override
+					public void execute(DSResponse response, Object rawData, DSRequest request) {
+						//initInvoiceBtn(1);
+					}
+				});
+				
+				if("10".equals(event.getRecord().getAttribute("REC_STATUS"))){
+				
+					checkBut.setDisabled(false);
+				
+				}else{
+					
+					checkBut.setDisabled(true);
+					
+				}
+			}
+		
+			
+		});
+	}
+	
+	private SGPanel createInfo(){
+		/**
+		 * 基本信息
+		 * 
+		 */
+		feeInfo = new SGPanel();
+		SGText BUSS_NAME = new SGText("BUSS_NAME","客户名称");
+		BUSS_NAME.setDisabled(true);
+		SGText BELONG_MONETH = new SGText("BELONG_MONETH", "所属期");	
+		BELONG_MONETH.setDisabled(true);
+		SGText BILL_TO = new SGText("BILL_TO","开票对象");		
+		SGText ACT_AMOUNT = new SGText("ACT_AMOUNT","应收金额",true);		
+		SGText TAX_AMOUNT = new SGText("TAX_AMOUNT", "税金");		
+		SGText SUBTAX_AMOUNT = new SGText("SUBTAX_AMOUNT", "应收金额（不含税）");			
+		TextAreaItem NOTES = new TextAreaItem("NOTES", "原因描述");
+		NOTES.setStartRow(true);
+		NOTES.setColSpan(6);
+		NOTES.setHeight(40);
+		NOTES.setWidth(FormUtil.longWidth+FormUtil.Width);
+		NOTES.setTitleOrientation(TitleOrientation.TOP);
+		NOTES.setTitleVAlign(VerticalAlignment.TOP);
+		
+		feeInfo.setNumCols(8);
+		feeInfo.setTitleWidth(75);
+		feeInfo.setItems(BUSS_NAME,BELONG_MONETH,BILL_TO,ACT_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT,NOTES);
+		
+		return feeInfo;
+	}
+	
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(3);
+		toolStrip.setSeparatorSize(5);
+
+		IButton searchButton = createBtn(StaticRef.FETCH_BTN);
+
+		toolStrip.addMember(searchButton);
+		toolStrip.addSeparator();
+
+		searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if (searchWin == null) {
+					searchWin = new SearchWin(ds,
+							createSearchForm(searchForm), sectionStack.getSection(0)).getViewPanel();
+					searchWin.setHeight(350);
+				} else {
+						searchWin.show();
+				}
+			}
+
+		});
+		
+		IButton newB = createBtn(StaticRef.CREATE_BTN, SettPrivRef.Invoice_P0_01);
+		newB.addClickHandler(new NewFormAction(feeInfo,cache_map,this));
+		
+		IButton saveB = createBtn(StaticRef.SAVE_BTN,SettPrivRef.Invoice_P0_02);
+		saveB.addClickHandler(new SaveFormAction(table, feeInfo,check_map, this));
+		
+		IButton delB = createBtn(StaticRef.DELETE_BTN,SettPrivRef.Invoice_P0_03);
+		delB.addClickHandler(new DeleteFormAction(table, feeInfo));
+		
+		IButton calB = createBtn(StaticRef.CANCEL_BTN,SettPrivRef.Invoice_P0_04);
+		calB.addClickHandler(new CancelFormAction(table, feeInfo));
+		calB.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				 enableOrDisables(add_map, true);
+			     enableOrDisables(del_map, true);
+			     enableOrDisables(save_map, false);	
+			}
+		});
+
+		checkBut= createBtn("收款确认", SettPrivRef.Invoice_P0_10);
+		checkBut.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				String STATUS=table.getSelectedRecord().getAttribute("REC_STATUS");
+				if("10".equals(STATUS)){
+				String proName = "REC_INVOICE_CHECK(?,?)";		
+				ArrayList<String> paramList = new ArrayList<String>();
+				String INVOICE_NO=table.getSelectedRecord().getAttribute("INVOICE_NO");
+				if(INVOICE_NO!=null){
+				
+					paramList.add(INVOICE_NO);		
+
+					Util.async.execProcedure(paramList, proName, new AsyncCallback<String>() {			
+					   
+						@Override			
+					   
+						public void onFailure(Throwable caught) {				
+						
+							MSGUtil.sayError(caught.getMessage());			
+					
+						}
+							
+						@Override			
+					
+						public void onSuccess(String result) {				
+						
+							if(result.equals(StaticRef.SUCCESS_CODE)) {					
+							
+								MSGUtil.showOperSuccess();									
+							
+								table.getSelectedRecord().setAttribute("REC_STATUS", "20");			
+						
+								table.redraw();
+							}else{					
+							
+								MSGUtil.sayError(result);				
+						
+							}			
+					
+						}					
+				
+					});	
+			
+					checkBut.setDisabled(true);
+				}									
+				else{
+				
+			
+				}
+				
+				
+			 }else{
+				 SC.say("该记录已确认过");
+			 }
+			}
+		});
+		
+		add_map.put(SettPrivRef.Invoice_P0_01, newB);
+        del_map.put(SettPrivRef.Invoice_P0_03, delB);
+        save_map.put(SettPrivRef.Invoice_P0_02, saveB);
+        save_map.put(SettPrivRef.Invoice_P0_04, calB);
+        this.enableOrDisables(add_map, true);
+        this.enableOrDisables(del_map, false);
+        this.enableOrDisables(save_map, false);
+		
+		
+		toolStrip.setMembersMargin(4);
+		toolStrip.setMembers(searchButton,newB,saveB,delB,calB,checkBut);
+	}
+	
+	
+	public DynamicForm createSearchForm(final SGPanel form){
+
+		SGText BUSS_NAME = new SGText("BUSS_NAME","客户");
+    	PickerIcon searchPicker = new PickerIcon(PickerIcon.SEARCH);  	
+		searchPicker.addFormItemClickHandler(new FormItemClickHandler() {			
+			@Override
+			public void onFormItemClick(FormItemIconClickEvent event) {
+				 new BussWin(form,"20%","50%").getViewPanel();		
+			}
+		});      
+		BUSS_NAME.setIcons(searchPicker);		
+		SGText BUSS_ID = new SGText("BUSS_ID","客户");
+		BUSS_ID.setVisible(false);		
+		
+		SGText BELONG_MONETH = new SGText("BELONG_MONETH","所属期");
+		SGText BILL_TO = new SGText("BILL_TO","开票对象");
+		SGCombo STATUS = new SGCombo("STATUS","审批状态");
+		Util.initCodesComboValue(STATUS,"APPROVE_STS");
+		
+		SGCombo BILL_STATUS = new SGCombo("BILL_STATUS","开票状态",true);
+		Util.initComboValue(BILL_STATUS, "BAS_CODES", "CODE", "NAME_C", " prop_code='INVOICE_STS'", " order by show_seq asc","");
+		SGDateTime BILL_TIME_FROM = new SGDateTime("BILL_TIME_FROM","开票时间从");
+		//Util.initDateTime(form, BILL_TIME_FROM);
+		SGDateTime BILL_TIME_TO = new SGDateTime("BILL_TIME_TO","到");
+		//Util.initDateTime(form, BILL_TIME_TO);
+		
+		SGCombo REC_STATUS = new SGCombo("REC_STATUS","核销状态",true);
+		Util.initComboValue(REC_STATUS, "BAS_CODES", "CODE", "NAME_C", " prop_code='RECE_STAT'", " order by show_seq asc","");
+		SGDateTime RECE_TIME_FROM= new SGDateTime("RECE_TIME_FROM","核销时间从");
+		//Util.initDateTime(form, RECE_TIME_FROM);
+		SGDateTime RECE_TIME_TO = new SGDateTime("RECE_TIME_TO","到");
+		//Util.initDateTime(form, RECE_TIME_TO);
+		
+		
+		
+		form.setItems(BUSS_NAME,BUSS_ID,BELONG_MONETH,BILL_TO,STATUS,
+				BILL_STATUS,BILL_TIME_FROM,BILL_TIME_TO,REC_STATUS,RECE_TIME_FROM,RECE_TIME_TO);
+		
+		return form;
+	}
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+	
+	private ListGrid createInvoiceTable(){
+		invoiceTable = new SGTable(invoiceDS);
+		invoiceTable.setCanExpandRecords(false);
+		invoiceTable.setShowFilterEditor(false);
+		invoiceTable.setCanEdit(false);
+		
+		invoiceTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				//initBtn(event.getRecord());
+				InvoiceForm.editRecord(event.getRecord());
+			}
+		});
+
+		ListGridField INVOICE_NUM = new ListGridField("INVOICE_NUM", "发票号", 120);
+		ListGridField INVOICE_TYPE = new ListGridField("INVOICE_TYPE","发票类型", 120);
+		ListGridField BILL_TO = new ListGridField("BILL_TO", "开票单位", 150);
+		ListGridField FEE_NAME = new ListGridField("FEE_NAME", "费用名称", 100);
+		ListGridField AMOUNT = new ListGridField("AMOUNT", "金额", 80);
+		ListGridField TAX_RATIO = new ListGridField("TAX_RATIO", "税率", 80);
+		ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT", "税额", 80);
+		ListGridField ACT_AMOUNT = new ListGridField("ACT_AMOUNT", "总金额", 80);
+
+		invoiceTable.setFields(INVOICE_NUM,INVOICE_TYPE,BILL_TO,FEE_NAME,AMOUNT,TAX_RATIO,
+				               TAX_AMOUNT,ACT_AMOUNT);
+		
+		
+		invoiceTable.addRecordClickHandler(new RecordClickHandler() {
+			
+			@Override
+			public void onRecordClick(RecordClickEvent event) {
+				initInvoiceBtn(4);
+			}
+		});
+		invoiceTable.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+			
+			@Override
+			public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+				initInvoiceBtn(2);
+			}
+		});
+		
+		return invoiceTable;
+	}
+	private SGPanel createInvoiceForm(){
+		
+		InvoiceForm=new SGPanel();
+		
+		SGText INVOICE_NUM=new SGText("INVOICE_NUM", "发票号");		
+		SGText BILL_TO=new SGText("BILL_TO", "发票抬头");		
+		SGLText INVOICE_ADDRESS=new SGLText("INVOICE_ADDRESS", "地址电话");
+		
+		SGText TAX_NO=new SGText("TAX_NO", "税号",true);
+		SGText BANK_ACCOUNT=new SGText("BANK_ACCOUNT", "银行账号");
+		SGLText BANK_POINT=new SGLText("BANK_POINT", "开户银行");
+		
+		SGCombo INVOICE_TYPE=new SGCombo("INVOICE_TYPE", "发票类型",true);
+		Util.initCodesComboValue(INVOICE_TYPE,"INVOICE_TYP");	
+		SGText FEE_NAME=new SGText("FEE_NAME", "费用名称");
+		SGText AMOUNT=new SGText("AMOUNT", "金额");
+		SGText TAX_AMOUNT=new SGText("TAX_AMOUNT", "税额");
+		
+		SGText TAX_RATIO=new SGText("TAX_RATIO", "税率",true);
+		SGText ACT_AMOUNT=new SGText("ACT_AMOUNT", "总金额");
+		SGText INVOICE_BY=new SGText("INVOICE_BY", "开票人");	
+		SGText INVOICE_TIME=new SGText("INVOICE_TIME", "开票时间");	
+		
+		Util.initDate(InvoiceForm, INVOICE_TIME);	
+		SGLText NOTES = new SGLText("NOTES", "备注",true);
+		//NOTES.setWidth(FormUtil.longWidth+FormUtil.longWidth);
+		
+		InvoiceForm.setNumCols(8);
+		InvoiceForm.setWidth("30%");
+		InvoiceForm.setItems(INVOICE_NUM,BILL_TO,INVOICE_ADDRESS,TAX_NO,BANK_ACCOUNT,BANK_POINT,INVOICE_TYPE,
+				FEE_NAME,AMOUNT,TAX_AMOUNT,TAX_RATIO,ACT_AMOUNT,INVOICE_BY,INVOICE_TIME,NOTES);
+		return InvoiceForm;
+	}
+
+	private ListGrid createVerifiTable(){
+		itemTable = new SGTable(verifiDs);
+		itemTable.setCanExpandRecords(false);
+		itemTable.setShowFilterEditor(false);
+		itemTable.setCanEdit(false);
+
+		ListGridField INVOICE_NO = new ListGridField("INVOICE_NO","开票单号", 120);
+		ListGridField RECE_AMOUNT = new ListGridField("RECE_AMOUNT","核销金额", 100);
+		Util.initFloatListField(RECE_AMOUNT, StaticRef.PRICE_FLOAT);
+		ListGridField RECE_BY = new ListGridField("RECE_BY","核销人", 120);
+		ListGridField RECE_TIME = new ListGridField("RECE_TIME","核销时间", 120);
+		
+		itemTable.setFields(INVOICE_NO,RECE_AMOUNT,RECE_BY,RECE_TIME);
+
+		return itemTable;
+	}
+	
+	private ListGrid createfeeTable(){
+		feeTable = new SGTable(billDS);
+		feeTable.setCanExpandRecords(false);
+		feeTable.setShowFilterEditor(false);
+		feeTable.setCanEdit(false);
+		
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO", "客户单号", 100);
+		ListGridField ODR_NO = new ListGridField("ODR_NO", "托运单号", 100);
+		ListGridField VEHICLE_TYP_ID_NAME = new ListGridField("VEHICLE_TYP_ID_NAME","车型", 100);
+
+		ListGridField ODR_TIME = new ListGridField("ODR_TIME", "下单时间", 100);		
+		ListGridField LOAD_DATE = new ListGridField("LOAD_DATE", "发货日期", 100);
+		ListGridField UNLOAD_DATE = new ListGridField("UNLOAD_DATE", "到货日期", 100);
+		ListGridField LOAD_NAME = new ListGridField("LOAD_NAME", "发货方", 100);
+		ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME","收货方", 100);
+		ListGridField TOT_QNTY = new ListGridField("TOT_QNTY", "托数", 100);
+		ListGridField TOT_NET_W = new ListGridField("TOT_NET_W", "箱数", 100);
+		ListGridField TOT_GROSS_W = new ListGridField("TOT_GROSS_W", "吨数", 100);
+		ListGridField TOT_VOL = new ListGridField("TOT_VOL", "方数", 100);
+		
+		ListGridField ACT_AMOUNT = new ListGridField("ACT_AMOUNT", "应收金额", 100);
+		ListGridField TAX_AMOUNT = new ListGridField("TAX_AMOUNT", "税金", 100);
+		ListGridField SUBTAX_AMOUNT = new ListGridField("SUBTAX_AMOUNT", "应收金额（不含税）", 120);
+		
+		feeTable.setFields(CUSTOM_ODR_NO,ODR_NO,VEHICLE_TYP_ID_NAME,ODR_TIME,LOAD_DATE,UNLOAD_DATE
+		,LOAD_NAME,UNLOAD_NAME,TOT_QNTY,TOT_NET_W,TOT_GROSS_W,TOT_VOL,ACT_AMOUNT,TAX_AMOUNT,SUBTAX_AMOUNT);
+	    
+		
+		return feeTable;
+	}
+	
+	private ToolStrip createInvoBtn(){
+		IButton newBtn =createBtn("新增",SettPrivRef.Invoice_P0_05);
+        newBtn.setIcon(StaticRef.ICON_NEW);
+        newBtn.setWidth(60);
+        newBtn.setAutoFit(true);
+        newBtn.setAlign(Alignment.RIGHT);
+        newBtn.addClickHandler(new NewInvoiceFormAction(InvoiceForm,table));
+        newBtn.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				initInvoiceBtn(2);
+			}
+		});
+        
+        IButton saveBtn = createBtn("保存",SettPrivRef.Invoice_P0_06);
+		saveBtn.setIcon(StaticRef.ICON_SAVE);
+		saveBtn.setWidth(60);
+		saveBtn.setAutoFit(true);
+		saveBtn.setAlign(Alignment.RIGHT);
+		saveBtn.addClickHandler(new SaveFormAction(invoiceTable, InvoiceForm, check_map, this));
+		saveBtn.addClickHandler(new ClickHandler() {
+				
+				@Override
+				public void onClick(ClickEvent event) {
+					initInvoiceBtn(1);
+				}
+			});
+		
+		IButton delBtn = createBtn("删除",SettPrivRef.Invoice_P0_07);
+        delBtn.setIcon(StaticRef.ICON_DEL);
+		delBtn.setWidth(60);
+		delBtn.setAutoFit(true);
+		delBtn.setAlign(Alignment.RIGHT);
+		delBtn.addClickHandler(new DeleteFormAction(invoiceTable, InvoiceForm));
+		
+		IButton cancelBtn = createBtn("取消",SettPrivRef.Invoice_P0_08);
+		cancelBtn.setIcon(StaticRef.ICON_CANCEL);
+		cancelBtn.setWidth(60);
+		cancelBtn.setAutoFit(true);
+		cancelBtn.setAlign(Alignment.RIGHT);
+		cancelBtn.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				invoiceTable.discardAllEdits();
+				initInvoiceBtn(1);
+			}
+		});
+		IButton checkBtn = createBtn("核销",SettPrivRef.Invoice_P0_09);	
+		
+		ins_invo_btn=new HashMap<String, IButton>();
+		ins_invo_btn.put(SettPrivRef.Invoice_P0_05, newBtn);	
+		
+		del_invo_btn=new HashMap<String, IButton>();
+		del_invo_btn.put(SettPrivRef.Invoice_P0_07, delBtn);
+        
+        sav_invo_btn=new HashMap<String, IButton>();
+        sav_invo_btn.put(SettPrivRef.Invoice_P0_06, saveBtn);
+        sav_invo_btn.put(SettPrivRef.Invoice_P0_08, cancelBtn);
+        
+        this.enableOrDisables(ins_invo_btn, true);
+        enableOrDisables(del_invo_btn, false);
+        this.enableOrDisables(sav_invo_btn, false);
+		
+		ToolStrip toolStrip = new ToolStrip();//按钮布局
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(12);
+		toolStrip.addSeparator();
+		toolStrip.setMembersMargin(4);
+	    toolStrip.setMembers(newBtn,saveBtn,delBtn,cancelBtn,checkBtn); 
+	    
+	    return toolStrip;
+	}
+	
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+			searchForm.destroy();
+		}
+	}
+
+	
+	/**
+	 * 调度单页签 费用按钮状态变化
+	 * @author fangliangmeng
+	 * @param typ
+	 */
+	public void initVerifiBtn(int typ){
+		if(typ == 1){
+			enableOrDisables(ins_fee_btn, true);
+			enableOrDisables(sav_fee_btn, false);
+			enableOrDisables(del_fee_btn, false);
+		}else if(typ == 2){
+			enableOrDisables(ins_fee_btn, false);
+			enableOrDisables(sav_fee_btn, true);
+			enableOrDisables(del_fee_btn, false);
+		}else if(typ == 3){
+			enableOrDisables(ins_fee_btn, false);
+			enableOrDisables(sav_fee_btn, false);
+			enableOrDisables(del_fee_btn, true);
+		}else if(typ == 4){
+			enableOrDisables(ins_fee_btn, true);
+			enableOrDisables(sav_fee_btn, false);
+			enableOrDisables(del_fee_btn, true);
+		}else if(typ == 5){
+			enableOrDisables(ins_fee_btn, false);
+			enableOrDisables(sav_fee_btn, false);
+			enableOrDisables(del_fee_btn, false);
+		}
+	}
+	
+	public void initInvoiceBtn(int typ){
+		if(typ == 1){
+			enableOrDisables(ins_invo_btn, true);
+			enableOrDisables(sav_invo_btn, false);
+			enableOrDisables(del_invo_btn, false);
+		}else if(typ == 2){
+			enableOrDisables(ins_invo_btn, false);
+			enableOrDisables(sav_invo_btn, true);
+			enableOrDisables(del_invo_btn, false);
+		}else if(typ == 3){
+			enableOrDisables(ins_invo_btn, false);
+			enableOrDisables(sav_invo_btn, false);
+			enableOrDisables(del_invo_btn, true);
+		}else if(typ == 4){
+			enableOrDisables(ins_invo_btn, true);
+			enableOrDisables(sav_invo_btn, false);
+			enableOrDisables(del_invo_btn, true);
+		}else if(typ == 5){
+			enableOrDisables(ins_invo_btn, false);
+			enableOrDisables(sav_invo_btn, false);
+			enableOrDisables(del_invo_btn, false);
+		}
+	}
+	
+	public void initBtn(Record record){
+		
+		enableOrDisables(add_map, true);
+		enableOrDisables(save_map, false);
+		enableOrDisables(del_map, true);
+		
+		
+	}
+	
+	public void initVerify() {
+		
+		check_map.put("TABLE", "BILL_REC_INVOICEINFO");
+		check_map.put("INVOICE_TIME", StaticRef.CHK_DATE+ "开票时间");
+		
+//		cache_map.put("EXEC_ORG_ID", LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+//		cache_map.put("EXEC_ORG_ID_NAME", LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+//		cache_map.put("BILL_STAT", "10");
+//		cache_map.put("BILL_STAT_NAME", "开票状态");
+//		cache_map.put("AUDIT_STAT", "10");
+//		cache_map.put("AUDIT_STAT_NAME", "审核状态");
+//		cache_map.put("VERIFI_STAT", "10");
+//		cache_map.put("VERIFI_STAT_NAME", "核销状态");
+	}
+	
+	
+	public InvoiceView getThis(){
+		return this;
+	}
+}

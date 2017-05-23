@@ -1,0 +1,219 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.whse.UserWhseOrderDS;
+import com.rd.client.win.SearchWin;
+import com.rd.client.win.UploadWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 运输执行--条码管理
+ * @author fanglm
+ *
+ */
+public class TmsBarcodeView extends SGForm{
+
+	public SGTable table;
+	private DataSource ds;
+	private SectionStack section;
+	private Window searchWin;
+	private SGPanel searchForm;
+	private Record selected;
+	
+	public TmsBarcodeView(String id) {
+		super(id);
+	}
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		//页面总布局
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+		
+		ds = UserWhseOrderDS.getInstance("USER_WHSE_ORDER","USER_WHSE_ORDER");
+		
+		//放置按钮
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		
+		//设置详细信息布局
+		HStack stack = new HStack();
+		stack.setWidth100();
+		stack.setHeight100();
+		
+		table= new SGTable(ds, "100%", "100%");
+		table.setCanEdit(false);
+		table.setShowFilterEditor(false);
+		createFields(table);
+		
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		
+		//创建Section
+		section = new SectionStack();
+		section.setWidth("100%");
+		section.setHeight("100%");
+		
+		final SectionStackSection listItem = new SectionStackSection("列表信息");//
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+	    listItem.setControls(new SGPage(table, true).initPageBtn());
+	    section.addSection(listItem);
+		
+	    main.setWidth100();
+        main.setHeight100();
+        main.addMember(toolStrip);
+		main.addMember(section);
+        
+		return main;
+	}
+
+	private void createFields(final SGTable table) {
+		/**
+		 * 客户单号   状态	     订单时间	发运时间	到货时间	收货区域  收货方	 调度状态	发运状态	到货状态	
+		 * 货品规格	    运输单位	 订单数量  发运数量	到货数量	体积	毛重	供应商	     执行机构	订单类型	
+		 */
+		ListGridField LOAD_NO = new ListGridField("LOAD_NO",Util.TI18N.LOAD_NO(),100);
+		ListGridField PLATE_NO = new ListGridField("PLATE_NO",Util.TI18N.PLATE_NO(),100);
+		ListGridField ODR_TYP = new ListGridField("ODR_TYP_NAME",Util.TI18N.ODR_TYP(),70);
+		ListGridField CUSTOM_ODR_NO = new ListGridField("CUSTOM_ODR_NO",Util.TI18N.CUSTOM_ODR_NO(),100);
+		ListGridField ODR_NO = new ListGridField("ODR_NO",Util.TI18N.ODR_NO(),100);
+		ListGridField SHPM_NO = new ListGridField("SHPM_NO",Util.TI18N.SHPM_NO(),100);
+		ListGridField STATUS = new ListGridField("STATUS_NAME",Util.TI18N.ORDER_STATE2(),60);
+		ListGridField LOAD_NAME = new ListGridField("LOAD_NAME",Util.TI18N.LOAD_NAME(),140);
+		ListGridField UNLOAD_NAME = new ListGridField("UNLOAD_NAME",Util.TI18N.UNLOAD_NAME(),140);
+		ListGridField SKU = new ListGridField("SKU",Util.TI18N.SKU(),80);
+		ListGridField SKU_NAME = new ListGridField("SKU_NAME",Util.TI18N.SKU_NAME(),80);
+		ListGridField SKU_SPEC = new ListGridField("SKU_SPEC",Util.TI18N.SKU_SPEC(),70);
+		ListGridField EA = new ListGridField("QNTY_EACH",Util.TI18N.R_EA(),60);
+		ListGridField TRANS_UOM = new ListGridField("UOM",Util.TI18N.TRANS_UOM_FLAG(),60);
+		ListGridField ODR_QNTY = new ListGridField("QNTY", Util.TI18N.ORD_TOT_QNTY(),60);//订单数量  
+		Util.initFloatListField(EA, StaticRef.QNTY_FLOAT);
+		Util.initFloatListField(ODR_QNTY, StaticRef.QNTY_FLOAT);
+		
+		table.setFields(LOAD_NO,PLATE_NO,ODR_TYP,CUSTOM_ODR_NO,ODR_NO,SHPM_NO,STATUS,LOAD_NAME,UNLOAD_NAME,SKU,SKU_NAME,SKU_SPEC,EA,TRANS_UOM,ODR_QNTY);
+		
+		table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+				Record record = event.getRecord();
+				int num = table.getRecords().length;
+				if(ObjUtil.isNotNull(selected) && num > 1 && (!record.getAttribute("SKU").equals(selected.getAttribute("SKU"))
+						|| !record.getAttribute("ODR_NO").equals(selected.getAttribute("ODR_NO")))	){
+						MSGUtil.sayError("必须选择同一托运单下的同种货品！ ");
+						return;
+				}
+				selected = record;
+			}
+		});
+		
+	}
+
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+
+		toolStrip.setWidth("100%");
+		toolStrip.setHeight("20");
+		IButton searchButton=createBtn(StaticRef.FETCH_BTN);//查询
+		searchButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+			   if(searchWin==null){
+				   searchForm=new SGPanel();
+					searchWin = new SearchWin(ds, createSerchForm(searchForm),
+							section.getSection(0)).getViewPanel();
+					searchWin.setHeight(320);
+				}else{
+					searchWin.show();
+				}
+				
+			}
+		});
+		
+		 //导出按钮
+        IButton expButton = createBtn(StaticRef.IMPORT_BTN);
+        expButton.setTitle("上传条码");
+        expButton.addClickHandler(new ClickHandler() {
+			
+			@Override
+			public void onClick(ClickEvent event) {
+				new UploadWin(getThis()).getViewPanel().show();
+			}
+		});
+        
+		toolStrip.setMembersMargin(5);
+		toolStrip.setMembers(searchButton,expButton);
+		
+	}
+
+	protected DynamicForm createSerchForm(SGPanel form) {
+		
+		/**
+		 * 	客户        客户单号	订单时间 从   到       发运时间 从   到     执行机构   订单类型	供应商					
+		 * 
+		 */
+		
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setWidth100();
+		form.setCellPadding(2);
+		
+		SGCombo CUSTOMER=new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER(),true);
+		
+		form.setItems(CUSTOMER);
+		
+		return form;
+		
+	}
+
+	@Override
+	public void createForm(DynamicForm form) {
+
+	}
+
+	@Override
+	public void initVerify() {
+
+	}
+
+	@Override
+	public void onDestroy() {
+		if (searchWin != null) {
+			searchWin.destroy();
+		}
+	}
+	
+	private TmsBarcodeView getThis(){
+		return this;
+	}
+	
+
+}

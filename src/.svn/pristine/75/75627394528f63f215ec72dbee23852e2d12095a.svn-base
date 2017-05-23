@@ -1,0 +1,302 @@
+package com.rd.client.view.tms;
+
+import java.util.HashMap;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.tms.ShpmSkuDS1;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DSCallback;
+import com.smartgwt.client.data.DSRequest;
+import com.smartgwt.client.data.DSResponse;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.Autofit;
+import com.smartgwt.client.types.SelectionAppearance;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VerticalAlignment;
+import com.smartgwt.client.util.SC;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.MinimizeClickEvent;
+import com.smartgwt.client.widgets.events.MinimizeClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.ButtonItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.layout.VLayout;
+
+public class SeparateWin extends Window{
+	
+	public Window window = null;
+
+	public SGTable table;
+	
+	public SGTable unTable;
+	
+	public SGTable skuTable;
+	
+	private DataSource shpmSkuDS;   
+		
+	private SGCombo SPLIT_REASON_CODE;
+	
+	private TextItem SPLIT_REASON;
+	
+	private TextItem SHPM_NO;
+	
+	private SGPanel form;
+	
+	public DynamicForm mainSearch;
+	
+	public ChangeRecordView view;
+	
+	public SeparateWin(SGTable unTable,SGTable table,ChangeRecordView view) {
+		this.unTable=unTable;
+		this.view = view;
+		this.table=table;
+	}
+
+
+    public Window getViewPanel() {
+		
+		VLayout layout = new VLayout();
+		layout.setWidth100();
+		layout.setHeight100();
+		shpmSkuDS = ShpmSkuDS1.getInstance("V_SHIPMENT_ITEM_SF1");
+		
+		skuTable = new SGTable();
+		skuTable.setDataSource(shpmSkuDS);
+		skuTable.setWidth("100%");
+		skuTable.setHeight("40%");
+		skuTable.setCanEdit(true);
+		skuTable.setAutoFitData(Autofit.VERTICAL);
+		skuTable.setSelectionAppearance(SelectionAppearance.CHECKBOX);
+         
+        Criteria findValues = new Criteria();
+        findValues.addCriteria("OP_FLAG", StaticRef.MOD_FLAG);
+	    findValues.addCriteria("SHPM_NO", table.getSelectedRecord().getAttribute("SHPM_NO"));
+	        	
+	        //作业单明细列表
+	    ListGridField SHPM_ROW = new ListGridField("SHPM_ROW",Util.TI18N.ORD_ROW(), 45);
+	    SHPM_ROW.setCanEdit(false);
+	    ListGridField SKU = new ListGridField("SKU",Util.TI18N.SKU(), 110);
+	    SKU.setCanEdit(false);
+  		ListGridField SKU_NAME = new ListGridField("SKU_NAME",Util.TI18N.SKU_NAME(), 110);
+  		SKU_NAME.setCanEdit(false);
+	    ListGridField TEMPERATURE1 = new ListGridField("TEMPERATURE1_NAME",Util.TI18N.TEMPERATURE(), 60);
+	    TEMPERATURE1.setCanEdit(false); 
+  		ListGridField QNTY = new ListGridField("QNTY",Util.TI18N.QNTY(),70);
+  		QNTY.setAlign(Alignment.RIGHT);
+  		//QNTY.addEditorExitHandler(new ChangedQntyAction(skuTable, getView()));
+  		ListGridField VOL = new ListGridField("VOL",Util.TI18N.VOL(),70);
+  		VOL.setAlign(Alignment.RIGHT);
+  		//VOL.addEditorExitHandler(new ChangedVolAction(unshpmlstTable, getView()));
+  		ListGridField G_WGT = new ListGridField("G_WGT",Util.TI18N.G_WGT(),70);
+  		G_WGT.setAlign(Alignment.RIGHT);
+  		//G_WGT.addEditorExitHandler(new ChangedGrossWAction(unshpmlstTable, getView()));
+  		ListGridField UOM = new ListGridField("UOM",Util.TI18N.UNIT(),70);
+  		UOM.setCanEdit(false);
+
+  		skuTable.setFields(SHPM_ROW, SKU, SKU_NAME, QNTY, G_WGT, VOL,UOM, TEMPERATURE1);
+  		skuTable.fetchData(findValues, new DSCallback() {
+
+				@Override
+				public void execute(DSResponse response, Object rawData,
+						DSRequest request) {
+					
+				}
+  			
+  		});
+  		
+  		form = new SGPanel();
+ 		form.setHeight("50%");
+ 		form.setWidth("80%");
+ 		form.setNumCols(8);
+ 		form.setPadding(5);
+ 		form.setTitleWidth(75);
+ 		form.setAlign(Alignment.LEFT);
+ 		form.setHeight100();
+ 		
+ 		SHPM_NO = new TextItem("SHPM_NO", "作业单号");
+ 		SHPM_NO.setTitleOrientation(TitleOrientation.TOP);
+ 		SHPM_NO.setColSpan(2);
+ 		SHPM_NO.setValue(table.getSelectedRecord().getAttribute("SHPM_NO"));
+ 		
+ 		SPLIT_REASON_CODE = new SGCombo("SPLIT_REASON_CODE",ColorUtil.getRedTitle("拆分原因"));
+ 		Util.initCodesComboValue(SPLIT_REASON_CODE, "SPLIT_REASON");
+ 		SPLIT_REASON_CODE.setColSpan(2);
+ 		
+ 		SPLIT_REASON = new TextItem("SPLIT_REASON", "拆分备注");
+ 		//SPLIT_REASON.setStartRow(true);
+ 		SPLIT_REASON.setColSpan(4);
+ 		//SPLIT_REASON.setHeight(FormUtil.);
+ 		SPLIT_REASON.setWidth(306);
+ 		SPLIT_REASON.setTitleOrientation(TitleOrientation.TOP);
+ 		SPLIT_REASON.setTitleVAlign(VerticalAlignment.TOP);
+ 		form.setItems(SHPM_NO,SPLIT_REASON_CODE,SPLIT_REASON);
+		
+ 		createForm(form);
+		
+		layout.addMember(skuTable);
+		layout.addMember(form);
+		
+		window = new Window();
+		window.setTitle("作业单拆分");
+		window.setLeft("30%");
+		window.setTop("30%");
+		window.setWidth(840);
+		window.setHeight(600);
+		window.setCanDragReposition(true);
+		window.setCanDragResize(true);
+		
+		window.addItem(layout);
+		window.addItem(mainSearch);
+		
+		window.setShowCloseButton(true);
+		
+		window.show();
+		
+		window.addMinimizeClickHandler(new MinimizeClickHandler() {
+
+			@Override
+			public void onMinimizeClick(MinimizeClickEvent event) {
+				window.setMinimized(false);
+				window.hide();
+				event.cancel();
+			}
+
+		});
+		return window;
+		
+    }
+    
+    
+    
+	public void createForm(DynamicForm confirmForm) {
+		ButtonItem confirmItem = new ButtonItem(Util.BI18N.CONFIRM());
+		confirmItem.setIcon(StaticRef.ICON_SEARCH);
+		confirmItem.setColSpan(1);
+		confirmItem.setStartRow(false);
+		confirmItem.setEndRow(false);
+		confirmItem.setAutoFit(true);
+		confirmItem.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+			
+			@Override
+			public void onClick(com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+				if(SPLIT_REASON_CODE.getValue()== null || SPLIT_REASON_CODE.getValue().toString().equals("")){
+					SC.warn("请选择拆分原因");
+				} else {					
+					doSplit();
+					window.destroy();
+				}
+			}
+			
+		});
+		
+		ButtonItem clearItem = new ButtonItem(Util.BI18N.CLEAR());
+		clearItem.setIcon(StaticRef.ICON_CANCEL);
+		clearItem.setColSpan(1);
+		clearItem.setAutoFit(true);
+		clearItem.setStartRow(false);
+		clearItem.setEndRow(true);
+		clearItem.addClickHandler(new com.smartgwt.client.widgets.form.fields.events.ClickHandler() {
+			
+			@Override
+			public void onClick(com.smartgwt.client.widgets.form.fields.events.ClickEvent event) {
+				    form.clearValues();
+			}
+		});
+		
+		
+        
+		mainSearch = new DynamicForm();
+		mainSearch.setCellPadding(5);
+		mainSearch.setNumCols(5);
+		mainSearch.setItems(confirmItem,clearItem);
+		mainSearch.setBackgroundColor(ColorUtil.BG_COLOR);
+	
+
+	}
+	private void doSplit(){
+		HashMap<String, Object> listmap = new HashMap<String, Object>();
+		HashMap<String, String> row_map = new HashMap<String, String>();   //行号
+		HashMap<String, String> qnty_map = new HashMap<String, String>();  //数量
+		HashMap<String, String> vol_map = new HashMap<String, String>();   //体积
+		HashMap<String, String> gw_map = new HashMap<String, String>();    //毛重
+		HashMap<String, String> nw_map = new HashMap<String, String>();    //净重 
+		HashMap<String, String> worth_map = new HashMap<String, String>(); //货值   
+		
+		if(skuTable != null) {
+			ListGridRecord[] records = skuTable.getSelection();
+			int[] edit_rows = new int[records.length];
+			for(int i = 0; i < records.length; i++) {
+				edit_rows[i] = skuTable.getRecordIndex(records[i]);
+			}
+			String shpm_no = "";
+			Record rec = null;
+			ListGridRecord record = null;
+			
+			for(int i = 0; i < edit_rows.length; i++) {
+				
+				rec = skuTable.getEditedRecord(edit_rows[i]);
+				record = records[i];
+				shpm_no = rec.getAttribute("SHPM_NO");
+				if(rec.getAttribute("QNTY").equals(record.getAttribute("QNTY"))) {
+					row_map.put(Integer.toString(i+1), rec.getAttribute("SHPM_ROW"));
+					qnty_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(record.getAttribute("QNTY"),"0").toString());
+					vol_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(record.getAttribute("VOL"),"0").toString());
+					gw_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(record.getAttribute("G_WGT"),"0").toString());
+					nw_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(record.getAttribute("N_WGT"),"0").toString());
+					worth_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(record.getAttribute("WORTH"),"0").toString());
+				}
+				else {
+					row_map.put(Integer.toString(i+1), rec.getAttribute("SHPM_ROW"));
+					qnty_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(rec.getAttribute("QNTY"),"0").toString());
+					vol_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(rec.getAttribute("VOL"),"0").toString());
+					gw_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(rec.getAttribute("G_WGT"),"0").toString());
+					nw_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(rec.getAttribute("N_WGT"),"0").toString());
+					worth_map.put(Integer.toString(i+1), ObjUtil.ifObjNull(rec.getAttribute("WORTH"),"0").toString());
+				}
+			}
+			listmap.put("1", shpm_no);
+			listmap.put("2", row_map);
+			listmap.put("3", qnty_map);
+			listmap.put("4", vol_map);
+			listmap.put("5", gw_map);
+			listmap.put("6", nw_map);
+			listmap.put("7", worth_map);
+			listmap.put("8", SPLIT_REASON_CODE.getValue().toString());
+			listmap.put("9", ObjUtil.ifObjNull(SPLIT_REASON.getValue(),"").toString());
+			listmap.put("10", LoginCache.getLoginUser().getUSER_ID());
+			String json = Util.mapToJson(listmap);
+			Util.async.execProcedure(json, "SP_SHPM_SPLIT_CHANGEQNTY(?,?,?,?,?,?,?,?,?,?,?)", new AsyncCallback<String>() {
+				@Override
+				public void onSuccess(String result) {
+					if(result.substring(0, 2).equals(StaticRef.SUCCESS_CODE)){
+						MSGUtil.sayInfo(result.substring(2));
+						unTable.collapseRecord(unTable.getSelectedRecord()); 
+						unTable.expandRecord(unTable.getSelectedRecord());
+						//view.qryUnshpmTableAction.doRefresh(true);
+					}
+					else{
+						MSGUtil.sayError(result.substring(2));
+					}
+				}
+				
+				@Override
+				public void onFailure(Throwable caught) {
+					MSGUtil.sayError(caught.getMessage());
+				}
+			});
+		}
+	}
+}

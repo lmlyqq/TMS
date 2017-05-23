@@ -1,0 +1,300 @@
+package com.rd.server;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.hibernate.Hibernate;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.transform.Transformers;
+import org.hibernate.type.Type;
+
+import com.google.gson.Gson;
+import com.rd.client.common.obj.FUNCTION;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.obj.system.SYS_USER;
+import com.rd.server.util.LoginContent;
+import com.rd.server.util.SQLUtil;
+import com.rd.server.util.SUtil;
+
+@SuppressWarnings("serial")
+public class InitDataServlet extends HttpServlet{
+    protected Session currentSession;
+    
+    private Query query;
+    
+	@SuppressWarnings("unchecked")
+	protected void doGet(HttpServletRequest req, HttpServletResponse response)
+			throws ServletException, IOException {
+		String dsid=req.getParameter("ds_id");
+		SQLUtil sqlUtil = new SQLUtil(true);
+		if(dsid!=null){
+			response.setCharacterEncoding("utf-8");
+			PrintWriter p=response.getWriter();
+	        currentSession = LoginContent.getInstance().getSession();
+			HttpSession session =req.getSession();
+			session.setMaxInactiveInterval(24*60*60);
+			if(dsid.equals("FUNCTION")) {
+		        StringBuffer sf = new StringBuffer();
+		        sf.append("select t1.FUNCTION_ID,t1.FUNCTION_NAME,t1.PARENT_FUNCTION_ID,t1.FUNCTION_FORMNAME from SYS_FUNCTION t1");
+		        sf.append(" inner join SYS_ROLE_FUNC t2 on t1.FUNCTION_ID = t2.FUNCTION_ID and t2.ROLE_ID = '");
+		        sf.append(req.getParameter("ROLE_ID"));
+		        sf.append("'");
+		        sf.append(" order by t1.show_sequence");
+	            query = currentSession.createSQLQuery(sf.toString()).addEntity(FUNCTION.class);
+
+			}else if(dsid.equals("USER_FUNCTION")){
+			        StringBuffer sf = new StringBuffer();
+			        sf.append("select FUNCTION_ID,FUNCTION_NAME,FUNCTION_FORMNAME,PARENT_FUNCTION_ID,MENU_TYPE from V_FUNC where 1=1 ");
+			        sf.append(sqlUtil.addEqualSQL("SUBSYSTEM_TYPE",req.getParameter("SUBSYSTEM_TYPE")));
+			        if(ObjUtil.isNotNull(req.getParameter("FUNCTION_ID"))){
+			        	sf.append(" and FUNCTION_ID like '");
+			        	sf.append(req.getParameter("FUNCTION_ID"));
+			        	sf.append("%' ");
+			        }
+			        
+			        //lang added按当登陆用户的权限过滤
+			        if(ObjUtil.isNotNull(req.getParameter("FILTER_FLAG")) && 
+			        		"Y".equals(req.getParameter("FILTER_FLAG"))){
+			        	SYS_USER user = (SYS_USER)req.getSession().getAttribute("USER_ID");
+			        	if(user != null){
+				    		String role_id = user.getROLE_ID();
+				    		String user_group = user.getUSERGRP_ID();
+				    		if((ObjUtil.isNotNull(role_id) || 
+				    				ObjUtil.isNotNull(user_group)) && 
+				    				role_id.compareTo(StaticRef.SUPER_ROLE) != 0){
+					    	    sf.append(" and FUNCTION_ID in(select distinct tt.FUNCTION_ID from V_FUNC tt start with tt.FUNCTION_ID in(select distinct t1.FUNCTION_ID from SYS_ROLE_FUNC t1,SYS_ROLE_FUNC t2 where t1.FUNCTION_ID = t2.FUNCTION_ID");
+					    	    if(ObjUtil.isNotNull(role_id)) {
+				            		sf.append(" and t2.ROLE_ID = '");
+				            		sf.append(role_id);
+				            		sf.append("'");
+					            }else {
+					        		sf.append(" and t2.ROLE_ID in (");
+					        		sf.append(" select role_id from sys_usergrp_role where usergrp_ID = '");
+					        		sf.append(user_group);
+					        		sf.append("')");
+					        	}
+					    	    sf.append(") connect by prior tt.PARENT_FUNCTION_ID = tt.FUNCTION_ID)");
+				    		}
+			        	}
+			        }
+			        
+			        
+			        sf.append(" order by FUNCTION_ID");		        
+		            query = sqlUtil.getQuery(sf.toString(),null,null).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);//.addEntity(FUNCTION.class);
+			}
+			else if(dsid.equals("V_USER_ORG")){
+				String keys = sqlUtil.getColName("V_USER_ORG");
+				StringBuffer sf = new StringBuffer();
+				sf.append("select ");
+				sf.append(keys);
+				sf.append(" from V_USER_ORG");
+				sf.append(" where 1=1 ");
+				if(ObjUtil.isNotNull(req.getParameter("USER_ID"))){
+					sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+				}
+				query = sqlUtil.getQuery(sf.toString(),keys,null).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				
+			}
+			//系统管理->在线用户
+			else if(dsid.equals("SYS_USER_ONLINE")){
+				String keys = "USER_ID,USER_NAME,IP_ADDR,ACTIVE_FLAG,DEFAULT_ORG_ID_NAME,CUR_STATUS_NAME,LOGIN_TIME,TEL,ROLE_ID_NAME,USERGRP_ID_NAME";
+				StringBuffer sf = new StringBuffer();
+				sf.append("select ");
+				sf.append(keys);
+				sf.append(" from V_USER t1  where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("cur_status_name", StaticRef.ON_LINE_NAME));
+				sf.append(" order by ip_addr");
+				HashMap<String, Type> map = new HashMap<String, Type>();
+				map.put("ACTIVE_FLAG", Hibernate.YES_NO);
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+		    }
+			//切换仓库 ： lijun
+			else if(dsid.equals("V_WAREHOUSE")){
+				String keys = "ID,WHSE_CODE,WHSE_NAME,WHSE_ATTR_NAME,WHSE_CLS_NAME,WHSE_TYP_NAME,AREA_NAME";
+			    StringBuffer sf = new StringBuffer();
+			    sf.append("SELECT ");
+			    sf.append(keys);
+			    sf.append(" from V_WAREHOUSE WHERE 1=1 ");
+			    query = currentSession.createSQLQuery(sf.toString()).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);;
+			    
+			    
+			}
+			else if(dsid.equals("relogo")) {
+				Connection conn = LoginContent.getInstance().getConnection();
+		        Statement stmt = null;
+				try {
+					if(session.getAttribute("USER_ID") != null) {
+						SYS_USER user = (SYS_USER)session.getAttribute("USER_ID");
+						if(conn == null)
+							return;
+						stmt = conn.createStatement();
+				        if(stmt != null) {
+				        	StringBuffer sf = new StringBuffer();
+				        	sf.append("update SYS_USER SET CUR_STATUS = '");
+				        	sf.append(StaticRef.OFF_LINE);
+				        	sf.append("',IP_ADDR = '' where user_id = '");
+				        	sf.append(user.getUSER_ID());
+				        	sf.append("'");
+					        stmt.execute(sf.toString());
+					    	
+					    	SUtil.insertlog(StaticRef.ACT_LOGOUT, StaticRef.ACT_SUCCESS, user.getUSER_NAME(), user.getDEFAULT_ORG_ID_NAME());
+					    	
+					    	//删除用户服务端临时文件夹
+					    	String path = getServletContext().getRealPath("/");
+						    path = path + "user/" + user.getUSER_ID();  //不同用户建立不同文件夹，解决多线程数据对冲
+						    
+						    delFolder(path);
+				        }
+					}
+			    	response.sendRedirect("/pfs/login.jsp");
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				finally {
+					try {
+				        if(stmt != null) {
+				        	stmt.close();
+				        }
+				    	if (conn != null) {
+				    		conn.close();
+				    	}
+					}
+					catch(Exception e) {
+						e.printStackTrace();
+					}
+				}
+    			return;
+			}
+			else if(dsid.equals("logout")) {
+				Connection conn = LoginContent.getInstance().getConnection();
+		        Statement stmt = null;
+				try {
+					if(session.getAttribute("USER_ID") != null) {
+						SYS_USER user = (SYS_USER)session.getAttribute("USER_ID");
+						if(conn == null)
+							return;
+						stmt = conn.createStatement();
+				        if(stmt != null) {
+				        	StringBuffer sf = new StringBuffer();
+				        	sf.append("update SYS_USER SET CUR_STATUS = '");
+				        	sf.append(StaticRef.OFF_LINE);
+				        	sf.append("',IP_ADDR = '' where user_id = '");
+				        	sf.append(user.getUSER_ID());
+				        	sf.append("'");
+					        stmt.execute(sf.toString());
+					    	stmt.close();
+					    	
+					    	SUtil.insertlog(StaticRef.ACT_LOGOUT, StaticRef.ACT_SUCCESS, user.getUSER_NAME(), user.getDEFAULT_ORG_ID_NAME());
+					    	
+					    	//删除用户服务端临时文件夹
+					    	String path = getServletContext().getRealPath("/");
+						    path = path + "user/" + user.getUSER_ID();  //不同用户建立不同文件夹，解决多线程数据对冲
+						    
+						    delFolder(path);
+				        }
+					}
+					p.print("<script language=javascript>window.close();");  
+	                p.print("</script>");
+	    			p.flush();
+	    			p.close();
+	    			p = null;
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				finally {
+					try {
+						if(stmt != null) {
+							stmt.close();
+						}
+						if (conn != null) {
+				    		conn.close();
+				    	}
+					} catch (SQLException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+    			return;
+			}
+			
+            List<HashMap<String, String>> object = query.list();
+	        Gson gson = new Gson();
+	        String content = gson.toJson(object);
+			p.print(content);
+			
+			LoginContent.getInstance().closeSession();
+			currentSession = null;
+			p.flush();
+			p.close();
+			p = null;
+		}
+	}
+	
+	/**
+	 * 删除文件夹
+	 * @author fanglm
+	 * @param folderPath
+	 */
+	public static void delFolder(String folderPath) {
+		try {
+			 delAllFile(folderPath); //删除完里面所有内容
+			 String filePath = folderPath;
+			 filePath = filePath.toString();
+			 File myFilePath = new File(filePath);
+			 myFilePath.delete(); //删除空文件夹
+		 } catch (Exception e){
+			 e.printStackTrace();
+		 }
+	}
+	
+	/**
+	 * 删除文件夹下所有文件和文件夹
+	 * @author fanglm
+	 * @param path
+	 * @return
+	 */
+	public static boolean delAllFile(String path) {
+		 boolean flag = false;
+		 File file = new File(path);
+		 if (!file.exists()) {
+			 return flag;
+		 }
+		 if (!file.isDirectory()) {
+			 return flag;
+		 }
+		 String[] tempList = file.list();
+		 File temp = null;
+		 for (int i = 0; i < tempList.length; i++) {
+			if (path.endsWith(File.separator)) {
+				temp = new File(path + tempList[i]);
+			 } else {
+			 temp = new File(path + File.separator + tempList[i]);
+			}
+			 if (temp.isFile()) {
+				 temp.delete();
+			}
+			 if (temp.isDirectory()) {
+				 delAllFile(path + "/" + tempList[i]);//先删除文件夹里面的文件
+				 delFolder(path + "/" + tempList[i]);
+				 flag = true;
+			 }
+		 }
+		 return flag;
+	}
+
+	
+}

@@ -1,0 +1,755 @@
+package com.rd.client.view.base;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+
+import com.google.gwt.core.client.JavaScriptObject;
+import com.rd.client.PanelFactory;
+import com.rd.client.action.base.address.AreaChangeAction;
+import com.rd.client.action.base.address.DeleteAddrAction;
+import com.rd.client.common.action.CancelMultiFormAction;
+import com.rd.client.common.action.GetHintAction;
+import com.rd.client.common.action.NewMultiFormAction;
+import com.rd.client.common.action.SaveMultiFormAction;
+import com.rd.client.common.action.ValidateAction;
+import com.rd.client.common.obj.FormUtil;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.BasPrivRef;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCheck;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGLText;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.base.AddrDS;
+import com.rd.client.ds.base.AddrTmsDSSF;
+import com.rd.client.ds.base.UserCustDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.rd.client.win.UploadFileWin;
+import com.smartgwt.client.data.Criteria;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.data.Record;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.types.VerticalAlignment;
+import com.smartgwt.client.types.VisibilityMode;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.events.DoubleClickEvent;
+import com.smartgwt.client.widgets.events.DoubleClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.form.fields.ComboBoxItem;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.form.fields.events.ChangedEvent;
+import com.smartgwt.client.widgets.form.fields.events.ChangedHandler;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.SelectionChangedHandler;
+import com.smartgwt.client.widgets.grid.events.SelectionEvent;
+import com.smartgwt.client.widgets.layout.HStack;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.Tab;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+import com.smartgwt.client.widgets.tree.TreeNode;
+
+/**
+ * 基础资料--->地址点管理
+ * @author fanglm
+ *
+ */
+@ClassForNameAble
+public class BasAddressView extends SGForm implements PanelFactory{
+	
+	private DataSource ds;
+	private DataSource SFAddrDS;
+	private SGTable table;
+	public ValuesManager vm;
+	private DynamicForm mainForm;
+	private SectionStack section;
+	private SectionStack sectionStack;
+	private Window searchWin = null;
+//	private SGTable SFAddrTable; 
+	private SGTable SFAddrSubTable;// 顺丰地址点信息表
+	private SGCombo ADDR_TYP;
+	//private SGText BIZ_REGION;
+//	private List<List<String>> totList;
+//	private int selectedNum;
+//	private TextItem number;
+	// private static ButtonItem searchItem;
+	public TreeNode selectNode;
+	public Record selectRecord;
+	public SGPanel searchForm = new SGPanel();
+	public SGTable RDCTable;
+	public SGPanel RDCForm;
+	public SGTable areaTable;
+	public SGPanel areaForm;
+	private HashMap<String,String> check_map2;
+	private Window uploadWin;
+	/*public BasAddressView(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public Canvas getViewPanel() {
+		
+		privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+		LoginCache.getDefCustomer();//获取默认客户
+		
+		vm = new ValuesManager();
+		VLayout main = new VLayout();
+		main.setWidth100();
+		main.setHeight100();
+
+		ToolStrip toolStrip = new ToolStrip(); // 按钮布局
+		toolStrip.setAlign(Alignment.RIGHT);
+		ds = AddrDS.getInstance("BAS_ADDRESS");
+		SFAddrDS = AddrTmsDSSF.getInstance("TRANS_SSS_ADDR");
+//		SFAddrTable = new SGTable(SFAddrDS, "100%", "100%", true, true, false);
+		SFAddrSubTable = new SGTable(SFAddrDS, "100%", "100%", false, true, false);
+
+		// 主布局
+		HStack stack = new HStack();
+		stack.setWidth("99%");
+		stack.setHeight100();
+		
+		//STACK的左边列表
+		table = new SGTable(ds, "100%", "100%",true,true,false);
+		table.setShowHover(true);
+		//System.out.println(table.getRowNumberStyle());
+		table.setShowFilterEditor(false);
+		createListFields();
+		table.setCanEdit(false);
+		sectionStack = new SectionStack();
+		final SectionStackSection listItem = new SectionStackSection(Util.TI18N.LISTINFO());
+	    listItem.setItems(table);
+	    listItem.setExpanded(true);
+	    sectionStack.addSection(listItem);
+//	    listItem.setControls(addMaxBtn(sectionStack, stack, "200",true), new SGPage(table,true).initPageBtn());
+	    listItem.setControls(new SGPage(table, true).initPageBtn());
+	    sectionStack.setWidth("100%");
+		stack.addMember(sectionStack);
+		addSplitBar(stack);
+		
+		initVerify();
+		//STACK的右边布局
+		
+        TabSet leftTabSet = new TabSet();  
+        leftTabSet.setWidth("80%");   
+        leftTabSet.setHeight("100%"); 
+        leftTabSet.setMargin(0);
+        leftTabSet.setVisible(false);
+  
+        if(isPrivilege(BasPrivRef.ADDR_P1)){
+	        Tab tab1 = new Tab(Util.TI18N.MAININFO());
+			//组织明细的FORM布局
+	
+			tab1.setPane(createHeader());
+	        leftTabSet.addTab(tab1);
+        }
+
+        
+		stack.addMember(leftTabSet);
+		
+		
+		vm.addMember(mainForm);
+		vm.setDataSource(ds);
+		//创建按钮布局
+		createBtnWidget(toolStrip);
+		main.addMember(toolStrip);
+		main.addMember(stack);
+		
+//		addDoubeclick(table, listItem, leftTabSet, sectionStack);
+		table.addDoubleClickHandler(new DoubleClickHandler() {
+
+			@Override
+			public void onDoubleClick(DoubleClickEvent event) {
+				enableOrDisables(add_map, false);
+				enableOrDisables(del_map, false);
+				enableOrDisables(save_map, true);
+				
+				Util.initComboValue(mainForm.getItem("AREA_ID2"), "BAS_AREA", "AREA_CODE", "AREA_CNAME", " parent_area_id = '" + selectRecord.getAttribute("AREA_ID") + "'", "");
+				Util.initComboValue(mainForm.getItem("AREA_ID3"), "BAS_AREA", "AREA_CODE", "AREA_CNAME", " parent_area_id = '" + selectRecord.getAttribute("AREA_ID2") + "'", "");
+			
+				if(isMax) {
+					expend();
+				}
+			}
+			
+		});
+		return main;
+	}
+	
+	//创建列表
+	private void createListFields(){
+         table.addSelectionChangedHandler(new SelectionChangedHandler() {
+			
+			@Override
+			public void onSelectionChanged(SelectionEvent event) {
+            	selectRecord  = event.getRecord();
+                vm.editRecord(selectRecord);
+                vm.setValue("OP_FLAG", StaticRef.MOD_FLAG);
+                initSaveBtn();
+
+          
+                
+                LinkedHashMap<String,String> map = new LinkedHashMap<String,String>();
+        		if(ObjUtil.isNotNull(selectRecord.getAttribute("AREA_ID2"))) {
+        			map = new LinkedHashMap<String,String>();
+        			map.put(selectRecord.getAttribute("AREA_ID2"), selectRecord.getAttribute("AREA_NAME2"));
+        			mainForm.getItem("AREA_ID2").setValueMap(map);
+        			mainForm.getItem("AREA_ID2").setValue(selectRecord.getAttribute("AREA_ID2"));
+        		}
+        		else {
+        			mainForm.getItem("AREA_ID2").setDefaultValue("");
+        			mainForm.getItem("AREA_ID2").setValueMap("");
+        		}
+        		if(ObjUtil.isNotNull(selectRecord.getAttribute("AREA_ID3"))) {
+        			map = new LinkedHashMap<String,String>();
+        			map.put(selectRecord.getAttribute("AREA_ID3"), selectRecord.getAttribute("AREA_NAME3"));
+        			mainForm.getItem("AREA_ID3").setValueMap(map);
+        			mainForm.getItem("AREA_ID3").setValue(selectRecord.getAttribute("AREA_ID3"));
+        		}
+        		else {
+        			mainForm.getItem("AREA_ID3").setDefaultValue("");
+        			mainForm.getItem("AREA_ID3").setValueMap("");
+        		}
+			}
+        });
+		 table.setShowRowNumbers(true);
+		 
+		  ListGridField ADDR_CODE = new ListGridField("ADDR_CODE", Util.TI18N.ADDR_CODE(), 80); 
+		  ListGridField ADDR_NAME = new ListGridField("ADDR_NAME", Util.TI18N.ADDR_NAME(), 120);
+		  ListGridField AREA_ID = new ListGridField("AREA_ID");
+		  AREA_ID.setHidden(true);
+		  ListGridField AREA_NAME = new ListGridField("AREA_NAME",Util.TI18N.ADDR_AREA_ID(),80);  
+		  ListGridField ADDRESS = new ListGridField("ADDRESS","办公地址",140); 
+		  ListGridField CONT_NAME = new ListGridField("CONT_NAME",Util.TI18N.CONT_NAME(),80);
+		  ListGridField CONT_TEL = new ListGridField("CONT_TEL",Util.TI18N.CONT_TEL(),80);
+		  ListGridField LOAD_FLAG = new ListGridField("LOAD_FLAG",Util.TI18N.LOAD_FLAG(),60);
+		  LOAD_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  ListGridField RECV_FLAG = new ListGridField("RECV_FLAG",Util.TI18N.RECV_FLAG(),60);
+		  RECV_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  ListGridField TRANSFER_FLAG = new ListGridField("TRANSFER_FLAG",Util.TI18N.TRANSFER_FLAG(),60);
+		  TRANSFER_FLAG.setType(ListGridFieldType.BOOLEAN);
+		  ListGridField CUSTOMER_NAME = new ListGridField("CUSTOMER_NAME",Util.TI18N.CUSTOMER(),100);
+		  
+		  
+		  ListGridField ADDR_TYP = new ListGridField("ADDR_TYP_NAME",Util.TI18N.ADDR_TYP(),80);
+		  ListGridField ADDR_TYPE = new ListGridField("ADDR_TYP");
+		  ADDR_TYPE.setHidden(true);
+		  
+		  ListGridField EXEC_ORG_ID = new ListGridField("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID(),80);
+		  ListGridField GRADE = new ListGridField("GRADE_NAME",Util.TI18N.GRADE(),60);
+		  ListGridField REGION_ID = new ListGridField("CHARGE_REGION_ID_NAME",Util.TI18N.REGION_ID(),60);
+		  ListGridField WHSE_ID = new ListGridField("WHSE_ID_NAME",Util.TI18N.WHSE_ID(),60);
+		  ListGridField ENABLE_FLAG = new ListGridField("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG(),60);
+		  ENABLE_FLAG.setType(ListGridFieldType.BOOLEAN);
+
+		  table.setFields(CUSTOMER_NAME,ADDR_CODE,ADDR_NAME,ADDRESS,AREA_ID,AREA_NAME,CONT_NAME,CONT_TEL,LOAD_FLAG,RECV_FLAG,
+				  TRANSFER_FLAG,ADDR_TYPE,ADDR_TYP,EXEC_ORG_ID,GRADE,REGION_ID,WHSE_ID,ENABLE_FLAG);	
+		  
+		  
+	}
+	
+	//创建主信息页签
+	private SectionStack createHeader(){
+		VLayout vLay = new VLayout();
+        vLay.setWidth100();
+        vLay.setBackgroundColor(ColorUtil.BG_COLOR);
+        //1
+        TextItem CUSTOMER_ID = new TextItem("CUSTOMER_ID");
+        CUSTOMER_ID.setVisible(false);
+        final ComboBoxItem CUSTOMER_NAME = new ComboBoxItem("CUSTOMER_NAME",Util.TI18N.CUSTOMER());
+		CUSTOMER_NAME.setTitleOrientation(TitleOrientation.TOP);
+		CUSTOMER_NAME.setWidth(FormUtil.Width);
+		CUSTOMER_NAME.setColSpan(2);
+		initCustomer(CUSTOMER_NAME, CUSTOMER_ID);
+        CUSTOMER_NAME.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				vm.setValue("CUSTOMER_NAME", CUSTOMER_NAME.getDisplayValue());
+				
+			}
+		});
+//        Util.initCustComboValue(CUSTOMER_NAME, vm, "");
+        
+        //1
+        final SGText ADDR_CODE = new SGText("ADDR_CODE",ColorUtil.getRedTitle(Util.TI18N.ADDR_CODE()));
+        SGCheck ENABLE = new SGCheck("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG());
+        //2
+        SGText ADDR_NAME = new SGText("ADDR_NAME",ColorUtil.getRedTitle("地址名称"),true);
+        SGCombo AREA_ID = new SGCombo("AREA_ID",ColorUtil.getRedTitle(Util.TI18N.PROVINCE()),true);
+        Util.initComboValue(AREA_ID, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '3'", "");
+        //TextItem AREA_ID = new TextItem("AREA_ID");
+        //AREA_ID.setVisible(false);
+        
+        SGCombo AREA_ID2 = new SGCombo("AREA_ID2",ColorUtil.getRedTitle(Util.TI18N.CITY()));
+        //Util.initComboValue(AREA_ID2, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '4'", "");
+        //Util.initComboValue(AREA_NAME2, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '4'", "");
+        SGCombo AREA_ID3 = new SGCombo("AREA_ID3",Util.TI18N.AREA());
+        //Util.initComboValue(AREA_ID3, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '5'", "");
+        //Util.initComboValue(AREA_NAME3, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '5'", "");
+        //SGCombo AREA_ID4 = new SGCombo("AREA_ID4",Util.TI18N.COUNTY());
+        //Util.initComboValue(AREA_NAME4, "BAS_AREA", "AREA_CODE", "AREA_CNAME", " AREA_LEVEL = '6'", "");
+        //Util.initArea(AREA_ID_NAME, AREA_ID);
+        SGText AREA_NAME = new SGText("AREA_NAME",Util.TI18N.PROVINCE());
+        AREA_NAME.setVisible(false);
+        SGText AREA_NAME2 = new SGText("AREA_NAME2",Util.TI18N.CITY());
+        AREA_NAME2.setVisible(false);
+        final SGText AREA_NAME3 = new SGText("AREA_NAME3",Util.TI18N.AREA());
+        AREA_NAME3.setVisible(false);
+        //final SGText AREA_NAME4 = new SGText("AREA_NAME4",Util.TI18N.COUNTY());
+        //AREA_NAME4.setVisible(false);
+        AREA_ID.addChangedHandler(new AreaChangeAction(AREA_NAME,AREA_ID2,AREA_NAME2,AREA_ID3));
+        AREA_ID2.addChangedHandler(new AreaChangeAction(AREA_NAME2,AREA_ID3,AREA_NAME3));
+        //AREA_ID3.addChangedHandler(new AreaChangeAction(AREA_NAME3,AREA_ID4));
+        AREA_ID3.addChangedHandler(new ChangedHandler() {
+
+			@Override
+			public void onChanged(ChangedEvent event) {
+				SGCombo fatherItem = (SGCombo)event.getSource();
+				String value = fatherItem.getDisplayValue();
+				if(ObjUtil.isNotNull(value) && AREA_NAME3 != null){
+					AREA_NAME3.setValue(value);
+				}
+			}
+        	
+        });
+        
+        SGText HINT_CODE = new SGText("HINT_CODE",Util.TI18N.HINT_CODE());
+        ADDR_NAME.addBlurHandler(new GetHintAction(ADDR_NAME,HINT_CODE));
+        
+        //SGCheck DIRECT_FLAG = new SGCheck("DIRECT_FLAG",Util.TI18N.DIRECT_FLAG());
+        //3
+        SGLText ADDRESS = new SGLText("ADDRESS",ColorUtil.getRedTitle(Util.TI18N.ADDRESS()),true);
+        ADDRESS.setWidth(FormUtil.longWidth+FormUtil.Width);
+        ADDRESS.setColSpan(6);
+        
+        SGText CONT_NAME = new SGText("CONT_NAME","联系人",true);
+        SGText CONT_TEL = new SGText("CONT_TEL",Util.TI18N.CONT_TEL());
+        SGText CONT_EMAIL = new SGText("CONT_EMAIL","电邮");
+        
+        SGText LONGITUDE = new SGText("LONGITUDE",Util.TI18N.LONGITUDE());
+		LONGITUDE.setKeyPressFilter("[0-9.]");
+        //4
+        //SGCombo WHSE_ID = new SGCombo("WHSE_ID",Util.TI18N.WHSE_ID(),true);
+        ADDR_TYP = new SGCombo("ADDR_TYP",Util.TI18N.ADDR_TYP(),true);
+        Util.initCodesComboValue(ADDR_TYP, "ADDR_TYP");
+        SGCombo GRADE = new SGCombo("GRADE",Util.TI18N.GRADE());
+        //5
+        Util.initCodesComboValue(GRADE,"ADDR_GRD");
+        //Util.initComboValue(WHSE_ID, "V_WAREHOUSE", "ID", "SHORT_NAME", " where enable_flag='Y'", " show_seq", "");
+        
+//        final SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+//        TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID");
+//        EXEC_ORG_ID.setVisible(false);
+//        Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, true, "50%", "60%");
+        
+        SGText EXEC_ORG_ID = new SGText("EXEC_ORG_ID", "");
+		EXEC_ORG_ID.setVisible(false);
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		SGText EXEC_ORG_ID_NAME = new SGText("EXEC_ORG_ID_NAME",Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		
+        SGText CREATE_ORG_ID_NAME = new SGText("CREATE_ORG_ID_NAME",Util.TI18N.CREATE_ORG_ID());
+        CREATE_ORG_ID_NAME.setDisabled(true);//设置不可编辑状态
+        TextItem CREATE_ORG_ID = new TextItem("CREATE_ORG_ID");
+        CREATE_ORG_ID.setVisible(false);
+        
+        //6
+        SGCombo REGION_ID = new SGCombo("CHARGE_REGION_ID",Util.TI18N.REGION_ID());
+        //SGText ADDR_GRP1 = new SGText("ADDR_GRP1",Util.TI18N.ADDR_GRP1());
+        Util.initComboValue(REGION_ID, "BAS_CHARGE_REGION", "ID", "CHARGE_REGION_NAME", " where enable_flag='Y'", " show_seq", "");
+        
+        //BIZ_REGION = new SGText("BIZ_REGION",Util.TI18N.BIZ_REGION()); 
+        
+        /*ADDR_CODE.addBlurHandler(new BlurHandler() {
+			@Override
+			public void onBlur(BlurEvent event) {
+				if(BIZ_REGION.getValue()==null || BIZ_REGION.getValue().toString().trim().length()==0){
+					BIZ_REGION.setValue(ADDR_CODE.getDisplayValue());
+				}
+			}
+		});*/
+        
+        SGCheck LOAD_FLAG = new SGCheck("LOAD_FLAG",Util.TI18N.LOAD_FLAG(),true);
+       // LOAD_FLAG.setTitleOrientation(TitleOrientation.RIGHT);
+        SGCheck RECV_FLAG = new SGCheck("RECV_FLAG",Util.TI18N.RECV_FLAG());
+       // RECV_FLAG.setTitleOrientation(TitleOrientation.RIGHT);
+        SGCheck TRANSFER_FLAG = new SGCheck("TRANSFER_FLAG",Util.TI18N.TRANSFER_FLAG());
+       // TRANSFER_FLAG.setTitleOrientation(TitleOrientation.RIGHT);
+        
+        final SGCheck APPOINT_FLAG = new SGCheck("APPOINT_FLAG","需要提前预约",true);
+        
+        final SGText APPOINT_HOURS = new SGText("APPOINT_HOURS","提前预约时长");
+        APPOINT_HOURS.setDisabled(true);
+        APPOINT_FLAG.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				if(ObjUtil.isNotNull(APPOINT_FLAG)){
+					APPOINT_HOURS.setDisabled(false);
+				}
+			}
+		});  
+        
+        TextAreaItem notes = new TextAreaItem("NOTES",Util.TI18N.NOTES());
+		notes.setStartRow(true);
+		notes.setColSpan(6);
+		notes.setHeight(40);
+		notes.setWidth(FormUtil.longWidth+FormUtil.Width);
+		notes.setTitleOrientation(TitleOrientation.TOP);
+		notes.setTitleVAlign(VerticalAlignment.TOP);
+		
+		//SGText CONT_NAME = new SGText("CONT_NAME",Util.TI18N.CONT_NAME());
+		//SGText CONT_DEP = new SGText("CONT_DEP",Util.TI18N.CONT_DEP());
+		//SGText CONT_TEL = new SGText("CONT_TEL",Util.TI18N.CONT_TEL());
+		
+		//SGText CONT_FAX = new SGText("CONT_FAX",Util.TI18N.CONT_FAX(),true);
+		
+	
+//		final SGLText CONT_EMAIL = new SGLText("CONT_EMAIL",Util.TI18N.CONT_EMAIL());
+//		//验证
+//		CONT_EMAIL.addBlurHandler(new ValidateAction(CONT_EMAIL,ValidateAction.EMAIL));
+		
+		SGLText URL = new SGLText("URL",Util.TI18N.URL());
+		URL.addBlurHandler(new ValidateAction(URL, ValidateAction.HTTP_URL));
+		
+		SGText ZIP = new SGText("ZIP",Util.TI18N.ZIP(),true);
+		ZIP.addBlurHandler(new ValidateAction(ZIP,ValidateAction.ZIP));
+		ZIP.setKeyPressFilter("[0-9]");
+//		ZIP.setLength(3);
+		
+		
+		
+		SGText LATITUDE = new SGText("LATITUDE",Util.TI18N.LATITUDE());
+		LATITUDE.setKeyPressFilter("[0-9.]");
+		
+		SGText TM_ZN_OFST = new SGText("TM_ZN_OFST",Util.TI18N.TM_ZN_OFST());
+		TM_ZN_OFST.setKeyPressFilter("[0-9]");
+		
+		SGCheck DEF_RDC=new SGCheck("DEF_RDC",Util.TI18N.DEF_RDC());
+		DEF_RDC.setValue(false);
+		
+		SGText CLASS_FLAG=new SGText("CLASS_FLAG","");
+		CLASS_FLAG.setValue("BASADDRESS");
+		CLASS_FLAG.setVisible(false);
+		
+        mainForm = new SGPanel();
+        //myid = mainForm.getID();
+        mainForm.setID("newtest222");
+        mainForm.setWidth("40%");
+        mainForm.setItems(CUSTOMER_ID,CUSTOMER_NAME,ADDR_CODE,ENABLE,ADDR_NAME,HINT_CODE,EXEC_ORG_ID_NAME,AREA_ID,AREA_ID2,AREA_ID3,AREA_NAME,AREA_NAME2,AREA_NAME3,ADDRESS,
+        		CONT_NAME,CONT_TEL,CONT_EMAIL,ADDR_TYP,LONGITUDE,LATITUDE,APPOINT_FLAG,APPOINT_HOURS,GRADE,LOAD_FLAG,RECV_FLAG,TRANSFER_FLAG,notes,CLASS_FLAG);
+        
+        //mainForm3 = new SGPanel();
+        //mainForm3.setItems(CONT_NAME,CONT_DEP,CONT_TEL,ZIP,CONT_EMAIL,CONT_FAX,URL);
+        
+      //  mainForm4 = new SGPanel();
+       // mainForm4.setItems(TM_ZN_OFST);
+        
+        section = new SectionStack();
+		section.setBackgroundColor(ColorUtil.BG_COLOR);
+		
+		SectionStackSection mainS = new SectionStackSection("基础信息");
+		mainS.addItem(mainForm);
+		mainS.setExpanded(true); 
+		section.addSection(mainS);
+		
+//		SectionStackSection mainS2 = new SectionStackSection("联系信息");
+//		mainS2.addItem(mainForm3);
+//		mainS2.setExpanded(true); 
+//		section.addSection(mainS2);
+		
+//		SectionStackSection mainS3 = new SectionStackSection("其他信息");
+//		mainS3.addItem(mainForm4);
+//		mainS3.setExpanded(true); 
+//		section.addSection(mainS3);
+		
+		
+		section.setVisibilityMode(VisibilityMode.MULTIPLE);
+    	section.setAnimateSections(true);
+        
+        return section;
+	}
+
+	
+
+	public void initVerify() {
+		check_map.put("TABLE", "BAS_ADDRESS");
+		//if()根据客户参数决定是否检验addr_code唯一性
+		check_map.put("ADDR_CODE", StaticRef.CHK_NOTNULL + Util.TI18N.ADDR_CODE());
+		//check_map.put("ADDR_CODE", StaticRef.CHK_UNIQUE+Util.TI18N.ADDR_CODE());
+		
+		check_map.put("START_OPER_TIME", StaticRef.CHK_DATE + Util.TI18N.START_OPER_TIME());
+		check_map.put("END_OPER_TIME", StaticRef.CHK_DATE + Util.TI18N.END_OPER_TIME());
+		
+		check_map.put("ADDRESS", StaticRef.CHK_NOTNULL + Util.TI18N.ADDRESS());
+//		check_map.put("ADDRESS", StaticRef.CHK_UNIQUE+Util.TI18N.ADDRESS());
+		check_map.put("AREA_ID", StaticRef.CHK_NOTNULL + Util.TI18N.PROVINCE());
+		check_map.put("AREA_ID2", StaticRef.CHK_NOTNULL + Util.TI18N.CITY());
+		
+		check_map.put("ADDR_NAME", StaticRef.CHK_NOTNULL + Util.TI18N.ADDR_NAME());
+//		check_map.put("ADDR_NAME", StaticRef.CHK_UNIQUE+Util.TI18N.ADDR_NAME());
+//		check_map.put("BIZ_REGION", StaticRef.CHK_NOTNULL+Util.TI18N.BIZ_REGION());
+		
+		cache_map.put("ENABLE_FLAG", "Y");
+		cache_map.put("LOAD_FLAG", "Y");
+		cache_map.put("RECV_FLAG", "Y");
+		cache_map.put("EXEC_ORG_ID", LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		cache_map.put("EXEC_ORG_ID_NAME", LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		cache_map.put("CREATE_ORG_ID",LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		cache_map.put("CREATE_ORG_ID_NAME", LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		cache_map.put("CUSTOMER_ID", "");
+		
+		check_map2 = new HashMap<String,String>();
+		check_map2.put("TABLE", "RDC_ADDRESS");
+//		check_map2.put("RDC_CODE", StaticRef.CHK_UNIQUE + "RDC代码");
+		check_map2.put("TMS_ADDR_CODE", StaticRef.CHK_UNIQUE+Util.TI18N.ADDR_CODE());
+	}
+	
+	@Override
+	public void createBtnWidget(ToolStrip toolStrip) {
+		toolStrip.setWidth("100%");
+        toolStrip.setHeight("20");
+        toolStrip.setPadding(3);
+        toolStrip.setSeparatorSize(5);
+        
+        IButton searchButton = createBtn(StaticRef.FETCH_BTN,BasPrivRef.ADDR);
+        
+        toolStrip.addMember(searchButton);
+//        toolStrip.addSeparator();
+        
+        searchButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null) {
+					searchWin = new SearchWin(ds,createSerchForm(searchForm),sectionStack.getSection(0),vm).getViewPanel();
+				}
+				else {
+					searchWin.show();
+				}
+			}
+        	
+        });
+        
+		
+        IButton newButton = createBtn(StaticRef.CREATE_BTN,BasPrivRef.ADDR_P0_01);
+        toolStrip.addMember(newButton);
+        newButton.addClickHandler(new NewMultiFormAction(vm, cache_map,this));
+//        newButton.addClickHandler(new NewSkuAction(vm, cache_map,customer_id));
+        
+        IButton saveButton = createBtn(StaticRef.SAVE_BTN,BasPrivRef.ADDR_P0_02);
+        toolStrip.addMember(saveButton);
+//        saveButton.addClickHandler(new SaveMultiFormAction(table, vm, check_map, this));
+        saveButton.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+	
+					new SaveMultiFormAction(table, vm, check_map,getBas()).onClick(event);
+				
+			}
+		});
+        
+        IButton delButton = createBtn(StaticRef.DELETE_BTN,BasPrivRef.ADDR_P0_03);
+        delButton.addClickHandler(new DeleteAddrAction(table, SFAddrSubTable,vm));
+        toolStrip.addMember(delButton);
+        
+        IButton canButton = createBtn(StaticRef.CANCEL_BTN,BasPrivRef.ADDR_P0_04);
+        canButton.addClickHandler(new CancelMultiFormAction(table, vm,this));
+        toolStrip.addMember(canButton);
+//        toolStrip.addSeparator();
+       
+        IButton inputButton = createBtn(StaticRef.IMPORT_BTN, BasPrivRef.ADDR_P0_06);
+		inputButton.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if(uploadWin == null){
+					
+					JavaScriptObject jsobject = sectionStack.getSection(0).getAttributeAsJavaScriptObject("controls");
+					Canvas[] canvas = null;
+					DynamicForm pageForm=null;
+					if(jsobject != null) {
+						canvas = Canvas.convertToCanvasArray(jsobject);
+					}
+					for(int i = 0; i < canvas.length; i++) {
+						if(canvas[i] != null && canvas[i].getClass().equals(DynamicForm.class)) {
+							pageForm = (DynamicForm)canvas[i];
+							break;
+						}
+					}
+					uploadWin = new UploadFileWin().getViewPanel("TMP_ADDRESS_IMPORT","SP_IMPORT_ADDRESS",table,pageForm);
+				}else{
+					uploadWin.show();
+				}
+			}
+		});
+		
+		toolStrip.addMember(inputButton);
+//        IButton expButton = createBtn(StaticRef.EXPORT_BTN,BasPrivRef.ADDR_P0_05);
+//        toolStrip.addMember(expButton);
+//        expButton.addClickHandler(new ExportAction(table,"BAS_ADDRESS"));
+        
+        add_map.put(BasPrivRef.ADDR_P0_01, newButton);
+        del_map.put(BasPrivRef.ADDR_P0_03, delButton);
+        save_map.put(BasPrivRef.ADDR_P0_02, saveButton);
+        save_map.put(BasPrivRef.ADDR_P0_04, canButton);
+        this.enableOrDisables(add_map, true);
+        enableOrDisables(del_map, false);
+        this.enableOrDisables(save_map, false);
+        toolStrip.setMembersMargin(4);
+	}
+
+	@Override
+	public void createForm(DynamicForm form) { 
+		
+	}
+	
+	//查询窗口
+	public DynamicForm createSerchForm(DynamicForm form){
+		
+		SGText txt_global = new SGText("FULL_INDEX", Util.TI18N.FUZZYQRY());
+		txt_global.setTitleOrientation(TitleOrientation.TOP);
+		txt_global.setWidth(323);
+		txt_global.setColSpan(5);
+		txt_global.setVisible(false);
+		//txt_global.setEndRow(true);
+
+		
+		
+		SGCombo CUSTOMER_ID = new SGCombo("CUSTOMER_ID",Util.TI18N.CUSTOMER(),true);
+		Util.initCustComboValue(CUSTOMER_ID,LoginCache.getDefCustomer().get("CUSTOMER_ID"));
+		
+//		SGCombo WHSE_ID = new SGCombo("WHSE_ID",Util.TI18N.WHSE_ID());
+		
+		ComboBoxItem AREA_ID = new ComboBoxItem("AREA_ID_NAME",Util.TI18N.AREA_ID());
+		AREA_ID.setTitleOrientation(TitleOrientation.TOP);
+		Util.initArea(AREA_ID, null);
+		
+		SGCheck NULL_AREA_FLAG = new SGCheck("NULL_AREA_FLAG", "空区域");
+		NULL_AREA_FLAG.setValue(false);
+//		NULL_AREA_FLAG.setColSpan(4);
+		
+		SGCheck enable = new SGCheck("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG());
+		enable.setValue(true);
+		enable.setColSpan(2);
+		
+		SGCheck LOAD_FLAG = new SGCheck("LOAD_FLAG",Util.TI18N.LOAD_FLAG(),true);
+		LOAD_FLAG.setValue(true);
+	        
+		SGCheck RECV_FLAG = new SGCheck("RECV_FLAG",Util.TI18N.RECV_FLAG());
+	    RECV_FLAG.setValue(true);    
+	   // RECV_FLAG.setColSpan(2);
+	    
+	    SGCheck TRANSFER_FLAG = new SGCheck("TRANSFER_FLAG",Util.TI18N.TRANSFER_FLAG());
+		
+	    TextItem EXEC_ORG_ID = new TextItem("EXEC_ORG_ID", "");//wangjun 2010-06-30
+		EXEC_ORG_ID.setVisible(false);
+		EXEC_ORG_ID.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID());
+		TextItem EXEC_ORG_ID_NAME = new TextItem("EXEC_ORG_ID_NAME", Util.TI18N.EXEC_ORG_ID());
+		EXEC_ORG_ID_NAME.setWidth(130);
+		EXEC_ORG_ID_NAME.setValue(LoginCache.getLoginUser().getDEFAULT_ORG_ID_NAME());
+		Util.initOrg(EXEC_ORG_ID_NAME, EXEC_ORG_ID, false, "50%", "40%");
+		EXEC_ORG_ID_NAME.setTitleOrientation(TitleOrientation.TOP);
+		EXEC_ORG_ID_NAME.setWidth(120);
+//		EXEC_ORG_ID_NAME.setStartRow(true);
+		EXEC_ORG_ID_NAME.setColSpan(2);
+	    
+		SGCheck C_ORG_FLAG = new SGCheck("C_ORG_FLAG", Util.TI18N.C_ORG_FLAG());
+		C_ORG_FLAG.setColSpan(2);
+		C_ORG_FLAG.setValue(true);
+		
+		SGText ADDR_CODE=new SGText("ADDR_CODE",Util.TI18N.ADDR_CODE());
+		SGText ADDR_NAME=new SGText("ADDR_NAME",Util.TI18N.UNIT_NAME());
+		SGCombo ADDR_TYPE=new SGCombo("ADDR_TYP",Util.TI18N.ADDR_TYP());
+		Util.initCodesComboValue(ADDR_TYPE,"ADDR_TYP");
+		ADDR_TYPE.setStartRow(true);
+	    
+        form.setItems(txt_global,ADDR_CODE,ADDR_NAME,enable,ADDR_TYPE,AREA_ID,NULL_AREA_FLAG,CUSTOMER_ID,
+        		EXEC_ORG_ID_NAME,C_ORG_FLAG,LOAD_FLAG,RECV_FLAG,TRANSFER_FLAG,EXEC_ORG_ID);
+        
+        return form;
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null) {
+			searchWin.destroy();
+//			searchForm.destroy();
+			//searchItem = null;
+		}
+	}
+	
+	private void initCustomer(final ComboBoxItem customer_name,final TextItem customer_id){
+		DataSource custDS = UserCustDS.getInstance("VC_CUSTOMER");
+		ListGridField CUSTOMER_CNAME = new ListGridField("CUSTOMER_NAME",Util.TI18N.CUSTOMER_NAME());
+		ListGridField CUSTOMER_CODE = new ListGridField("CUSTOMER_CODE",Util.TI18N.CUSTOMER_CODE(),80);
+		customer_name.setOptionDataSource(custDS);  
+		customer_name.setDisabled(false);
+		customer_name.setShowDisabled(false);
+		customer_name.setDisplayField("FULL_INDEX");  
+		customer_name.setPickListBaseStyle("myBoxedGridCell");
+		customer_name.setPickListWidth(230);
+	
+		customer_name.setPickListFields(CUSTOMER_CODE, CUSTOMER_CNAME);
+		Criteria criteria = new Criteria();
+		criteria.addCriteria("OP_FLAG","M");
+		criteria.addCriteria("LOGIN_USER",LoginCache.getLoginUser().getUSER_ID());
+		customer_name.setPickListCriteria(criteria);
+		
+		customer_name.addChangedHandler(new ChangedHandler() {
+			
+			@Override
+			public void onChanged(ChangedEvent event) {
+				final Record selectedRecord  = customer_name.getSelectedRecord();
+				if(selectedRecord != null){
+					customer_name.setValue(selectedRecord.getAttribute("CUSTOMER_NAME"));
+					customer_id.setValue(selectedRecord.getAttribute("CUSTOMER_ID"));
+					vm.setValue("PACK_ID", selectedRecord.getAttribute("PACK_ID"));
+					vm.setValue("TRANS_UOM", selectedRecord.getAttribute("TRANS_UOM"));
+					vm.setValue("LOAD_ID", selectedRecord.getAttribute("LOAD_ID"));
+					vm.setValue("LENGTH_UNIT", selectedRecord.getAttribute("LENGTH_UNIT"));
+					vm.setValue("WEIGHT_UNIT", selectedRecord.getAttribute("WEIGHT_UNIT"));
+					vm.setValue("VOLUME_UNIT", selectedRecord.getAttribute("VOLUME_UNIT"));
+					vm.setValue("VOL_GWT_RATIO", selectedRecord.getAttribute("VOL_GWT_RATIO"));
+				}
+			}
+		});
+	}
+
+	private BasAddressView getBas(){
+		return this;
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		BasAddressView view = new BasAddressView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+}

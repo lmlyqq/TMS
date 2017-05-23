@@ -1,0 +1,425 @@
+package com.rd.client.action.tms.sforder;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.view.tms.SFOrderView;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+/**
+ * 运输管理--托运单管理--修改保存
+ * @author fanglm
+ *
+ */
+public class SaveSFOrderHeaderAction implements ClickHandler{
+	private ValuesManager form;
+	private ListGrid table;
+	private HashMap<String, String> map;
+	private Map<String, String> record;
+	private Map<String, String> id_name;
+	private ArrayList<String> logList;  //日志信息
+	private SFOrderView view;
+
+	public SaveSFOrderHeaderAction(ListGrid pTable, ValuesManager pForm,
+			HashMap<String, String> pMap, Map<String, String> pCorr,SFOrderView view) {
+		table = pTable;
+		form = pForm;  
+		map = pMap;
+		id_name = pCorr;
+		this.view = view;
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public void onClick(ClickEvent event) {
+		if(form.getValueAsString("STATUS") == null )
+			return;
+		String op_flag = ObjUtil.ifNull(form.getValueAsString("OP_FLAG"), StaticRef.MOD_FLAG);
+		if(op_flag.equals(StaticRef.MOD_FLAG)) {
+			ListGridRecord rec = table.getSelectedRecord();
+			if(!(rec == null || StaticRef.ORD_STATUS_CREATE.equals(rec.getAttribute("STATUS"))) && 
+					view.vm.getValueAsString("STATUS")!=null && 
+					view.vm.getValueAsString("STATUS").equals(rec.getAttribute("STATUS"))){
+				MSGUtil.sayError("订单非" + StaticRef.SFODR_STATUS_CREATE_NAME + "状态，不能修改！");
+				return;
+			}
+		}
+		
+        record = form.getValues(); 
+        if(!ObjUtil.isNotNull(record.get("LOAD_NAME"))) {
+        	record.put("LOAD_ID", "");
+        	record.put("LOAD_NAME", "");
+        }
+        if(!ObjUtil.isNotNull(record.get("UNLOAD_NAME"))) {
+        	record.put("UNLOAD_ID", "");
+        	record.put("UNLOAD_NAME", "");
+        }
+        record.remove("OP_FLAG");
+        
+        if(ObjUtil.isNotNull(record.get("CUSTOM_ODR_NO")) 
+        		&& ObjUtil.isNotNull(form.getValueAsString("UNIQ_CONO_FLAG")) && "Y".equals(form.getValueAsString("UNIQ_CONO_FLAG"))){//根据客户控制参数判断是否校验客户订单号唯一性
+        	map.put("CUSTOM_ODR_NO", StaticRef.CHK_UNIQUE + Util.TI18N.CUSTOM_ODR_NO());
+        }else{
+        	map.remove("CUSTOM_ODR_NO");
+        }
+
+        if(id_name != null) {
+        	convertNameToId(record, id_name);            //将前台FORM的名称转换成ID
+        }
+        //如果是零担和B2B,  PRE_LOAD_TIME  不能为空
+        String checkMsg = checks();
+        if(ObjUtil.isNotNull(checkMsg)){
+        	MSGUtil.sayError(checkMsg);
+        	return;
+        }
+        String checkMsgTel = checkTelPass();
+        if(ObjUtil.isNotNull(checkMsgTel)){
+        	MSGUtil.sayError(checkMsgTel);
+        }
+		if(record != null) {
+			ArrayList<Object> obj = Util.getCheckResult(record, map);
+			if(obj != null && obj.size() > 1) {
+				String result = obj.get(0).toString();
+				if(result.equals(StaticRef.SUCCESS_CODE)) {
+					if(obj.get(1) != null) {
+						//需要校验唯一性
+						chkUnique((HashMap<String, String>)obj.get(1), op_flag);
+					}
+					else {
+						if(StaticRef.INS_FLAG.equals(op_flag)){
+							String msg = view.saveSFOrderItemAction.checkDetail();
+							if(msg.length() > 0){
+								MSGUtil.sayError(msg);
+							}else{
+								doOperation(op_flag);
+							}
+						}else{
+							doOperation(op_flag);
+						}
+					}
+				}
+				else {
+					MSGUtil.sayError(obj.get(1).toString());
+				}
+			}
+		}
+		
+//		view.isMax = !view.isMax;
+	}
+
+	@SuppressWarnings("unchecked")
+	public void doInsert(Map map) {
+		String json = Util.mapToJson(map);
+		
+		//设置日志信息
+		//String[] titles = Util.getPropTitle(table.getDataSource().getAttribute("tableName"));
+		//String[] fields = Util.getPropField(table.getDataSource().getAttribute("tableName"));
+		String[] titles = Util.getPropTitle(table.getDataSource().getTableName());
+		String[] fields = Util.getPropField(table.getDataSource().getTableName());
+		String descr = StaticRef.ACT_INSERT + titles[0] + "【" + map.get(fields[0]) + "】";
+		//设置完毕
+		
+		Util.async.doInsert(descr, json, new AsyncCallback<String>() {
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				caught.printStackTrace();
+				MSGUtil.sayError(caught.getMessage());
+//				setTransNo(record.get("REFENENCE1"));
+			}
+	
+			@Override
+			public void onSuccess(String result) {
+				if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)) {
+					MSGUtil.showOperSuccess();
+					final ListGridRecord record = new ListGridRecord();
+					record.setAttribute("ID", result.substring(2));
+					form.setValue("ID", result.substring(2));
+					Util.updateToRecord(form, table, record);   //将FORM的值更新到Record,用户操作成功时刷新和重定位数据
+					
+					view.enableOrDisables(view.add_map, true);
+					view.enableOrDisables(view.del_map, true);
+					view.enableOrDisables(view.save_map, true);
+					
+					form.setValue("OP_FLAG", StaticRef.MOD_FLAG);
+					
+					view.vm.getItem("CUSTOMER_NAME").setDisabled(true);
+					//同时执行明细保存
+					view.saveSFOrderItemAction.doSave(true, new AsyncCallback<String>() {
+						@Override
+						public void onFailure(Throwable caught) {
+							
+						}
+
+						@Override
+						public void onSuccess(String result) {							
+							if(result.substring(0, 2).equals(StaticRef.SUCCESS_CODE)) {
+								ArrayList list = new ArrayList(Arrays.asList(table.getRecords()));
+								list.add(0,record);
+								table.setRecords((ListGridRecord[])list.toArray(new ListGridRecord[list.size()]));
+								view.groupTable.discardAllEdits();
+								table.redraw();
+								table.selectRecord(record);
+							}else{
+								MSGUtil.sayError(result);
+							}
+						}
+					});
+				}
+				else {
+					MSGUtil.sayError(result);
+//					setTransNo(record.get("REFENENCE1"));
+				}
+			}
+		});
+	}
+	
+	private void doUpdate(ArrayList<String> sqlList) {
+        
+		Util.async.doUpdate(logList, sqlList, new AsyncCallback<String>() {
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				MSGUtil.sayError(caught.getMessage());
+			}
+	
+			@Override
+			public void onSuccess(String result) {
+				if(result.equals(StaticRef.SUCCESS_CODE)) {
+					MSGUtil.showOperSuccess();
+					//同时执行明细保存
+					view.saveSFOrderItemAction.doSave(true, new AsyncCallback<String>() {
+
+						@Override
+						public void onFailure(Throwable caught) {
+							
+						}
+
+						@Override
+						public void onSuccess(String result) {
+							if(result.substring(0, 2).equals(StaticRef.SUCCESS_CODE)) {
+								Util.updateToRecord(form, table, table.getRecord(view.hRow));   //将FORM的值更新到Record,用户操作成功时刷新和重定位数据
+								//刷新选中的记录
+								//table.updateData(table.getRecord(view.hRow));
+								table.redraw();
+								//
+								form.setValue("OP_FLAG", StaticRef.MOD_FLAG);
+								
+								view.enableOrDisables(view.add_map, true);
+								view.enableOrDisables(view.del_map, true);
+								view.enableOrDisables(view.save_map, true);
+							}else{
+								MSGUtil.sayError(result);
+							}
+						}
+					});
+					
+				}
+				else {
+					MSGUtil.sayError(result);
+				}
+			}
+		});
+	}
+	
+	/**
+	 * 查询数据的唯一性校验
+	 * @author yuanlei
+	 * @param map
+	 * @param flag
+	 */
+	private void chkUnique(HashMap<String, String> map, String flag) {
+		final String op_flag = flag;
+		Util.async.getCheckResult(Util.mapToJson(map), new AsyncCallback<String>() {
+
+			@Override
+			public void onFailure(Throwable caught) {
+				MSGUtil.sayError(caught.getMessage());
+			}
+
+			@Override
+			public void onSuccess(String result) {
+				if(!ObjUtil.isNotNull(result)) {
+					String msg = view.saveSFOrderItemAction.checkDetail();
+					if(msg.length() > 0){
+						MSGUtil.sayError(msg);
+					}else{
+						doOperation(op_flag);
+						//同时执行明细保存
+						view.saveSFOrderItemAction.doSave(false);
+					}
+				}
+				else {
+					MSGUtil.sayError(result);
+				}
+			}		
+		});
+	}
+	
+	/**
+	 * 执行插入或更新操作
+	 * @author yuanlei
+	 * @param op_flag
+	 */
+	private void doOperation(String op_flag) {
+		//setRefenence1Value();
+		if(op_flag.equals("M")) {                                  //--修改 
+			
+			//---设置日志信息
+			Map<String, String> select_map = Util.putRecordToModel(table.getRecord(view.hRow));   //获取修改前记录
+	        logList = new ArrayList<String>();
+	        //logList.add(Util.getUpdateLog(select_map, record, table.getDataSource().getAttribute("tableName")));  //拼装的描述内容
+	        logList.add(Util.getUpdateLog(select_map, record, table.getDataSource().getTableName()));  //拼装的描述内容
+			//---设置完毕
+			ArrayList<String> sqlList = new ArrayList<String>();
+			if(record != null) {
+				//record.put("TABLE", table.getDataSource().getAttribute("tableName"));
+				record.put("TABLE", table.getDataSource().getTableName());
+				//record.put("EDITWHO", LoginCache.getLoginUser().getUSER_ID());
+				String json = Util.mapToJson(record);
+				sqlList.add(json);
+			}
+			doUpdate(sqlList);
+		}
+		else if(op_flag.equals("A")) {                             //--插入		
+			if(record != null) {
+				record.put("TABLE", table.getDataSource().getTableName());
+				//record.put("TABLE", table.getDataSource().getAttribute("tableName"));
+				doInsert(record);
+//				Util.async.getTransNo(new AsyncCallback<String>() {
+//
+//					@Override
+//					public void onFailure(Throwable caught) {
+//					}
+//
+//					@Override
+//					public void onSuccess(String result) {
+//						record.put("REFENENCE1", result);
+//						form.setValue("REFENENCE1", result);
+//						//record.put("TABLE", table.getDataSource().getAttribute("tableName"));
+//						record.put("TABLE", table.getDataSource().getTableName());
+//						doInsert(record);
+//					}
+//				});
+			}
+		}
+	}
+	
+	private void convertNameToId(Map<String, String> map, Map<String, String> id_name) {
+		Object[] iter = id_name.keySet().toArray();
+		String key = "", value = "";
+		for(int i = 0; i < iter.length; i++) {
+			key = (String)iter[i];
+			value = id_name.get(key);
+			if((key.indexOf("_NAME") <= 0) || !key.substring(key.length() -5).equals("_NAME")) {
+				map.put(key, value);
+			}
+		}
+	}
+	/**
+	 * 多个验证
+	 * @author Lang
+	 * @return
+	 */
+	private String checks(){
+		String checkMsg = checkNotNullByBizTyp(); //按业务类型检查相关字段不为空
+//		if(null == checkMsg){
+//			checkMsg = checkDiscount();	//检查折扣是否合法
+//		}
+		
+		if(null == checkMsg){
+			checkMsg = ObjUtil.isNotNull(record.get("ODR_TIME"))?null:"[订单时间]不能为空!";
+			if(checkMsg != null){
+				return checkMsg;
+			}
+		}
+		return null == checkMsg ? null : checkMsg;
+	}
+	
+	private String checkTelPass(){
+		String checkMsg = checkTel(record.get("LOAD_TEL"), true); //检查发货方电话
+		if(checkMsg != null){
+			return "发货方"+checkMsg;
+		}
+		if(null == checkMsg){
+			checkMsg = checkTel(record.get("UNLOAD_TEL"), true); //检查收货方电话
+			if(checkMsg != null){
+				return "收货方"+checkMsg;
+			}
+		}
+		return checkMsg;
+	}
+	
+	/**
+	 * 按业务类型检查相关字段不为空
+	 * @author Lang
+	 * @return
+	 */
+	private String checkNotNullByBizTyp(){
+		if(ObjUtil.isNotNull(record.get("BIZ_TYP"))){ 
+    		if((record.get("BIZ_TYP").toString().equals("574037A56F7041428364041D1D4B2BA8") || 
+				record.get("BIZ_TYP").toString().equals("A801EE8F48DE4260A74C1C09FF9034D4"))){
+	        	if(!ObjUtil.isNotNull(record.get("PRE_LOAD_TIME"))){
+	        		return "业务类型为零担或冷运专运时,计划发货时间到不能为空!";
+	        	}
+    		}else if(record.get("BIZ_TYP").toString().equals("ADAEE2F25B39487FA778AC78065CE373")){
+    			String[] fields = {"LOAD_AREA_ID","LOAD_AREA_ID2","LOAD_ADDRESS",
+    					"UNLOAD_AREA_ID","UNLOAD_AREA_ID2","UNLOAD_ADDRESS"};
+    			for (String field : fields) {
+					if(!ObjUtil.isNotNull(record.get(field))){
+						return "冷运速配托运单时发货方收货方省市地址必填!";
+					}
+				}
+    		}
+        }
+		return null;
+	}
+	/**
+	 * 检查折扣是否合法
+	 * @author Lang
+	 * @return
+	 */
+//	@SuppressWarnings("unchecked")
+//	private String checkDiscount(){
+//		String regex = "(1(\\.[0]{0,2})?)|(0(\\.\\d{0,2}))";
+//		Map<String, Object> rec = form.getValues();
+//		Object discount = rec.get("DISCOUNT");
+//		if(!ObjUtil.isNotNull(discount)){
+//			discount = "1";
+//			record.put("DISCOUNT", "1");
+//		}
+//		String dis = discount.toString();
+//		if(!(dis == null || dis.matches(regex))){
+//			return "请输入正确的折扣格式且不能大于1";
+//		}
+//		return null;
+//	}
+	/**
+	 * 检查电话号码是否合法
+	 * @author Lang
+	 * @param checkValue 需要检查字段的值
+	 * @param nullCheck 是否检查空
+	 * @return
+	 */
+	private String checkTel(String checkValue, boolean nullCheck){
+//		String regex = "^[+86]?(?:(\\d{0,4}-?\\d{7,8}-?\\d{0,4})|(1[0-9]{10}))$";
+		if(!ObjUtil.isNotNull(checkValue)){
+			return nullCheck ? "联系电话必填" : null;
+		}
+//		if(!checkValue.matches(regex)){
+//			return "联系电话输入错误";
+//		}
+		return null;
+	}
+}

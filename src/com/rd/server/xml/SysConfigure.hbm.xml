@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+
+<hibernate-mapping>
+    <class name="com.rd.client.obj.system.SysConfigure" table="SYS_PARAM" >
+        <id name="ID">
+            <generator class="native"/>
+        </id>
+        <property name="CONFIG_CODE" type="string" />
+        <property name="DESCR" type="string" />
+        <property name="VALUE_INT" type="string" />
+        <property name="VALUE_STRING" type="string" />
+        <property name="UDF1" type="string" />
+        <property name="UDF2" type="string" />
+        <property name="UDF3" type="string" />
+        <property name="UDF4" type="string" />
+        <property name="ADDWHO" type="string" />
+        <property name="ADDTIME" type="string" />
+        <property name="EDITWHO" type="string" />
+        <property name="EDITTIME" type="string" />
+    </class>
+</hibernate-mapping>

@@ -1,0 +1,49 @@
+package com.rd.client.action.tms.track;
+
+
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+import com.smartgwt.client.widgets.menu.events.ClickHandler;
+import com.smartgwt.client.widgets.menu.events.MenuItemClickEvent;
+
+/**
+ * 车辆定位右键
+ * @author fanglm 
+ *
+ */
+public class GPSPositionAction implements ClickHandler {
+
+	private ListGrid table;
+	
+
+	public GPSPositionAction(ListGrid table) {
+		this.table = table;
+	}
+
+
+	@Override
+	public void onClick(MenuItemClickEvent event) {
+		ListGridRecord record = table.getSelectedRecord();
+		if (record == null)
+			return;
+		
+		if(!"已发运".equals(record.getAttribute("STATUS_NAME"))){
+			MSGUtil.sayError("操作失败！只能对【已发运】的作业单做车辆定位！");
+			return;
+		}
+		
+		
+		
+		String GPS_NO = record.getAttribute("GPS_NO");
+		
+		if(!ObjUtil.isNotNull(GPS_NO)){
+			MSGUtil.sayError("操作失败！车辆未安装GPS设备！");
+			return;
+		}else{
+			com.google.gwt.user.client.Window.open("http://202.102.108.26:17017/Login.aspx?company=sqyhwl&user=sqyhwl&psw=sqyhwl&keyid="+GPS_NO , "", "");
+		}
+	}
+
+}

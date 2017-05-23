@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+
+<hibernate-mapping>
+    <class name="com.rd.client.obj.system.SYS_USER" table="SYS_USER">
+        <id name="ID" column="ID" type="string">
+            <generator class="assigned"/>
+        </id>
+        <property name="USER_ID" type="string"></property>
+		<property name="USER_NAME" type="string"></property>
+		<property name="PASSWORD" type="string"></property>
+		<property name="DEFAULT_ORG_ID" type="string"></property>
+		<property name="USERGRP_ID" type="string"></property>
+		<property name="TEL" type="string"></property>
+		<property name="MAIL" type="string"></property>
+		<property name="DESCR" type="string"></property>
+		<property name="ACTIVE_FLAG" type="string"></property>
+		<property name="MODIFY_FLAG" type="string"></property>
+		<property name="UDF1" type="string"></property>
+		<property name="UDF2" type="string"></property>
+		<property name="ADDWHO" type="string"></property>
+		<property name="ADDTIME" type="string"></property>
+		<property name="EDITWHO" type="string"></property>
+		<property name="EDITTIME" type="string"></property>
+		<property name="CUR_STATUS" type="string"></property>
+		
+    </class>
+</hibernate-mapping>

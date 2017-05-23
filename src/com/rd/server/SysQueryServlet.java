@@ -1,0 +1,517 @@
+package com.rd.server;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.hibernate.Hibernate;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.transform.Transformers;
+import org.hibernate.type.Type;
+
+import com.google.gson.Gson;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.obj.system.SYS_USER;
+import com.rd.server.util.LoginContent;
+import com.rd.server.util.SQLUtil;
+import com.rd.server.util.SUtil;
+
+/**
+ * 系统管理下所有模块对应的SERVLET
+ * @author yuanlei
+ *
+ */
+@SuppressWarnings("serial")
+public class SysQueryServlet extends HttpServlet{
+    
+    private Query query;
+    private final int page_record = LoginContent.getInstance().pageSize;
+    
+	@SuppressWarnings("unchecked")
+	protected void doGet(HttpServletRequest req, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session =req.getSession();
+		session.setMaxInactiveInterval(24*60*60);
+		SYS_USER user = (SYS_USER)session.getAttribute("USER_ID");
+		String dsid = req.getParameter("ds_id");    //数据源ID
+		String flag = SUtil.iif(req.getParameter("OP_FLAG"),"");  //操作标记
+		SQLUtil sqlUtil = new SQLUtil(true);
+		if(dsid!=null && flag.equals(StaticRef.MOD_FLAG)){
+			//系统管理
+			response.setCharacterEncoding("utf-8");
+			PrintWriter p=response.getWriter();
+			if(user == null) {
+				p.print("404");
+				return;
+			}
+			String CUR_PAGE = (String) req.getParameter("CUR_PAGE");  //当前页码
+			int start_row = 0;  //开始行，从0开始
+			StringBuffer sf = null;
+			if(dsid.equals("SYS_PARAM")) {
+				//系统参数
+		        sf = new StringBuffer();
+		        sf.append(" select ");
+	            sf.append(sqlUtil.getColName("V_SYS_PARAM"));
+	            sf.append(" from V_SYS_PARAM");
+		        sf.append(" where 1=1 ");
+	            sf.append(sqlUtil.addALikeSQL("CONFIG_CODE||VALUE_INT||VALUE_STRING||DESCR", req.getParameter("FULL_INDEX")));	 //模糊查询配置方法
+	            sf.append(sqlUtil.addALikeSQL("CONFIG_CODE", req.getParameter("CONFIG_CODE")));   	                         //配置参数查询方法： 
+	            sf.append(sqlUtil.addALikeSQL("DESCR", req.getParameter("DESCR")));	      	                                 //描述查询方法      
+	            sf.append(sqlUtil.addALikeSQL("VALUE_STRING", req.getParameter("VALUE_STRING")));//参数字符串查询方法
+	            sf.append(sqlUtil.addFlagSQL("ENABLE_FLAG", req.getParameter("ENABLE_FLAG")));
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                       //通过自定义方式查询	
+		        query = sqlUtil.getQuery(sf.toString(),null,null)
+		        .addScalar("ID", Hibernate.STRING).addScalar("CONFIG_CODE", Hibernate.STRING).addScalar("VALUE_STRING", Hibernate.STRING)
+				.addScalar("DESCR", Hibernate.STRING).addScalar("VALUE_INT", Hibernate.INTEGER).addScalar("UDF1", Hibernate.STRING)
+				.addScalar("UDF2", Hibernate.STRING).addScalar("UDF3", Hibernate.STRING).addScalar("UDF4", Hibernate.STRING)
+				.addScalar("ENABLE_FLAG", Hibernate.YES_NO).addScalar("MODIFY_FLAG", Hibernate.YES_NO).addScalar("SYS_TYPE", Hibernate.STRING)
+				.addScalar("MODEL", Hibernate.STRING).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				if(SUtil.iif(CUR_PAGE, "0").equals("0")) {
+				    query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+		        else {
+		        	start_row = (Integer.parseInt(CUR_PAGE) - 1) * page_record;			   		        
+			        query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+			}
+			else if(dsid.equals("SYS_USER")){
+				//用户管理
+//				SQLUtil util = new SQLUtil(false);
+				String keys = sqlUtil.getColName("V_SYS_USER");
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(keys);
+				sf.append(" from V_SYS_USER ");
+				sf.append("WHERE 1=1 and user_id <> 'wpsadmin' ");
+				sf.append(sqlUtil.addALikeSQL("FULLINDEX", req.getParameter("CONTENT")));				//模糊配置参数
+				sf.append(sqlUtil.addALikeSQL("USER_ID", req.getParameter("USER_ID")));					//用户编号查询
+				sf.append(sqlUtil.addEqualSQL("ROLE_ID", req.getParameter("ROLE_ID")));                 //角色编号
+				sf.append(sqlUtil.addALikeSQL("USER_NAME", req.getParameter("USER_NAME")));				//用户姓名查询
+				sf.append(sqlUtil.addFlagSQL("ACTIVE_FLAG", req.getParameter("ENABLE_FLAG")));
+//				sf.append(sqlUtil.addALikeSQL("DEFAULT_ORG_ID", req.getParameter("USER_ORG_ID")));		//默认组织查询
+				if(ObjUtil.isNotNull(req.getParameter("USER_ORG_ID"))) {
+					if(ObjUtil.isNotNull(req.getParameter("C_ORG_FLAG")) && req.getParameter("C_ORG_FLAG").equals("true")) { //执行机构
+						sf.append(" and DEFAULT_ORG_ID");
+		            	sf.append(" IN ");
+		            	sf.append("    (SELECT ID ");
+		            	sf.append("     From BAS_ORG ");
+						sf.append("     Where id ='");
+						sf.append(req.getParameter("USER_ORG_ID"));
+						sf.append("'");
+						sf.append("or ORG_INDEX Like '%,"); //
+						sf.append(req.getParameter("USER_ORG_ID"));
+						sf.append(",%' ) ");
+					}
+					else {
+						sf.append(sqlUtil.addEqualSQL("DEFAULT_ORG_ID", req.getParameter("USER_ORG_ID")));
+					}
+				}
+				sf.append(ObjUtil.ifNull(req.getParameter("WHERE"),""));
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));	 
+	            sf.append(" order by addtime desc");
+	            HashMap<String,Type> map=new HashMap<String,Type>();
+	            map.put("ACTIVE_FLAG", Hibernate.YES_NO);
+	            //通过自定义方式查询	
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				if(SUtil.iif(CUR_PAGE, "0").equals("0")) {
+				    query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+		        else {
+		        	start_row = (Integer.parseInt(CUR_PAGE) - 1) * page_record;			   		        
+			        query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+			}
+			else if(dsid.equals("SYS_LIST_CONFIG")) {
+				//列表配置(左边)
+				if(ObjUtil.isNotNull(req.getParameter("VIEW_NAME"))) {
+					String keys = "ID,COLUMN_ID,FIELD_ID,FIELD_CNAME,FIELD_WIDTH,SHOW_SEQ,SHOW_FLAG,USER_ID,MODIFY_FLAG";
+					sf = new StringBuffer();
+					sf.append("select ");
+					sf.append(keys);
+					sf.append(" from V_LIST_FUNC where 1=1 ");
+					sf.append(sqlUtil.addEqualSQL("VIEW_NAME", req.getParameter("VIEW_NAME")));
+					sf.append(sqlUtil.addEqualSQL("FUNC_MODEL", req.getParameter("FUNC_MODEL")));
+					sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+		            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                                     //通过自定义方式查询	
+					sf.append(" order by SHOW_SEQ asc");
+					
+					query = sqlUtil.getQuery(sf.toString(),null,null)
+					.addScalar("ID", Hibernate.STRING).addScalar("COLUMN_ID", Hibernate.STRING).addScalar("FIELD_ID", Hibernate.STRING)
+					.addScalar("FIELD_CNAME", Hibernate.STRING).addScalar("FIELD_WIDTH", Hibernate.INTEGER)
+					.addScalar("SHOW_SEQ", Hibernate.STRING).addScalar("SHOW_FLAG", Hibernate.YES_NO).addScalar("MODIFY_FLAG",Hibernate.YES_NO).addScalar("USER_ID", Hibernate.STRING)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				}
+			}
+			else if(dsid.equals("SYS_CACHE_CONFIG")) {
+				//列表配置(右边)
+				if(ObjUtil.isNotNull(req.getParameter("VIEW_NAME"))) {
+					sqlUtil = new SQLUtil(false);
+					sf = new StringBuffer();
+					sf.append("select ID,FIELD_ID,FIELD_CNAME,FIELD_WIDTH from SYS_LIST_CONFIG where 1=1 ");
+					sf.append(sqlUtil.addEqualSQL("VIEW_NAME", req.getParameter("VIEW_NAME")));
+		            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                                     //通过自定义方式查询	
+					sf.append(" order by SHOW_SEQ asc");
+					query = sqlUtil.getQuery(sf.toString(),null,null)
+					.addScalar("ID", Hibernate.STRING).addScalar("FIELD_ID", Hibernate.STRING).addScalar("FIELD_CNAME", Hibernate.STRING)
+					.addScalar("FIELD_WIDTH", Hibernate.INTEGER)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				}
+			}
+			else if(dsid.equals("LIST_CONFIGNAME")) {
+				//配置名
+				sf = new StringBuffer();
+				sf.append("select distinct FUNC_MODEL,VIEW_NAME,FUNC_MODEL_NAME,USER_ID from v_listcfg_user");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                                     //通过自定义方式查询	
+				String view_name = sqlUtil.decode(req.getParameter("VIEW_NAME"));
+				if(ObjUtil.isNotNull(view_name)) {
+					sf.append(" and COLUMN_ID IN (SELECT ID FROM SYS_LIST_CONFIG WHERE VIEW_NAME = '");
+					sf.append(view_name);
+					sf.append("')");
+				}
+				sf.append(" order by USER_ID,FUNC_MODEL");
+				query = sqlUtil.getQuery(sf.toString(),null,null).addScalar("FUNC_MODEL", Hibernate.STRING).addScalar("FUNC_MODEL_NAME", Hibernate.STRING)
+				.addScalar("USER_ID", Hibernate.STRING).addScalar("VIEW_NAME", Hibernate.STRING).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("BAS_CODEPROP")) {
+				//数据字典(主表)
+				if(ObjUtil.ifNull(req.getParameter("OP_FLAG"),"").equals("M")) {
+					start_row = 0;
+					sf = new StringBuffer();
+			        sf.append("select t1.ID,t1.PROP_CODE,t1.NAME_C,t1.NAME_E,t1.BIZ_TYPE,t1.ENABLE_FLAG,t1.MODIFY_FLAG,t1.SHOW_SEQ,t1.PARENT_PROP_ID,t1.UDF1,t1.UDF2 from BAS_CODEPROP t1");
+			        sf.append(" where 1 = 1");
+			        sf.append(sqlUtil.addALikeSQL("PROP_CODE||NAME_C||NAME_E", req.getParameter("FULL_INDEX")));
+			        sf.append(sqlUtil.addLikeSQL("PROP_CODE", req.getParameter("PROP_CODE")));
+			        sf.append(sqlUtil.addLikeSQL("NAME_C", req.getParameter("NAME_C")));
+			        sf.append(sqlUtil.addLikeSQL("BIZ_TYPE", req.getParameter("BIZ_TYPE")));
+			        sf.append(sqlUtil.addFlagSQL("ENABLE_FLAG", req.getParameter("ENABLE_FLAG")));
+		            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                                     //通过自定义方式查询	
+			        sf.append(" order by t1.SHOW_SEQ ASC");
+		            query = sqlUtil.getQuery(sf.toString(),null,null).addScalar("ID", Hibernate.STRING).addScalar("PROP_CODE", Hibernate.STRING)
+		            		.addScalar("NAME_C", Hibernate.STRING).addScalar("NAME_E", Hibernate.STRING).addScalar("BIZ_TYPE", Hibernate.STRING)
+		            		.addScalar("ENABLE_FLAG", Hibernate.YES_NO).addScalar("MODIFY_FLAG", Hibernate.YES_NO).addScalar("SHOW_SEQ", Hibernate.STRING)
+		            		.addScalar("PARENT_PROP_ID", Hibernate.STRING).addScalar("UDF1", Hibernate.STRING).addScalar("UDF2", Hibernate.STRING)
+		            		.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+		            if(CUR_PAGE == null || CUR_PAGE.equals("0")) {
+			        	start_row = 0;
+					    query.setFirstResult(start_row);
+				        query.setMaxResults(page_record);
+			        }
+			        else {
+			        	start_row = (Integer.parseInt(CUR_PAGE) - 1) * page_record;			   		        
+				        query.setFirstResult(start_row);
+				        query.setMaxResults(page_record);
+			        }
+				}
+			}
+			else if(dsid.equals("BAS_CODES")) {
+				//系统管理->数据字典（包括二级窗口）
+				sf = new StringBuffer();
+				sf.append("select ID,CODE,NAME_C,NAME_E,SHOW_SEQ,ENABLE_FLAG,DEFAULT_FLAG,PROP_CODE,UDF1,UDF2,ADDTIME,ADDWHO from BAS_CODES");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("PROP_CODE", req.getParameter("PROP_CODE")));
+				sf.append(sqlUtil.decode(ObjUtil.ifNull(req.getParameter("WHERE"),"")));
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));                                                     //通过自定义方式查询	
+				sf.append(" order by SHOW_SEQ ASC");
+				query = sqlUtil.getQuery(sf.toString(),null,null).addScalar("ID", Hibernate.STRING).addScalar("CODE", Hibernate.STRING)	
+				.addScalar("NAME_C", Hibernate.STRING).addScalar("NAME_E", Hibernate.STRING).addScalar("SHOW_SEQ", Hibernate.STRING)
+				.addScalar("ENABLE_FLAG", Hibernate.YES_NO).addScalar("DEFAULT_FLAG", Hibernate.YES_NO).addScalar("PROP_CODE", Hibernate.STRING)
+				.addScalar("UDF1", Hibernate.STRING).addScalar("UDF2", Hibernate.STRING)
+				.addScalar("ADDTIME", Hibernate.DATE).addScalar("ADDWHO", Hibernate.STRING).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("V_USER_ORG_CUST")){
+				//用户对应客户关系表数据源
+				sf = new StringBuffer();
+				sf.append("select DISTINCT CUSTOMER_ID,CUSTOMER_CODE,CUSTOMER_NAME,USE_FLAG");
+				sf.append(" from V_USER_ORG_CUST");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+				sf.append(sqlUtil.addALikeSQL("CUSTOMER_CODE", req.getParameter("CUSTOMER_CODE")));
+				sf.append(sqlUtil.addALikeSQL("CUSTOMER_NAME", req.getParameter("CUSTOMER_NAME")));
+				sf.append(" order by use_flag desc");
+				query = sqlUtil.getQuery(sf.toString(),null,null).addScalar("CUSTOMER_CODE").addScalar("CUSTOMER_ID")
+					.addScalar("CUSTOMER_NAME").addScalar("USE_FLAG",Hibernate.YES_NO).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("V_USER_ORG_WHSE")){
+				//用户对应仓库关系表数据源
+				sf = new StringBuffer();
+				sf.append("select WHSE_CODE,WHSE_ID,USE_FLAG,WHSE_NAME,DEFAULT_FLAG ");
+				sf.append(" from V_USER_ORG_WHSE");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+				sf.append(sqlUtil.addALikeSQL("WHSE_CODE", req.getParameter("WHSE_CODE")));
+				sf.append(sqlUtil.addALikeSQL("WHSE_NAME", req.getParameter("WHSE_NAME")));
+				sf.append(" order by use_flag desc");
+				query = sqlUtil.getQuery(sf.toString(),null,null)
+					.addScalar("WHSE_ID").addScalar("WHSE_CODE").addScalar("WHSE_NAME").addScalar("USE_FLAG", Hibernate.YES_NO)
+					.addScalar("DEFAULT_FLAG", Hibernate.YES_NO)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+//			else if(dsid.equals("V_USER_ADDR")){
+//				//用户对应经销商关系表数据源
+//				//fanglm 2010-12-16
+//				sf = new StringBuffer();
+//				sf.append("select ID,USER_ID,ADDR_ID,ADDR_NAME,ADDRESS ");
+//				sf.append(" from V_USER_ADDR");
+//				sf.append(" where 1=1 ");
+//				sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+////				sf.append(" order by use_flag desc");
+//				query = sqlUtil.getQuery(sf.toString(),null,null).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+//			}
+			else if(dsid.equals("SYS_ROLE") || dsid.equals("SYS_ROLE1")){
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(sqlUtil.getColName("V_ROLE"));
+				sf.append(" from V_ROLE ");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addALikeSQL("FULL_INDEX", req.getParameter("FULL_INDEX")));				
+				sf.append(sqlUtil.addALikeSQL("ROLE_ID", req.getParameter("ROLE_ID")));					
+				sf.append(sqlUtil.addALikeSQL("ROLE_NAME", req.getParameter("ROLE_NAME")));
+				sf.append(sqlUtil.addFlagSQL("ENABLE_FLAG", req.getParameter("ENABLE_FLAG")));
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));	                            //通过自定义方式查询	
+				query = sqlUtil.getQuery(sf.toString(),null,null)
+					.addScalar("ID",Hibernate.STRING).addScalar("ROLE_ID").addScalar("ROLE_NAME").addScalar("ENABLE_FLAG", Hibernate.YES_NO)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("V_ROLE_USER")){
+				//角色对应客户关系表数据源
+				sf = new StringBuffer();
+				sf.append("select distinct ROLE_ID,USER_ID,USER_NAME FROM V_ROLE_USER WHERE 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("ROLE_ID", req.getParameter("ROLE_ID")));
+				query = sqlUtil.getQuery(sf.toString(),null,null)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("V_ROLE_USERGRP")){
+				sf = new StringBuffer();
+				sf.append("select ROLE_ID,USERGRP_ID,USERGRP_ID_NAME FROM V_ROLE_USERGRP WHERE 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("ID", req.getParameter("ROLE_ID")));
+				query = sqlUtil.getQuery(sf.toString(),null,null)
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			
+			else if(dsid.equals("U_BAS_CODES")){
+				sf = new StringBuffer();
+				sf.append(" SELECT ID,GRP_CODE,GRP_NAME,ORG_ID FROM SYS_USERGRP where 1 = 1 ");
+				sf.append(sqlUtil.addALikeSQL("GRP_CODE||GRP_NAME", req.getParameter("CONTENT")));
+				sf.append(sqlUtil.addLikeSQL("GRP_CODE", req.getParameter("GRP_CODE")));
+				sf.append(sqlUtil.addLikeSQL("GRP_NAME", req.getParameter("GRP_NAME")));
+				if(ObjUtil.isNotNull(req.getParameter("ORG_ID"))) {
+					if(ObjUtil.isNotNull(req.getParameter("C_ORG_FLAG")) && req.getParameter("C_ORG_FLAG").equals("true")) { //执行机构
+						sf.append(" and ORG_ID");
+		            	sf.append(" IN ");
+		            	sf.append("    (SELECT ID ");
+		            	sf.append("     From BAS_ORG ");
+						sf.append("     Where id ='");
+						sf.append(req.getParameter("ORG_ID"));
+						sf.append("'");
+						sf.append(" or ORG_INDEX Like '%,"); //
+						sf.append(req.getParameter("ORG_ID"));
+						sf.append(",%' ) ");
+					}
+					else {
+						sf.append(sqlUtil.addEqualSQL("ORG_ID", req.getParameter("ORG_ID")));
+					}
+				}
+				
+				query = sqlUtil.getQuery(sf.toString(),null,null)
+					.addScalar("ID",Hibernate.STRING).addScalar("GRP_CODE").addScalar("GRP_NAME")
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			
+			else if(dsid.equals("V_USERGROUP") ){
+				sf = new StringBuffer();
+				String u_id = "";
+				if(ObjUtil.isNotNull(req.getParameter("USERGRP_ID"))){
+					u_id = sqlUtil.decode(req.getParameter("USERGRP_ID"));
+				}
+					sf.append("select ID,ROLE_ID,ROLE_NAME,'Y' as USE_FLAG FROM V_ROLE_USERGRP WHERE USERGRP_ID ='");
+					sf.append(u_id);
+					sf.append("'");
+					sf.append("  union all ");
+					sf.append(" select ID,ROLE_ID,ROLE_NAME,'N' as USE_FLAG FROM SYS_ROLE where role_id not in(");
+					sf.append("select ROLE_ID FROM V_ROLE_USERGRP WHERE USERGRP_ID ='");
+					sf.append(u_id);
+					sf.append("')");
+
+					query = sqlUtil.getQuery(sf.toString(),null,null).addScalar("USE_FLAG",Hibernate.YES_NO)
+						.addScalar("ROLE_NAME").addScalar("ROLE_ID", Hibernate.STRING).addScalar("ID",Hibernate.STRING)
+						.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+					/**
+				}else{
+					sf.append(" select ");
+					sf.append(sqlUtil.getColName("V_ROLE"));
+					sf.append(" from V_ROLE ");
+					sf.append(" where 1=1 ");
+					query = curSession.createSQLQuery(sf.toString())
+					.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				}**/
+			}else if(dsid.equals("SYS_TIMER")){
+				Session curSession = LoginContent.getInstance().getSession();
+				sf = new StringBuffer();
+				sf.append("select * from sys_timer where 1=1 order by id");
+				query = curSession.createSQLQuery(sf.toString()).addScalar("ENABLE_FLAG",Hibernate.YES_NO)
+				.addScalar("ID").addScalar("TIMER_NAME", Hibernate.STRING).addScalar("TIMER",Hibernate.STRING)
+				.addScalar("RUN_TIME",Hibernate.STRING).addScalar("RUN_TIME2",Hibernate.STRING)
+				.addScalar("RUN_TIME1",Hibernate.STRING)
+				.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("V_PRINT_LOGS")){
+				//打印授权
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append("*");
+				sf.append(" from V_PRINT_LOGS ");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addALikeSQL("LOAD_NO", req.getParameter("LOAD_NO")));
+				sf.append(sqlUtil.addALikeSQL("SHPM_NO", req.getParameter("SHPM_NO")));				
+	            sf.append(sqlUtil.addCriteriaSQL(req.getParameter("operator"), req.getParameterValues("criteria")));	
+	            sf.append(" order by addtime desc");
+	            //通过自定义方式查询	
+				query = sqlUtil.getQuery(sf.toString(),null,null).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+				if(CUR_PAGE == null || CUR_PAGE.equals("0")) {
+		        	start_row = 0;
+				    query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+		        else {
+		        	start_row = (Integer.parseInt(CUR_PAGE) - 1) * page_record;			   		        
+			        query.setFirstResult(start_row);
+			        query.setMaxResults(page_record);
+		        }
+			}
+			else if(dsid.equals("SMS_MODEL")){   //短信设置
+				Session curSession = LoginContent.getInstance().getSession();
+				sf = new StringBuffer();
+				sf.append("select * from sms_model where 1=1 order by model_typ");
+				query = curSession.createSQLQuery(sf.toString()).addScalar("ENABLE_FLAG",Hibernate.YES_NO)
+				.addScalar("ID").addScalar("MODEL_TYP", Hibernate.STRING).addScalar("CONTENT",Hibernate.STRING)
+				.setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("SF_STATUS_CONFIG")) {  //业务日志设置
+				Session curSession = LoginContent.getInstance().getSession();
+				sf = new StringBuffer();
+		        sf.append("select ID,BIZ_TYP,STAT_CODE,NOTES_CODE,SHOW_SEQ,ENABLE_FLAG,STAT_CODE_NAME,NOTES_CODE_NAME from V_STATUS_CONFIG where 1=1 ");
+		        if(ObjUtil.isNotNull(req.getParameter("BIZ_TYP"))){
+		        	sf.append(" and BIZ_TYP = '");
+		        	sf.append(sqlUtil.decode(req.getParameter("BIZ_TYP")));
+		        	sf.append("'");
+		        }
+		        sf.append(" order by SHOW_SEQ asc");		        
+	            query = curSession.createSQLQuery(sf.toString()).addScalar("ID",Hibernate.STRING).addScalar("BIZ_TYP",Hibernate.STRING)
+	            .addScalar("STAT_CODE",Hibernate.STRING).addScalar("NOTES_CODE",Hibernate.STRING).addScalar("SHOW_SEQ",Hibernate.STRING)
+	            .addScalar("STAT_CODE_NAME",Hibernate.STRING).addScalar("NOTES_CODE_NAME",Hibernate.STRING)
+	            .addScalar("ENABLE_FLAG", Hibernate.YES_NO).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);//.addEntity(FUNCTION.class);
+			}else if(dsid.equals("SYS_USER_SYSTEM")){
+				//用户管理/系统信息
+				String keys = sqlUtil.getColName("SYS_USER_SYSTEM");
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(keys);
+				sf.append(" from SYS_USER_SYSTEM ");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+	            HashMap<String,Type> map=new HashMap<String,Type>();
+	            map.put("DEFAULT_FLAG", Hibernate.YES_NO);
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("SYS_USER_SYSTEM1")){
+				//用户管理/系统信息
+				if(!req.getParameter("ROLE_ID").equals(StaticRef.SUPER_ROLE)){
+					sf = new StringBuffer();
+					sf.append(" select t2.CODE,t2.NAME_C as PRI_SYSTEM from sys_user_system t1,bas_codes t2 ");
+					sf.append(" where t1.pri_system = t2.id and t2.prop_code = 'SYS_TYP'");
+					sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+				}
+				else {
+					sf = new StringBuffer();
+					sf.append(" select CODE,NAME_C as PRI_SYSTEM from BAS_CODES where PROP_CODE = 'SYS_TYP'");
+					sf.append(" order by SHOW_SEQ ASC");
+				}
+				query = sqlUtil.getQuery(sf.toString(),null,null).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("SYS_WARN_SETTING")){
+				//用户管理/系统信息
+				String keys = sqlUtil.getColName("SYS_WARN_SETTING");
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(keys);
+				sf.append(" from SYS_WARN_SETTING ");
+				sf.append(" where 1=1 ");
+				//sf.append(sqlUtil.addEqualSQL("USER_ID", req.getParameter("USER_ID")));
+	            HashMap<String,Type> map=new HashMap<String,Type>();
+	            map.put("ACTIVE_FLAG", Hibernate.YES_NO);
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("SYS_WARN_MAIL")){
+				String keys = sqlUtil.getColName("SYS_WARN_MAIL");
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(keys);
+				sf.append(" from SYS_WARN_MAIL ");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("SETT_ID", req.getParameter("SETT_ID")));
+	            HashMap<String,Type> map=new HashMap<String,Type>();
+	            map.put("ACTIVE_FLAG", Hibernate.YES_NO);
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			else if(dsid.equals("SYS_WARN_SMS")){
+				String keys = sqlUtil.getColName("SYS_WARN_SMS");
+				sf = new StringBuffer();
+				sf.append(" select ");
+				sf.append(keys);
+				sf.append(" from SYS_WARN_SMS ");
+				sf.append(" where 1=1 ");
+				sf.append(sqlUtil.addEqualSQL("SETT_ID", req.getParameter("SETT_ID")));
+	            HashMap<String,Type> map=new HashMap<String,Type>();
+	            map.put("ACTIVE_FLAG", Hibernate.YES_NO);
+				query = sqlUtil.getQuery(sf.toString(),keys,map).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+			}
+			if(ObjUtil.ifNull(CUR_PAGE,"1").equals("1")) {
+				ArrayList<String> recordList = sqlUtil.getRecordByQuery(sf.toString());
+				int count = Integer.parseInt(recordList.get(0));
+				int pages = 0;
+				if(count%page_record == 0){
+	    			pages = count/page_record;
+	    		}else{
+	    			pages = count/page_record + 1;
+	    		}
+				response.addCookie(new Cookie("TOTALROWS",recordList.get(0)));
+				response.addCookie(new Cookie("SQLWHERE",recordList.get(1)));
+				response.addCookie(new Cookie("TOTALPAGES",Integer.toString(pages)));
+			}
+			
+            List<HashMap<String, String>> object = query.list();
+	        Gson gson = new Gson();
+	        String content = gson.toJson(object);
+			p.print(content);
+			
+			/*if(ObjUtil.ifNull(CUR_PAGE,"1").equals("1")) {
+	            LoginContent.getInstance().setPageInfo(sqlUtil.getRecordByQuery(sf.toString()));
+			}*/
+			
+			LoginContent.getInstance().closeSession();
+			p.flush();
+			p.close();
+			p = null;
+			
+			//Log4j.info(StaticRef.SQL_LOG, sf.toString());
+			//SUtil.insertlog(StaticRef.ACT_FETCH, StaticRef.ACT_SUCCESS, user.getUSER_NAME(), user.getDEFAULT_ORG_ID_NAME());
+		}
+	}
+}

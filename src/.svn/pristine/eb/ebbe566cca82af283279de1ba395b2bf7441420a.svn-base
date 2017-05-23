@@ -1,0 +1,161 @@
+package com.rd.client.view.settlement;
+
+import com.rd.client.PanelFactory;
+import com.rd.client.action.tms.FeeWarnCalAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.TrsPrivRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPage;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.common.widgets.SGText;
+import com.rd.client.ds.settlement.FeeWarnDS;
+import com.rd.client.reflection.ClassForNameAble;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.SelectionStyle;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.SectionStackSection;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+@ClassForNameAble
+public class FeeWarnView extends SGForm implements PanelFactory {
+	private DataSource ds;
+	private SGTable table;
+	private Window searchWin;
+	private SGPanel searchForm=new SGPanel();
+	private SectionStack section;
+
+	/*public FeeWarnView(String id) {
+		super(id);
+	}*/
+
+	@Override
+	public Canvas getViewPanel() {
+		VLayout vlay=new VLayout();
+		privObj=LoginCache.getUserPrivilege().get(getFUNCID());
+		
+		ds=FeeWarnDS.getInstance("V_FEE_WARN","TMP_FEE_WARN");
+		table=new SGTable(ds,"100%","100%",false,true,false);
+		createTableList();
+		table.setSelectionType(SelectionStyle.SINGLE);
+		
+		section=new SectionStack();
+		section.setWidth("100%");
+		SectionStackSection listitem=new SectionStackSection(Util.TI18N.LISTINFO());
+		listitem.addItem(table);
+		listitem.setExpanded(true);
+		listitem.setControls(new SGPage(table,true).initPageBtn());
+		section.addSection(listitem);
+		
+		ToolStrip toolstrip=new ToolStrip();
+		createBtnWidget(toolstrip);
+		toolstrip.setWidth100();
+		toolstrip.setMembersMargin(2);
+		toolstrip.setAlign(Alignment.RIGHT);
+		
+		vlay.setMembers(toolstrip,section);
+		return vlay;
+	}
+	
+	private void createTableList(){
+		ListGridField DOC_TYP=new ListGridField("DOC_TYPE",Util.TI18N.DOC_TYP());
+		DOC_TYP.setHidden(true);
+		ListGridField DOC_TYP_NAME=new ListGridField("DOC_TYP_NAME",Util.TI18N.DOC_TYP(),80);
+		ListGridField DOC_NO=new ListGridField("DOC_NO",Util.TI18N.DOC_NO(),120);
+		ListGridField NOTES=new ListGridField("NOTES",Util.TI18N.NOTES(),280);
+		ListGridField ADDWHO=new ListGridField("ADDWHO",Util.TI18N.ADDWHO(),100);
+		
+		table.setFields(DOC_TYP,DOC_TYP_NAME,DOC_NO,NOTES,ADDWHO);
+	}
+	
+	@Override
+	public void createBtnWidget(ToolStrip strip) {
+		IButton searchButton=createBtn(StaticRef.FETCH_BTN);
+		searchButton.addClickHandler(new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				if(searchWin == null){
+					searchWin=new SearchWin(300,ds, createSearchForm(searchForm), section.getSection(0),null).getViewPanel();
+				}else{
+					searchWin.show();
+				}
+			}
+		});
+		
+		IButton feeButton=createUDFBtn("计费",StaticRef.ICON_CONFIRM,TrsPrivRef.FEEWARN_P1_01);
+		feeButton.addClickHandler(new FeeWarnCalAction(table));
+		
+		strip.setMembers(searchButton,feeButton);
+	}
+	
+	private DynamicForm createSearchForm(DynamicForm form){
+		form.setDataSource(ds);
+		form.setAutoFetchData(false);
+		form.setWidth100();
+		form.setHeight100();
+		
+		SGCombo DOC_TYP = new SGCombo("DOC_TYPE", Util.TI18N.DOC_TYP());
+		DOC_TYP.setColSpan(2);
+ 		Util.initComboValue(DOC_TYP, "BAS_CODES", "CODE", "NAME_C"," WHERE CODE='ODR_NO' OR CODE='SHPM_NO' OR CODE='LOAD_NO'");
+ 		DOC_TYP.setTitleOrientation(TitleOrientation.TOP);
+ 		
+ 		SGText DOC_NO=new SGText("DOC_NO",Util.TI18N.DOC_NO());
+ 		
+ 		SGText ADDTIME_FROM=new SGText("ADDTIME_FROM",Util.TI18N.ORD_ADDTIME_FROM());
+ 		Util.initDate(searchForm, ADDTIME_FROM);
+ 		SGText ADDTIME_TO=new SGText("ADDTIME_TO","到");
+ 		Util.initDate(searchForm, ADDTIME_TO);
+ 		
+ 		form.setItems(DOC_TYP,DOC_NO,ADDTIME_FROM,ADDTIME_TO);
+		return form;
+	} 
+
+	@Override
+	public void createForm(DynamicForm form) {
+		
+	}
+
+	
+
+	@Override
+	public void initVerify() {
+		
+	}
+
+	@Override
+	public void onDestroy() {
+		if(searchWin != null){
+			searchForm.destroy();
+			searchWin.destroy();
+		}
+	}
+
+	@Override
+	public Canvas createCanvas(String id,TabSet tabSet) {
+		FeeWarnView view = new FeeWarnView();
+		view.setFUNCID(id);
+		view.addMember(view.getViewPanel());
+		return view;
+	}
+
+	@Override
+	public String getCanvasID() {
+		// TODO Auto-generated method stub
+		return getID();
+	}
+
+}

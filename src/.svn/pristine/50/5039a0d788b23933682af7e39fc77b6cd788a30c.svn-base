@@ -1,0 +1,490 @@
+package com.rd.server.timer;
+
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.transform.Transformers;
+
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.server.util.Log4j;
+import com.rd.server.util.LoginContent;
+import com.rd.server.util.SUtil;
+
+
+/**
+ * U8接口功能实现类，数据交互操作
+ * @author fanglm
+ * @create time 2010-12-23 15:00
+ *
+ */
+public class SGTimerRun {
+	
+	protected static Configuration hibernateConfig;
+    protected static SessionFactory sessionFactory;
+    protected static Properties properties;
+    
+    protected static Configuration hibernateConfig2;
+    protected static Properties properties2;
+    protected final static ThreadLocal<Session> sessionThread = new ThreadLocal<Session>();
+    
+    private Query query;
+    private Query itemQuery;
+//    private Query rdQuery;
+    private Query skuQuery;
+    private Session session;
+    
+    private Connection conn;
+    private Statement stmt;
+    private ArrayList<String> excuteSqlList;
+	
+	private StringBuffer insertSQL ;
+	private StringBuffer insertServerSQL;
+	
+	private StringBuffer deleteSQL;
+	
+	
+	private static String jdbcName;
+	private static String dbURL;//test为数据库名
+	private static String userName;//sa为SQL用户名
+	private static String userPwd;//SQL密码
+	
+//	private static String OjdbcName;//ORACLE连接
+//	private static String OdbURL;//test为数据库名
+//	private static String OuserName;//sa为SQL用户名
+//	private static String OuserPwd;//SQL密码
+    /**
+     * 中间库配置文件
+     */
+    private static synchronized void createConfig() {
+        hibernateConfig = new Configuration();
+        Configuration config = hibernateConfig.configure("hibernate.cfg_u8.xml");
+        jdbcName = config.getProperty("connection.driver_class");
+        dbURL = config.getProperty("connection.url");
+        userName = config.getProperty("connection.username");
+        userPwd = config.getProperty("connection.password");
+        sessionFactory = config.buildSessionFactory();
+        
+//        hibernateConfig2 = new Configuration();
+//        Configuration o_con = hibernateConfig2.configure("hibernate.cfg.xml");
+//        OjdbcName = o_con.getProperty("connection.driver_class");
+//        OdbURL = o_con.getProperty("connection.url");
+//        OuserName = o_con.getProperty("connection.username");
+//        OuserPwd = o_con.getProperty("connection.password");
+        
+    }
+    
+	public void run() {
+		doSth();
+	}
+		
+	public String doSth(){
+		StringBuffer msg = new StringBuffer();
+		msg.append("连接数据库成功！\n");
+		try{
+			String result = SKU_CLS();
+			msg.append(result);
+			
+			//result = SKU();
+			//msg.append(result);
+			
+			//result = Address();
+			//msg.append(result);
+			
+			//result = customer();
+			//msg.append(result);
+			
+			result = orderHeader();
+			msg.append(result);
+			
+			result = orderItem();
+			msg.append(result);
+
+			
+			SUtil.execProcedure("U8_SG_SKU_CLS_PRO(?)");//货品分类
+			//SUtil.execProcedure("U8_SG_SKU_PRO(?)");//货品管理/
+			//SUtil.execProcedure("U8_SG_ADDRESS_PRO(?)");//地址点
+			execProcedure();//生成托运单
+//			SUtil.execProcedure("U8_SEND_CONFIRM(?)");//发货确认
+		}catch(Exception e){
+			e.printStackTrace();
+			Log4j.error(StaticRef.USER_LOG, e.getMessage());
+			return "接口服务器连接失败，请通知管理员！\n";
+		}
+		msg.append("处理完毕！\n");
+		System.out.println(msg.toString());
+		return msg.toString();
+	}
+    
+    /**
+     * 中间库session连接
+     * @return
+     */
+    public Session getSession() {
+    	if (hibernateConfig == null || sessionFactory.isClosed()) {
+            createConfig();
+        }
+    	session = sessionThread.get();
+    	if(session  ==  null || !session.isConnected() || !session.isOpen())  {
+    		//System.out.println("建立连接！************************************************************");
+    		session  =  sessionFactory.openSession();
+    		sessionThread.set(session);
+        }
+    	return session;
+    }
+    
+    public void closeSession() {
+        Session s = sessionThread.get();
+        if(s != null) {
+            s.close();
+        }
+        sessionThread.set(null);
+    }
+    
+    /**
+     * oracle 数据库操作
+     * @author fanglm
+     * @createtime 2011-01-06 16:12
+     * @param sql
+     * @throws ClassNotFoundException 
+     */
+    private boolean excuteListSQL(ArrayList<String> sql){
+    	boolean isSuccess = false;
+    	Connection conn = null;
+    	try {
+//    		Class.forName(OjdbcName);//加载驱动
+    		conn = LoginContent.getInstance().getConnection();
+	        stmt = conn.createStatement();
+			for (int i = 0; i < sql.size(); i++) {
+				stmt.execute(sql.get(i).toString());
+			}
+			isSuccess = true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			Log4j.error(StaticRef.USER_LOG, e.getMessage());
+			isSuccess = true;
+		}finally {
+			   try {
+	                if(stmt != null) {
+	                    stmt.close();
+	                    stmt = null;
+	                }
+	                if(conn != null) {
+	                    conn.close();
+	                    conn = null;
+	                }
+	            } catch (SQLException e) {
+	                e.printStackTrace();
+	                Log4j.error(StaticRef.USER_LOG, e.getMessage());
+	                isSuccess = true;
+	            }
+		}
+		return isSuccess;
+    }
+    
+    /**
+     * SQL Server 2005数据库操作
+     * @author lijun
+     * @param sql
+     */
+    private void excuteSQL(ArrayList<String> sql){
+    	try {
+    		Class.forName(jdbcName);//加载驱动
+    		conn = DriverManager.getConnection(dbURL,userName,userPwd);
+			stmt = conn.createStatement();
+			for(int i = 0 ; i< sql.size() ; i++){
+				stmt.executeUpdate(sql.get(i));
+			}
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			Log4j.error(StaticRef.USER_LOG, e.getMessage());
+		} catch (SQLException e) {
+			e.printStackTrace();
+			Log4j.error(StaticRef.USER_LOG, e.getMessage());
+		}finally {
+			   try {
+	                if(stmt != null) {
+	                    stmt.close();
+	                    stmt = null;
+	                }
+	                if(conn != null) {
+	                    conn.close();
+	                    conn = null;
+	                }
+	            } catch (SQLException e) {
+	                e.printStackTrace();
+	                Log4j.error(StaticRef.USER_LOG, e.getMessage());
+	            }
+		}
+    }
+    
+    /**
+     *  u8 数据库的SAP_ORDER_HEADER表
+     *  TMS 数据库的 SAP_ORDER_HEADER
+     *  SAP_ORDER_HEADER_BAK 备份表
+     *  @insertSQL 插入oracle的拼接SQL语句
+     *  @insertServerSQL 备份U8系统数据库的拼接SQL语句
+     *  @deleteSQL 删除U8中间库的临时表
+     */
+    @SuppressWarnings("unchecked")
+	private String orderHeader(){
+    	int count = 0;
+    	StringBuffer sql = new StringBuffer();
+    	StringBuffer headerID = new StringBuffer();
+    	ArrayList<String> sqlList = new ArrayList<String>();
+    	sql.append("select ID,CTYPE,CVOUCHTYPE,DLID,CDLCODE,DDATE,CCUSCODE,CSHIPADDRESS,CCUSPERSON,CCUSPHONE,CCUSHAND,BRETURNFLAG" +
+    			",COWHCODE,CIWHCODE,DMDATE,CMAKER,CADDCODE,CDELIVERYCODE,FH01_FHXX,CDEFINE6,CSAPSOCODE,CCUSCITY from SGDispatchList");
+    	//sql.append("_bak where id in (4446,4447)");
+    	
+    	query = getSession().createSQLQuery(sql.toString()).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+    	List<HashMap<String, Object>> object = query.list();
+    	
+    	session.flush();
+    	
+    	for(int i = 0; i<object.size(); i++){
+            int id = Integer.parseInt(object.get(i).get("ID")+"");
+            String ctype =	object.get(i).get("CTYPE").toString();
+            String cvouchtype = ObjUtil.ifObjNull(object.get(i).get("CVOUCHTYPE"),"").toString();
+            String dlid =	ObjUtil.ifObjNull(object.get(i).get("DLID"),"").toString();
+            String cdlcode = ObjUtil.ifObjNull(object.get(i).get("CDLCODE"),"").toString();
+            String ddate =	ObjUtil.ifObjNull(object.get(i).get("DDATE"),"").toString();
+            String ccuscode = ObjUtil.ifObjNull(object.get(i).get("CCUSCODE"),"").toString();
+            String cshipaddress = ObjUtil.ifObjNull(object.get(i).get("CSHIPADDRESS"),"").toString();
+            String ccusPerson = ObjUtil.ifObjNull(object.get(i).get("CCUSPERSON"),"").toString();
+            String ccusPhone = ObjUtil.ifObjNull(object.get(i).get("CCUSPHONE"),"").toString();
+            String ccusHand = ObjUtil.ifObjNull(object.get(i).get("CCUSHAND"),"").toString();
+            String breturnflag = ObjUtil.ifObjNull(object.get(i).get("BRETURNFLAG"),"").toString();
+            String cowhcode = ObjUtil.ifObjNull(object.get(i).get("COWHCODE"),"").toString();
+            String ciwhcode = ObjUtil.ifObjNull(object.get(i).get("CIWHCODE"),"").toString();
+            String dmdate = ObjUtil.ifObjNull(object.get(i).get("DMDATE"),"").toString();
+            String cmaker = ObjUtil.ifObjNull(object.get(i).get("CMAKER"),"").toString();
+            String caddCode = ObjUtil.ifObjNull(object.get(i).get("CADDCODE"),"").toString();
+            String cDeveryCode = ObjUtil.ifObjNull(object.get(i).get("CDELIVERYCODE"),"").toString();
+            String fhxx = ObjUtil.ifObjNull(object.get(i).get("FH01_FHXX"),"").toString();
+            String cDefine6 = ObjUtil.ifObjNull(object.get(i).get("CDEFINE6"),"").toString();
+            String CSAPSOCODE = ObjUtil.ifObjNull(object.get(i).get("CSAPSOCODE"),"").toString();
+            String CCUSCITY = ObjUtil.ifObjNull(object.get(i).get("CCUSCITY"),"").toString();
+            String returnFlag = "0";
+            if("false".equals(breturnflag)){
+            	returnFlag = "0";
+            }else if("true".equals(breturnflag)){
+            	returnFlag = "1";
+            }
+            insertSQL = new StringBuffer();
+            insertSQL.append(" insert into U8_SG_ORDER_HEADER(ID,CTYPE,CVOUCHTYPE,DLID,CDLCODE,DDATE,CCUSCODE,CSHIPADDRESS,BRETURNFLAG,COWHCODE,CIWHCODE,DMDATE,CMAKER,CCUSPERSON,CCUSPHONE,CCUSHAND,CADDCODE,CDEVERYCODE,FHXX,CSAPSOCODE,CCUSCITY,CDEFINE6)  values(");
+            insertSQL.append(id+",'"+ctype+"','"+cvouchtype+"','"+dlid+"','"+cdlcode
+           		          +"',to_timestamp('"+ddate+"','yyyy_mm_dd hh24:mi:ss.ff'),'"+ccuscode
+           		          +"','"+cshipaddress+"','" + returnFlag + "','"+cowhcode+"','"
+           		          +ciwhcode+"',to_timestamp('"+dmdate+"','yyyy_mm_dd hh24:mi:ss.ff'),'"+cmaker 
+           		          +"','"+ccusPerson +"','" + ccusPhone+"','"+ccusHand+ "','"+ caddCode +"','" + cDeveryCode + "','" + fhxx
+           		          + "','" + CSAPSOCODE + "','" + CCUSCITY
+           		          + "',to_timestamp('"+cDefine6+"','yyyy_mm_dd hh24:mi:ss.ff'))");
+            sqlList.add(insertSQL.toString());
+            
+            headerID.append(id+",");
+            
+            count ++ ;
+         }
+        
+        if(excuteListSQL(sqlList) && headerID.length() >= 1){
+        	excuteSqlList = new ArrayList<String>();
+            insertServerSQL = new StringBuffer();
+            insertServerSQL.append("insert into SGDispatchList_BAK(ID,CTYPE,CVOUCHTYPE,DLID,CDLCODE,DDATE,CCUSCODE,CSHIPADDRESS,CCUSPERSON,CCUSPHONE,CCUSHAND,BRETURNFLAG,COWHCODE,CIWHCODE,DMDATE,CMAKER,CADDCODE,CDELIVERYCODE,FH01_FHXX,CDEFINE6,CSAPSOCODE,CCUSCITY) " +
+            		"select ID,CTYPE,CVOUCHTYPE,DLID,CDLCODE,DDATE,CCUSCODE,CSHIPADDRESS,CCUSPERSON,CCUSPHONE,CCUSHAND,BRETURNFLAG,COWHCODE,CIWHCODE,DMDATE,CMAKER,CADDCODE,CDELIVERYCODE,FH01_FHXX,CDEFINE6,CSAPSOCODE,CCUSCITY from SGDispatchList where id in(" +
+            		headerID.substring(0, headerID.length()-1)+")");
+            
+            deleteSQL = new StringBuffer();
+          
+            deleteSQL.append("delete from SGDispatchList where id in ("+headerID.substring(0, headerID.length()-1)+")");
+//            excuteSqlList.add("set IDENTITY_INSERT DispatchList_BAK ON");//设置 IDENTITY_INSERT 值为 ON
+            excuteSqlList.add(insertServerSQL.toString());
+            excuteSqlList.add(deleteSQL.toString());
+            excuteSQL(excuteSqlList);
+        }
+        closeSession();
+		query = null;
+        return "获取双沟托运单数据" + count + "条。\n";
+    }
+    
+    /**
+     * U8接口订单明细处理
+     * @author lijun
+     */
+    @SuppressWarnings("unchecked")
+	private String orderItem(){
+    	
+    	int count=0;
+    	StringBuffer itemSQL = new StringBuffer();
+    	StringBuffer orderItemID = new StringBuffer();
+    	ArrayList<String> itemList = new ArrayList<String>();
+    	itemSQL.append("select iID,ID,CVOUCHTYPE,DLID,AUTOID,CINVCODE,CWHCODE,IQUANTITY,CBATCH,CFREE2,CSBVCODE,DBVDATE from sgDispatchLists");
+    	//itemSQL.append("_bak where id in (4446,4447)");
+    	itemQuery = getSession().createSQLQuery(itemSQL.toString()).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+    	List<HashMap<String,Object>>  itemObject = itemQuery.list();
+    	
+    	session.flush();
+    	
+        for(int i = 0 ; i< itemObject.size(); i++){
+        	String iId = ObjUtil.ifObjNull(itemObject.get(i).get("iID"),"").toString();
+        	String FID = ObjUtil.ifObjNull(itemObject.get(i).get("ID"),"").toString();
+        	String CVOUCHTYPE = ObjUtil.ifObjNull(itemObject.get(i).get("CVOUCHTYPE").toString(), "").toString();
+        	String DLID = ObjUtil.ifObjNull(itemObject.get(i).get("DLID"),"").toString();
+        	String AUTOID = ObjUtil.ifObjNull(itemObject.get(i).get("AUTOID"),"").toString();;
+        	String CINVCODE = ObjUtil.ifObjNull(itemObject.get(i).get("CINVCODE"),"").toString();
+        	String CWHCODE = ObjUtil.ifObjNull(itemObject.get(i).get("CWHCODE"),"").toString();
+        	String IQUANTITY = ObjUtil.ifObjNull(itemObject.get(i).get("IQUANTITY")," ").toString();
+        	String CBATCH = ObjUtil.ifObjNull(itemObject.get(i).get("CBATCH"),"").toString();
+        	String CFREE2 = ObjUtil.ifObjNull(itemObject.get(i).get("CFREE2"),"").toString();
+        	String CSBVCODE = ObjUtil.ifObjNull(itemObject.get(i).get("CSBVCODE"),"").toString();
+        	String DBVDATE = ObjUtil.ifObjNull(itemObject.get(i).get("DBVDATE"),"").toString();
+        	
+        	orderItemID.append(iId+",");
+        	
+        	insertSQL = new StringBuffer();
+        	insertSQL.append(" insert into U8_SG_ORDER_ITEM(ID,CVOUCHTYPE,DLID,AUTOID,CINVCODE" +
+        			",CWHCODE,IQUANTITY,CBATCH,CFREE2,FID,CSBVCODE,DBVDATE) values(");
+        	insertSQL.append(iId+",'"+CVOUCHTYPE+"','"+DLID+"','"+AUTOID+"','"+CINVCODE+"','"
+        			+CWHCODE+"','"+IQUANTITY+"','"+CBATCH+"','"+CFREE2+"',"+FID+",'"+CSBVCODE+"','"+DBVDATE+"')");
+        	
+        	itemList.add(insertSQL.toString());
+        	count ++;
+        	//System.out.println(insertSQL.toString());
+        }
+        
+        if(excuteListSQL(itemList) && orderItemID.length() > 1 ){
+        	excuteSqlList = new ArrayList<String>();	
+        	insertServerSQL = new StringBuffer();
+        	insertServerSQL.append("insert into SGDispatchLists_BAK(iID,ID,CVOUCHTYPE,DLID,AUTOID,CINVCODE,CWHCODE,IQUANTITY,CBATCH,CFREE2,CSBVCODE,DBVDATE) select * from SGDispatchLists where iId in(" +
+        				orderItemID.substring(0,orderItemID.length()-1)+")");
+        		
+        	deleteSQL = new StringBuffer();
+        	deleteSQL.append("delete from SGDispatchLists where iId in ("+orderItemID.substring(0,orderItemID.length()-1)+")");
+//        	excuteSqlList.add("set IDENTITY_INSERT DispatchLists_BAK ON");//设置 IDENTITY_INSERT 值为 ON
+        	excuteSqlList.add(insertServerSQL.toString());
+        	excuteSqlList.add(deleteSQL.toString());
+        	excuteSQL(excuteSqlList);
+        }
+        closeSession();
+        return "获取双沟托运单明细数据" + count + "条。\n";
+    }
+    
+    /**
+     * U8接口货品分类处理
+     * @author lijun
+     */
+    @SuppressWarnings("unchecked")
+    private String SKU_CLS(){
+    	int count = 0;
+    	StringBuffer sku_cls_SQL = new StringBuffer();
+    	StringBuffer sku_cls_ID = new StringBuffer();
+    	ArrayList<String> sqlList = new ArrayList<String>();
+		sku_cls_SQL.append(" select ID,CTYPE,CINVCCODE,CINVCNAME,DMDATE,CMAKER from SGInventoryClass ");
+		skuQuery = getSession().createSQLQuery(sku_cls_SQL.toString()).setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+    	List<HashMap<String, Object>> skuObject = skuQuery.list();
+    	
+    	session.flush();
+    	
+        for (int i = 0; i < skuObject.size(); i++) {
+        	String ID = ObjUtil.ifObjNull(skuObject.get(i).get("ID"),"").toString();
+        	String CTYPE = ObjUtil.ifObjNull(skuObject.get(i).get("CTYPE"),"").toString();
+        	String CINVCCODE = ObjUtil.ifObjNull(skuObject.get(i).get("CINVCCODE"),"").toString();
+        	String CINVCNAME = ObjUtil.ifObjNull(skuObject.get(i).get("CINVCNAME"),"").toString();
+        	String DMDATE = ObjUtil.ifObjNull(skuObject.get(i).get("DMDATE"),"").toString();
+        	String CMAKER = ObjUtil.ifObjNull(skuObject.get(i).get("CMAKER"),"").toString();
+        	
+        	DMDATE = "to_timestamp('" + DMDATE + "','yyyy-mm-dd hh24:mi:ss.ff')";
+		    
+        	sku_cls_ID.append(ID+",");
+        	insertSQL = new StringBuffer();
+        	insertSQL.append(" insert into U8_SG_SKU_CLS values( ");
+        	insertSQL.append(ID+","+CTYPE+",'"+CINVCCODE+"','"+CINVCNAME+"',"+DMDATE+",'"+CMAKER+"')");
+        	
+        	sqlList.add(insertSQL.toString());
+        	count  = count + 1;
+        
+        }
+        excuteListSQL(sqlList);
+        
+        if(sku_cls_ID.length() > 0){
+        	insertServerSQL = new StringBuffer();
+        	excuteSqlList = new ArrayList<String>();
+        	insertServerSQL.append("insert into SGInventoryClass_BAK(ID,CTYPE,CINVCCODE,CINVCNAME,DMDATE,CMAKER) select * from SGInventoryClass where id in(" +
+        			sku_cls_ID.substring(0,sku_cls_ID.length()-1)+")");
+        	deleteSQL = new StringBuffer();
+        	deleteSQL.append("delete from SGInventoryClass where id in ("+sku_cls_ID.substring(0,sku_cls_ID.length()-1)+")");
+//        	excuteSqlList.add("set IDENTITY_INSERT InventoryClass_BAK ON");//设置 IDENTITY_INSERT 值为 ON
+        	excuteSqlList.add(insertServerSQL.toString());
+        	excuteSqlList.add(deleteSQL.toString());
+        	//System.out.println(excuteSqlList.toString());
+        	excuteSQL(excuteSqlList);
+        }
+        closeSession();
+        return "获取双沟货品分类数据" + count + "条。\n";
+    }
+    
+    /**
+     * U8接口数据，托运单生成
+     * @author fanglm
+     * @createtime 2011-01-06 16:21
+     */
+    @SuppressWarnings("deprecation")
+	public void execProcedure(){
+    	String result = StaticRef.SUCCESS_CODE;
+		String sql = "{call " + "U8_SG_ALTER(?,?,?,?)" + "}";
+		Session session = LoginContent.getInstance().getSession();
+		Connection conn = null;
+		CallableStatement cs = null;
+		try{
+			conn = session.connection();
+			cs = conn.prepareCall(sql);
+			cs.registerOutParameter(1, Types.VARCHAR);
+			cs.registerOutParameter(2, Types.VARCHAR);
+			cs.registerOutParameter(3, Types.VARCHAR);
+			cs.registerOutParameter(4, Types.VARCHAR);
+			cs.execute();
+			result = cs.getString(1);
+			//System.out.println(result);
+		}catch (Exception ee) {
+			try{
+				result = "01" + ee.getMessage();
+				System.out.println(result);
+				Log4j.error(StaticRef.USER_LOG, ee.getMessage());
+				LoginContent.getInstance().closeSession();
+				session = null;
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+			ee.printStackTrace();
+		}
+		finally {
+			try {
+				if(cs != null) {
+					cs.close();
+				}
+				if(conn != null) {
+					conn.close();
+				}
+				if(session != null) {
+					LoginContent.getInstance().closeSession();
+					session = null;
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+    }
+    
+}

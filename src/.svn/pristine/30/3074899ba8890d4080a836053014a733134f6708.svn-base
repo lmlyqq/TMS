@@ -1,0 +1,48 @@
+package com.rd.client.action.base.gpseq;
+
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.view.base.BasGpsEqView;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+
+public class NewDetailAction implements ClickHandler{
+	
+	private BasGpsEqView view;
+	private SGTable table;
+	private SGTable gpsTable;
+	private int row;
+	private int initBtn =0;
+	
+	public NewDetailAction(SGTable gpsTable,SGTable table, BasGpsEqView view,int initBtn ) {
+		this.gpsTable = gpsTable;
+		this.view = view;
+		this.table = table;
+		this.initBtn = initBtn;
+	}
+	
+	@Override
+	public void onClick(ClickEvent event) {
+		if(view != null && initBtn == 0){
+			view.initAddBtn();
+		}
+		if(initBtn > 0){
+			view.initBtn(initBtn);
+		}
+		table.OP_FLAG = "A";
+		
+		if(view.record == null)
+			return;
+		
+		
+		if(ObjUtil.isNotNull(table)){
+			
+			if(ObjUtil.isNotNull(table.getSelection())){
+				table.startEditingNew();
+				row = table.getAllEditRows()[table.getAllEditRows().length - 1];
+				view.itemRow = row;
+			}
+			table.setEditValue(view.itemRow, "EQUIP_NO", gpsTable.getSelectedRecord().getAttribute("EQUIP_NO"));
+		}
+	}
+}

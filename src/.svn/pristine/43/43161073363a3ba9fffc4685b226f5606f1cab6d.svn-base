@@ -1,0 +1,396 @@
+package com.rd.server.util;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
+import org.apache.poi.hssf.usermodel.HSSFFont;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.hssf.util.HSSFCellUtil;
+import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.util.CellRangeAddress;
+
+/**
+ * 报表导出
+ * @author Lang
+ *
+ */
+public class CustomExportExcel {
+	private HSSFWorkbook workbook;
+	private HSSFSheet sheet;	
+	private HSSFCellStyle styleHeader;	//头行样式
+	private HSSFCellStyle styleRow;	//数据行样式
+	private OutputStream out;	//输出流
+	private List<?> dataList;	//初始数据集
+	private Map<Integer, Map<Integer, String>> headerDataList;	//头数据集
+	private Map<Integer, Map<Integer, Integer>> cellRangeList;	//需要合并单元格的集合
+	private String[] headers;	//字段名集合
+	private String[] fields;	//字段集合
+	private int dataStartRow;	//数据开始行索引
+	
+	private static final int COLUMN_NUM = 23;	//总列数
+	private static final int HEADER_NUM = 4;	//头行数
+	private static Map<Integer, Integer> columnTypeMap;
+	
+	static{
+		columnTypeMap = new HashMap<Integer, Integer>();
+		columnTypeMap.put(19, HSSFCell.CELL_TYPE_NUMERIC);
+		//numberColumnMap.put(18, HSSFCell.CELL_TYPE_NUMERIC);
+		columnTypeMap.put(21, HSSFCell.CELL_TYPE_NUMERIC);
+	}
+	
+	public CustomExportExcel(String headers, String fieldNames, List<?> dataList, OutputStream out){
+		this(headers, fieldNames, null, dataList, out);
+	}
+	
+	public CustomExportExcel(String headers, String fieldNames, Map<String, String> customMap, List<?> dataList, OutputStream out){
+		// 声明一个工作薄
+		workbook = new HSSFWorkbook();
+
+		// 生成一个表格
+		sheet = workbook.createSheet("sheet1");
+		sheet.setDefaultColumnWidth(15);
+		//创建一个样式用于HEADER行
+		styleHeader = createStyle(null, HSSFColor.SKY_BLUE.index, HSSFCellStyle.SOLID_FOREGROUND, HSSFCellStyle.ALIGN_CENTER, null, null);
+		styleHeader.setFont(createFont(HSSFColor.VIOLET.index, (short) 12, HSSFFont.BOLDWEIGHT_BOLD));
+		//创建一个样式用于数据行
+		styleRow = createStyle(null, HSSFColor.LIGHT_YELLOW.index, HSSFCellStyle.SOLID_FOREGROUND, HSSFCellStyle.ALIGN_CENTER, HSSFCellStyle.VERTICAL_CENTER, null);
+		styleRow.setFont(createFont(null, null, HSSFFont.BOLDWEIGHT_NORMAL));
+
+		this.dataList = dataList;
+		this.headers = headers.split(",");
+		this.fields = fieldNames.split(",");
+		this.out = out;
+		
+		initHeaderData(customMap);
+	}
+	
+	/**
+	 * 初始化头数据
+	 * @author Lang
+	 * @param headerDataList 数据集
+	 */
+	private void initHeaderData(Map<String, String> headerDataMap){
+		if(headerDataMap != null){
+			this.headerDataList = new HashMap<Integer, Map<Integer, String>>();
+			Map<Integer, String> rowDataMap = new HashMap<Integer, String>();
+			rowDataMap.put(0, "客户名称");	//客户名称
+			rowDataMap.put(2, headerDataMap.get("CUSTOMER_CNAME"));	//客户名称的值
+			rowDataMap.put(16, "电话");	//电话
+			rowDataMap.put(17, headerDataMap.get("CONT_TEL"));	//电话的值
+			this.headerDataList.put(0, rowDataMap);
+			rowDataMap = new HashMap<Integer, String>();
+			rowDataMap.put(0, "客户地址");	//客户地址
+			rowDataMap.put(2, headerDataMap.get("ADDRESS"));	//客户地址的值
+			rowDataMap.put(16, "传真");	//传真
+			rowDataMap.put(17, headerDataMap.get("CONT_FAX"));	//传真的值
+			this.headerDataList.put(1, rowDataMap);
+			rowDataMap = new HashMap<Integer, String>();
+			rowDataMap.put(0, "地区");	//地区
+			rowDataMap.put(1, headerDataMap.get("ORG_ENAME"));	//地区的值
+			rowDataMap.put(2, "月结帐号");	//月结帐号
+			rowDataMap.put(4, headerDataMap.get("CUSTOMER_CODE"));	//月结帐号的值
+			rowDataMap.put(7, "结算期间");	//结算期间
+			rowDataMap.put(9, headerDataMap.get("ODR_TIME"));	//结算期间的值
+			rowDataMap.put(16, "收账");	//收账
+			rowDataMap.put(17, headerDataMap.get("USER_ID"));	//收账的值
+			rowDataMap.put(19, "币别");	//币别
+			rowDataMap.put(21, "CNY");	//币别的值
+			this.headerDataList.put(2, rowDataMap);
+			rowDataMap = new HashMap<Integer, String>();
+			for (int i = 0; i < COLUMN_NUM; i++) {
+				String value = headers.length > i ? headers[i] : "";
+				rowDataMap.put(i, value);
+			}
+			this.headerDataList.put(3, rowDataMap);
+		}
+		
+		//初始化需要合并的单元格
+		if(cellRangeList == null){
+			cellRangeList = new HashMap<Integer, Map<Integer, Integer>>();
+		}
+		Map<Integer, Integer> crMap = new HashMap<Integer, Integer>();
+		crMap.put(0, 1);
+		crMap.put(2, 15);
+		crMap.put(17, 22);
+		cellRangeList.put(0, crMap);
+		cellRangeList.put(1, crMap);
+		crMap = new HashMap<Integer, Integer>();
+		crMap.put(2, 3);
+		crMap.put(4, 6);
+		crMap.put(7, 8);
+		crMap.put(9, 15);
+		crMap.put(17, 18);
+		crMap.put(19, 20);
+		crMap.put(21, 22);
+		cellRangeList.put(2, crMap);
+		
+	}
+	
+	/**
+	 * 初始化统计块数据
+	 * @author Lang
+	 * @param totalRow 统计块的起始行索引
+	 */
+	private void initTotalData(int totalRow){
+		if(cellRangeList == null){
+			cellRangeList = new HashMap<Integer, Map<Integer, Integer>>();
+		}
+		Map<Integer, Integer> crMap = new HashMap<Integer, Integer>();
+		crMap.put(0, 16);
+		crMap.put(19, 22);
+		cellRangeList.put(totalRow, crMap);
+		crMap = new HashMap<Integer, Integer>();
+		crMap.put(0, 18);
+		crMap.put(19, 22);
+		cellRangeList.put(totalRow+1, crMap);
+	}
+	
+	/**
+	 * 导出报表
+	 * @author Lang
+	 * @return
+	 */
+	public HSSFWorkbook exportExcel(){
+		fillHeader();
+		fillData(this.dataList);
+//		for (int j = 0; j < COLUMN_NUM; j++) {
+//			sheet.autoSizeColumn(j);
+//		}
+		fillTotalRow();
+//		try {
+//			this.workbook.write(out);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		return this.workbook;
+	}
+	
+	/**
+	 * 追加数据集
+	 * @author Lang
+	 * @param dataList 数据集合
+	 * @return
+	 */
+	public HSSFWorkbook addData(List<?> dataList){
+		fillData(dataList);
+		return this.workbook;
+	}
+	
+	/**
+	 * 填充报表头
+	 * @author Lang
+	 */
+	private void fillHeader(){
+		for (int i = 0; i < HEADER_NUM; i++) {
+			createRow(sheet.createRow(i), headerDataList.get(i), styleHeader);
+		}
+	}
+	
+	
+	
+	/**
+	 * 填充报表数据
+	 * @author Lang
+	 * @param dataList 数据集合
+	 */
+	@SuppressWarnings("unchecked")
+	private void fillData(List<?> dataList){
+		int startIndex = sheet.getLastRowNum()+1;
+		if(dataStartRow == 0)dataStartRow = startIndex+1;
+		for (int i = 0; i < dataList.size(); i++) {
+			createDataRow(sheet.createRow((i+startIndex)), (HashMap<String, String>)dataList.get(i), styleRow);
+			
+		}
+	}
+	
+	/**
+	 * 填充报表底部统计块
+	 * @author Lang
+	 */
+	private void fillTotalRow(){
+		int totalRow = sheet.getLastRowNum()+1;
+		initTotalData(totalRow);
+		HSSFRow totalRow1 = sheet.createRow(totalRow);
+		HSSFRow totalRow2 = sheet.createRow(totalRow+1);
+		Map<Integer, String> totalMap = new HashMap<Integer, String>();
+		totalMap.put(0, "小计");
+		createRow(totalRow1, totalMap, styleRow);
+		totalMap = new HashMap<Integer, String>();
+		totalMap.put(0, "应收金额");
+		HSSFCellStyle styleTotalRow = createStyle(null, HSSFColor.LIGHT_YELLOW.index, HSSFCellStyle.SOLID_FOREGROUND, HSSFCellStyle.ALIGN_LEFT, HSSFCellStyle.VERTICAL_CENTER, null);;
+		createRow(totalRow2, totalMap, styleTotalRow);
+		HSSFCell cell1 = totalRow1.getCell(17);
+//		HSSFCell cell2 = totalRow1.getCell(18);
+		HSSFCell cell3 = totalRow1.getCell(19);
+		HSSFCell cell4 = totalRow2.getCell(19);
+		cell1.setCellFormula("SUM(R"+dataStartRow+":R"+totalRow+")");
+		cell1.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+//		cell2.setCellFormula("SUM(S"+dataStartRow+":S"+totalRow+")");
+//		cell2.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		cell3.setCellFormula("SUM(T"+dataStartRow+":T"+totalRow+")");
+		cell3.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		cell3.setCellStyle(styleTotalRow);
+		cell4.setCellFormula("SUM(T"+dataStartRow+":T"+totalRow+")");
+		cell4.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+	}
+	
+	/**
+	 * 创建行并填入数据(只用于header)
+	 * @author Lang
+	 * @param row 行
+	 * @param rowData 行数据
+	 * @param style 样式
+	 */
+	private void createRow(HSSFRow row, Map<? extends Object, String> rowData, HSSFCellStyle style){
+		style = style == null ? styleRow : style;
+		int rowIndex = row.getRowNum();
+		int rowNum = row.getRowNum();
+		for (int i = 0; i < COLUMN_NUM; i++) {
+			if(rowIndex < 2 && ((i > 1 && i < 16) || i >16)){
+				HSSFCellStyle style1 = createStyle(null, HSSFColor.WHITE.index, HSSFCellStyle.SOLID_FOREGROUND, HSSFCellStyle.ALIGN_CENTER, null, null);
+				style1.setFont(createFont(HSSFColor.VIOLET.index, (short) 12, HSSFFont.BOLDWEIGHT_BOLD));
+				HSSFCellUtil.createCell(row, i, getValue(rowData.get(i)), style1);
+			}else{
+				HSSFCellUtil.createCell(row, i, getValue(rowData.get(i)), style);
+			}
+			
+		}
+		addMergedRegion(rowNum);
+	}
+	
+	/**
+	 * 创建行并填入数据
+	 * @author Lang
+	 * @param row 行
+	 * @param rowData 行数据
+	 * @param style	样式
+	 */
+	private void createDataRow(HSSFRow row, Map<? extends Object, String> rowData, HSSFCellStyle style){
+		style = style == null ? styleRow : style;
+		int rowNum = row.getRowNum();
+		for (int i = 0; i < COLUMN_NUM; i++) {
+			String key = fields.length > i ? fields[i] : "";
+			if(columnTypeMap.get(i) != null && columnTypeMap.get(i) == HSSFCell.CELL_TYPE_NUMERIC){
+				HSSFCell cell = row.createCell(i, columnTypeMap.get(i));
+				cell.setCellValue(getValueToDouble(rowData.get(key)));
+				cell.setCellStyle(style);
+			}else{
+				HSSFCellUtil.createCell(row, i, getValue(rowData.get(key)), style);
+			}
+		}
+		addMergedRegion(rowNum);
+	}
+	
+	/**
+	 * 创建合并单元格
+	 * @author Lang
+	 * @param rowNum 行索引
+	 */
+	private void addMergedRegion(Integer rowNum){
+		if(cellRangeList.get(rowNum) != null){
+			Map<Integer, Integer> crMap = cellRangeList.get(rowNum);
+			for (Map.Entry<Integer, Integer> entry : crMap.entrySet()) {
+				sheet.addMergedRegion(new CellRangeAddress(rowNum, rowNum, entry.getKey(), entry.getValue()));
+			}
+		}
+	}
+	
+	/**
+	 * 创建一个样式对象
+	 * @author Lang
+	 * @param bg 背景色
+	 * @param fg 前景色
+	 * @param fp 填充模式
+	 * @param align 左右对齐
+	 * @param valign 上下对齐
+	 * @param wrapped 不换行
+	 * @return
+	 */
+	private HSSFCellStyle createStyle(Short bg, Short fg, Short fp, Short align, Short valign, Boolean wrapped){
+		// 生成一个样式
+		HSSFCellStyle style = workbook.createCellStyle();
+
+		// 设置这些样式
+		if(bg != null)
+			style.setFillBackgroundColor(bg);	//背景色
+		if(fg != null)
+			style.setFillForegroundColor(fg);	//前景色
+		if(fp != null)
+			style.setFillPattern(fp);	//填充模式
+		style.setBorderBottom(HSSFCellStyle.BORDER_THIN);	
+		style.setBorderLeft(HSSFCellStyle.BORDER_THIN);
+		style.setBorderRight(HSSFCellStyle.BORDER_THIN);
+		style.setBorderTop(HSSFCellStyle.BORDER_THIN);
+		if(align != null)
+			style.setAlignment(align);	//对齐
+		if(wrapped != null)
+			style.setWrapText(wrapped);	//不换行
+		if(valign != null)
+			style.setVerticalAlignment(valign);	//横对齐
+		return style;
+	}
+	
+	/**
+	 * 创建一个字体对象
+	 * @author Lang
+	 * @param color 字体颜色
+	 * @param heightInPoints 字体大小（像素）
+	 * @param boldHeight 字体粗细
+	 * @return
+	 */
+	private HSSFFont createFont(Short color, Short heightInPoints, Short boldHeight){
+		HSSFFont font = workbook.createFont();
+		if(color != null)
+			font.setColor(color);
+		if(heightInPoints != null)
+			font.setFontHeightInPoints(heightInPoints);
+		if(boldHeight != null)
+			font.setBoldweight(boldHeight);		
+		return font;
+	}
+	
+	/**
+	 * 将NULL值转成空字符串
+	 * @author Lang
+	 * @param o 值
+	 * @return 返回转换后的值
+	 */
+	private String getValue(Object o){
+		if(o == null){
+			return "";
+		}
+		return o.toString();
+	}
+	
+	private Double getValueToDouble(Object o){
+		if(o == null){
+			return Double.valueOf(0);
+		}
+		return Double.valueOf(o.toString());
+	}
+	
+	/**
+	 * 将结果写入到文件
+	 * @author Lang
+	 * @param workbook 工作簿
+	 * @param file 目标文件
+	 */
+	public void writeFile(HSSFWorkbook workbook,File file){
+		try {
+			FileOutputStream outP = new FileOutputStream(file);
+			workbook.write(outP);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+}

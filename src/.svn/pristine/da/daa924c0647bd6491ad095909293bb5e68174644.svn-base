@@ -1,0 +1,136 @@
+package com.rd.client.action.settlement;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.ObjUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.view.settlement.SuplrFeeSettView;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.ValuesManager;
+import com.smartgwt.client.widgets.grid.ListGridRecord;
+
+/**
+ * 供应商费用结算--调度单展现--费用保存按钮
+ * @author fangliangmeng
+ *
+ */
+public class SavePayFeeAction implements ClickHandler {
+
+	private ValuesManager form;
+	
+	private SuplrFeeSettView view;
+	
+	private Map<String, String> record;
+	
+	private String op_flag;
+	
+	private String proName="SP_SETT_SAV_PAY_FEE(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+	private String load_no;
+	
+	public SavePayFeeAction(SuplrFeeSettView view,ValuesManager form){
+		this.view = view;
+		this.form = form;
+	}
+	
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public void onClick(ClickEvent event) {	
+		ListGridRecord rec = view.loadTable.getSelectedRecord();
+		if(rec != null) {
+			load_no = rec.getAttribute("LOAD_NO");
+		}
+		if(rec == null || !ObjUtil.isNotNull(load_no)) {
+			MSGUtil.sayError("未选择调度单!");
+			return;
+		}
+		op_flag = ObjUtil.ifNull(form.getValueAsString("OP_FLAG"), StaticRef.MOD_FLAG);
+        record = form.getValues(); 
+        record.remove("OP_FLAG");
+        
+        Util.async.execProcedure(getList(), proName, new AsyncCallback<String>() {
+			
+			@Override
+			public void onSuccess(String result) {
+				if(result.substring(0,2).equals(StaticRef.SUCCESS_CODE)){
+					MSGUtil.showOperSuccess();
+					
+					if(op_flag.equals("A")) {
+						ListGridRecord record = new ListGridRecord();
+						record.setAttribute("ID", result.substring(2));
+						form.setValue("ID", result.substring(2));
+						Util.updateToRecord(form, view.feeTable, record);   //将FORM的值更新到Record,用户操作成功时刷新和重定位数据
+						record.setAttribute("FEE_NAME",form.getItem("FEE_ID").getDisplayValue());
+						record.setAttribute("PAY_STAT_NAME","未核销");
+						ArrayList list = new ArrayList(Arrays.asList(view.feeTable.getRecords()));
+						list.add(0,record);
+						view.feeTable.setRecords((ListGridRecord[])list.toArray(new ListGridRecord[list.size()])); //wangjun
+						view.feeTable.redraw();
+						view.feeTable.selectRecord(record);	
+						form.setValue("OP_FLAG", StaticRef.MOD_FLAG);//wangjun 2010-12-8
+						
+						if(view != null){
+							view.initSaveBtn();
+						}
+					}
+					else {
+						Util.updateToRecord(form, view.feeTable, view.feeTable.getSelectedRecord());   //将FORM的值更新到Record,用户操作成功时刷新和重定位数据
+						//刷新选中的记录  //异常
+						view.feeTable.updateData(view.feeTable.getSelectedRecord());
+						view.feeTable.redraw();
+					}
+					
+				}else{
+					MSGUtil.sayError(result.substring(2));
+				}
+				
+				
+			}
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+	}
+	
+	private ArrayList<String> getList(){
+		
+		ArrayList<String> list= new ArrayList<String>();
+		if(op_flag.equals("A")) {
+			list.add(null);
+		}
+		else {
+			list.add(record.get("ID").toString());
+		}
+		list.add(load_no);
+		list.add(record.get("DOC_NO"));
+		list.add(record.get("FEE_ID"));
+		list.add(form.getItem("FEE_ID").getDisplayValue());
+		list.add(record.get("FEE_BAS"));
+		list.add(record.get("BAS_VALUE").toString());
+		list.add(String.valueOf(record.get("PRICE")));
+		list.add(ObjUtil.ifObjNull(record.get("DUE_FEE"),"0").toString());
+		list.add(ObjUtil.ifObjNull(record.get("PAY_FEE"),"0").toString());
+		if(ObjUtil.isNotNull(record.get("PRE_PAY_TIME"))) {
+			list.add(record.get("PRE_PAY_TIME").toString());
+		}
+		else {
+			list.add(null);
+		}
+		list.add(record.get("NOTES"));
+		list.add(op_flag);
+		list.add(LoginCache.getLoginUser().getUSER_ID());
+		
+		return list;
+	}
+
+}

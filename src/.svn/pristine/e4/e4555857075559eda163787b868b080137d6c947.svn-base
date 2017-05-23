@@ -1,0 +1,252 @@
+package com.rd.client.view.tms;
+
+import com.rd.client.common.action.CancelAction;
+import com.rd.client.common.action.DeleteAction;
+import com.rd.client.common.action.ExportAction;
+import com.rd.client.common.action.GetHintAction;
+import com.rd.client.common.action.NewAction;
+import com.rd.client.common.action.SaveAction;
+import com.rd.client.common.obj.LoginCache;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.SettPrivRef;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.rd.client.common.widgets.SGForm;
+import com.rd.client.common.widgets.SGPanel;
+import com.rd.client.common.widgets.SGTable;
+import com.rd.client.ds.tms.TmsChargeTypeDS;
+import com.rd.client.win.SearchWin;
+import com.smartgwt.client.data.DataSource;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.ListGridFieldType;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.Canvas;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.CheckboxItem;
+import com.smartgwt.client.widgets.form.fields.TextItem;
+import com.smartgwt.client.widgets.grid.ListGridField;
+import com.smartgwt.client.widgets.grid.events.RecordClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordClickHandler;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickEvent;
+import com.smartgwt.client.widgets.grid.events.RecordDoubleClickHandler;
+import com.smartgwt.client.widgets.layout.SectionStack;
+import com.smartgwt.client.widgets.layout.VLayout;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 运输管理-->费用种类
+ * @author wangjun
+ *
+ */
+public class TmsChargeTypeView extends SGForm{
+	
+		private DataSource ds;
+		private SGTable table;
+		private Window searchWin;
+		private SGPanel searchForm;
+		private SectionStack section;
+		
+		public TmsChargeTypeView(String id) {
+			super(id);
+		}
+
+		public Canvas getViewPanel() {
+
+			privObj = LoginCache.getUserPrivilege().get(getFUNCID());
+			ToolStrip toolStrip = new ToolStrip();//按钮布局
+			toolStrip.setAlign(Alignment.RIGHT);
+			
+			ds = TmsChargeTypeDS.getInstance("V_TRANS_CHARGE_TYPE","TRANS_CHARGE_TYPE");
+
+			table = new SGTable(ds, "100%", "70%");
+	        createListFields(table);
+			
+	        table.addRecordClickHandler(new RecordClickHandler() {
+				
+				@Override
+				public void onRecordClick(RecordClickEvent event) {
+					enableOrDisables(del_map, true);
+					
+				}
+			});
+	        
+	        table.addRecordDoubleClickHandler(new RecordDoubleClickHandler() {
+				
+				@Override
+				public void onRecordDoubleClick(RecordDoubleClickEvent event) {
+					enableOrDisables(add_map, false);
+					enableOrDisables(del_map, false);
+					enableOrDisables(save_map, true);
+					
+				}
+			});
+	        
+	        //创建按钮布局
+			createBtnWidget(toolStrip);
+			section = createSection(table, null, true, true);
+			initVerify();  
+			VLayout main = new VLayout();//定义全局布局
+			main.setWidth100();
+			main.setHeight100();
+			main.addMember(toolStrip);
+			main.addMember(section);
+			return main;
+
+		}
+
+		@Override
+		public void createForm(DynamicForm form) {
+			// TODO Auto-generated method stub
+
+		}
+
+		//布局列表信息按钮
+		private void createListFields(SGTable table) {
+			
+			ListGridField FEE_CODE = new ListGridField("FEE_CODE",Util.TI18N.FEE_CODE(),120);//费用代码
+			FEE_CODE.setTitle(ColorUtil.getRedTitle(Util.TI18N.FEE_CODE()));
+
+			ListGridField ENABLE_FLAG = new ListGridField("ENABLE_FLAG",Util.TI18N.ENABLE_FLAG(),50);
+			ENABLE_FLAG.setType(ListGridFieldType.BOOLEAN);
+			
+			ListGridField FEE_NAME = new ListGridField("FEE_NAME",ColorUtil.getRedTitle(Util.TI18N.FEE_ENAME()),130);//费用名称
+			
+			ListGridField HINT_CODE = new ListGridField("HINT_CODE",Util.TI18N.HINT_CODE(),52);
+			table.addEditorExitHandler(new GetHintAction(table));
+			FEE_CODE.addEditorExitHandler(new GetHintAction(table));
+			
+			ListGridField TRANS_FEE_TYP = new ListGridField("TRANS_FEE_TYP",Util.TI18N.TRANS_FEE_TYP(),120);//费用类别
+			Util.initCodesComboValue(TRANS_FEE_TYP, "TRANS_FEE_TYP");//BAS_CODE$TRANS_FEE_TYP
+			
+			ListGridField FEE_ATTR = new ListGridField("FEE_ATTR",Util.TI18N.FEE_ATTR(),100);//费用属性
+			Util.initCodesComboValue(FEE_ATTR, "FEE_ATTR");//BAS_CODE$FEE_ATTR
+			
+			ListGridField FEE_ITEM = new ListGridField("FEE_ITEM","正负项",50);//费用项 正负项
+			Util.initCodesComboValue(FEE_ITEM, "PLUS_MINUS");
+			
+			ListGridField SHOW_SEQ = new ListGridField("SHOW_SEQ",Util.TI18N.SHOW_SEQ(),52);//显示顺序
+		
+			ListGridField DFT_AMT = new ListGridField("DFT_AMT",Util.TI18N.DFT_AMT(),100);//默认金额
+			
+			table.setFields(FEE_CODE,ENABLE_FLAG,FEE_NAME,HINT_CODE,TRANS_FEE_TYP,FEE_ATTR,FEE_ITEM,SHOW_SEQ,DFT_AMT);
+		
+			
+		}
+		
+		
+		@Override
+		public void createBtnWidget(ToolStrip toolStrip) {
+			//组件按钮
+			toolStrip.setWidth("100%");
+			toolStrip.setHeight("20");
+			toolStrip.setPadding(2);
+			toolStrip.setSeparatorSize(12);
+			toolStrip.addSeparator();
+			IButton searchButton=createBtn(StaticRef.FETCH_BTN);
+			searchButton.addClickHandler(new ClickHandler() {
+				
+				@Override
+				public void onClick(ClickEvent event) {
+					// TODO Auto-generated method stub
+				   if(searchWin==null){
+					   searchForm=new SGPanel();
+						searchWin = new SearchWin(ds, createSerchForm(searchForm),
+								section.getSection(0)).getViewPanel();
+					}else{
+						searchWin.show();
+					}
+					
+				}
+			});
+			
+				//新增按钮
+				IButton newButton = createBtn(StaticRef.CREATE_BTN,SettPrivRef.CHARGETYP_P0_01);
+				newButton.addClickHandler(new NewAction(table,cache_map,this));
+	        
+				//保存按钮
+				IButton saveButton = createBtn(StaticRef.SAVE_BTN,SettPrivRef.CHARGETYP_P0_02);
+				saveButton.addClickHandler(new SaveAction(table,check_map,this));
+	        
+				//删除按钮
+				IButton delButton = createBtn(StaticRef.DELETE_BTN,SettPrivRef.CHARGETYP_P0_03);
+				delButton.addClickHandler(new DeleteAction(table));
+	        
+				//取消按钮
+				IButton canButton = createBtn(StaticRef.CANCEL_BTN,SettPrivRef.CHARGETYP_P0_04);
+	        	canButton.addClickHandler(new CancelAction(table,this));
+	        
+	        	//导出按钮
+	        	IButton expButton = createBtn(StaticRef.EXPORT_BTN,SettPrivRef.CHARGETYP_P0_05);
+	        	expButton.addClickHandler(new ExportAction(table, "addtime desc"));
+		    
+		        toolStrip.setMembersMargin(4);
+		        toolStrip.setMembers(searchButton, newButton, saveButton, delButton, canButton, expButton);
+		  
+		        add_map.put(SettPrivRef.CHARGETYP_P0_01, newButton);
+		        del_map.put(SettPrivRef.CHARGETYP_P0_03, delButton);
+		        save_map.put(SettPrivRef.CHARGETYP_P0_02, saveButton);
+		        save_map.put(SettPrivRef.CHARGETYP_P0_04, canButton);
+		        this.enableOrDisables(add_map, true);
+		        enableOrDisables(del_map, false);
+		        this.enableOrDisables(save_map, false);
+		}
+		
+		//查询窗口（二级窗口）
+		protected DynamicForm createSerchForm(DynamicForm form) {
+			form.setDataSource(ds);
+			form.setAutoFetchData(false);
+			form.setWidth100();
+			form.setCellPadding(2);
+			
+			//第一行：模糊查询
+			TextItem txt_global=new TextItem("FULL_INDEX", Util.TI18N.FUZZYQRY());
+			txt_global.setWidth(300);
+			txt_global.setColSpan(5);
+			txt_global.setEndRow(true);
+			txt_global.setTitleOrientation(TitleOrientation.TOP);
+			
+			//第二行:激活 （复选框）
+			CheckboxItem chk_enable = new CheckboxItem("ENABLE_FLAG", Util.TI18N.ENABLE_FLAG());	
+			chk_enable.setValue(true);
+			chk_enable.setTitleOrientation(TitleOrientation.TOP);
+		
+			
+			//费用类别
+			SGCombo TRANS_FEE_TYP=new SGCombo("TRANS_FEE_TYP", Util.TI18N.TRANS_FEE_TYP());
+			Util.initCodesComboValue(TRANS_FEE_TYP, "TRANS_FEE_TYP");//BAS_CODE$TRANS_FEE_TYP
+			//费用属性
+			SGCombo FEE_ATTR=new SGCombo("FEE_ATTR", Util.TI18N.FEE_ATTR());
+			Util.initCodesComboValue(FEE_ATTR, "FEE_ATTR");//BAS_CODE$FEE_ATTR
+			
+			form.setItems(txt_global,TRANS_FEE_TYP,FEE_ATTR,chk_enable);
+			return form;
+			
+		}
+
+		
+
+		@Override
+		public void initVerify() {
+			
+			check_map.put("TABLE", "TRANS_CHARGE_TYPE");	
+			check_map.put("FEE_CODE", StaticRef.CHK_NOTNULL + Util.TI18N.FEE_CODE());
+			check_map.put("FEE_CODE", StaticRef.CHK_UNIQUE+Util.TI18N.FEE_CODE());
+			check_map.put("FEE_NAME", StaticRef.CHK_NOTNULL + Util.TI18N.FEE_ENAME());
+			cache_map.put("ENABLE_FLAG", "Y");
+			cache_map.put("DFT_AMT", "0");
+			
+		}
+
+		@Override
+		public void onDestroy() {
+			if (searchWin != null) {
+				searchWin.destroy();
+				searchForm.destroy();
+			}
+		}
+	}

@@ -1,0 +1,114 @@
+package com.rd.client.common.util;
+
+/**
+ * 财务管理
+ * @author fanglm
+ *
+ */
+public class SettPrivRef {
+
+    //费用种类设置
+	public final static String CHARGETYP = "P09_F011";
+	public final static String CHARGETYP_P0 = "P09_F011_P0"; //按钮功能
+	public final static String CHARGETYP_P0_01 = "P09_F011_P0_01";//新增
+	public final static String CHARGETYP_P0_02 = "P09_F011_P0_02";//保存
+	public final static String CHARGETYP_P0_03 = "P09_F011_P0_03";//删除
+	public final static String CHARGETYP_P0_04 = "P09_F011_P0_04";//取消
+	public final static String CHARGETYP_P0_05 = "P09_F011_P0_05";//导出
+	
+	//供应商结算管理
+	public final static String SUPLRFEE = "P09_F022";
+	public final static String SUPLRFEE_P0 = "P09_F022_P0"; //按钮功能
+	public final static String SUPLRFEE_P0_01 = "P09_F022_P0_01";//保存
+	public final static String SUPLRFEE_P0_02 = "P09_F022_P0_02";//删除
+	public final static String SUPLRFEE_P0_03 = "P09_F022_P0_03";//确认对账
+	public final static String SUPLRFEE_P0_04 = "P09_F022_P0_04";//取消对账
+	public final static String SUPLRFEE_P0_05 = "P09_F022_P0_05";//审核
+	public final static String SUPLRFEE_P0_06 = "P09_F022_P0_06";//取消审核
+	public final static String SUPLRFEE_P0_07 = "P09_F022_P0_07";//打回
+	public final static String SUPLRFEE_P0_08 = "P09_F022_P0_08";//导出
+	public final static String SUPLRFEE_P1 = "P09_F022_P1";//右键权限
+	public final static String SUPLRFEE_P1_01 = "P09_F022_P1_01";//全选同一作业单
+	public final static String SUPLRFEE_P1_02 = "P09_F022_P1_02";//全选同一车
+	public final static String SUPLRFEE_P1_03 = "P09_F022_P1_03";//RDC费用结算
+	public final static String SUPLRFEE_P1_04 = "P09_F022_P1_04";//序列号排序
+	
+	public final static String SUPLRFEE_P2 = "P09_F022_P2"; //按调度单展现
+	public final static String SUPLRFEE_P2_01 = "P09_F022_P2_01";//新增
+	public final static String SUPLRFEE_P2_02 = "P09_F022_P2_02";//保存
+	public final static String SUPLRFEE_P2_03 = "P09_F022_P2_03";//删除
+	public final static String SUPLRFEE_P2_04 = "P09_F022_P2_04";//取消
+	
+	public final static String SUPLRFEE_P3 = "P09_F022_P3"; //按作业单展现
+	public final static String SUPLRFEE_P3_01 = "P09_F022_P3_01";//新增
+	public final static String SUPLRFEE_P3_02 = "P09_F022_P3_02";//保存
+	public final static String SUPLRFEE_P3_03 = "P09_F022_P3_03";//删除
+	public final static String SUPLRFEE_P3_04 = "P09_F022_P3_04";//取消
+	
+	//客户费用结算
+	public final static String CUSTOMERFEE = "P09_F021";
+	public final static String CUSTOMERFEE_P0 = "P09_F021_P0"; //按钮功能
+	public final static String CUSTOMERFEE_P0_01 = "P09_F021_P0_01";//新增
+	public final static String CUSTOMERFEE_P0_02 = "P09_F021_P0_03";//保存
+	public final static String CUSTOMERFEE_P0_03 = "P09_F021_P0_02";//删除
+	public final static String CUSTOMERFEE_P0_04 = "P09_F021_P0_04";//取消
+	public final static String CUSTOMERFEE_P0_05 = "P09_F021_P0_05";//确认收款
+	public final static String CUSTOMERFEE_P0_06 = "P09_F021_P0_06";//取消收款
+	public final static String CUSTOMERFEE_P0_07 = "P09_F021_P0_07";//确认审核
+	public final static String CUSTOMERFEE_P0_08 = "P09_F021_P0_08";//取消审核
+	
+	
+	public final static String CUSTOMERFEE_P0_09 = "P09_F021_P0_09";//导出
+	public final static String CUSTOMERFEE_P0_10 = "P09_F021_P0_10";//核销
+	public final static String CUSTOMERFEE_P0_11 = "P09_F021_P0_11";//取消核销
+	public final static String CUSTOMERFEE_P0_12 = "P09_F021_P0_12";//生成结算单
+	
+	public final static String SETTLE = "P09_F023";
+	public final static String SETTLE_P0 ="P09_F023_P0";// 按钮功能
+	
+	public final static String SETTLE_P0_11 ="P09_F023_P0_11";// 核销新增功能
+	public final static String SETTLE_P0_12 ="P09_F023_P0_12";// 核销保存功能
+	public final static String SETTLE_P0_13 ="P09_F023_P0_13";// 核销删除功能
+	public final static String SETTLE_P0_14 ="P09_F023_P0_14";// 核销取消功能
+	//public final static String SETTLE_P0_15 ="P09_F023_P0_15";// 生成结算单按钮
+	
+	
+	public final static String BASE_TARIFF = "P09_F012";//标准报价
+	public final static String BASE_TARIFF_P0 ="P09_F012_P0";// 按钮功能
+	public final static String BASE_TRAIFF_P0_11 = "P09_F012_P0_11";
+	public final static String BASE_TRAIFF_P0_12 = "P09_F012_P0_12";
+	public final static String BASE_TRAIFF_P0_13 = "P09_F012_P0_13";
+	public final static String BASE_TRAIFF_P0_14 = "P09_F012_P0_14";
+	
+    //计费协议
+	public final static String CUSTOM_RATE = "P09_F013";
+	public final static String CUSTOM_RATE_P1 = "P09_F013_P1"; //按钮功能
+	public final static String CUSTOM_RATE_P1_01 = "P09_F013_P1_01";//新增
+	public final static String CUSTOM_RATE_P1_02 = "P09_F013_P1_02";//保存
+	public final static String CUSTOM_RATE_P1_03 = "P09_F013_P1_03";//删除
+	public final static String CUSTOM_RATE_P1_04 = "P09_F013_P1_04";//取消
+	public final static String CUSTOM_RATE_P1_05 = "P09_F013_P1_05";//导出
+	public final static String CUSTOM_RATE_P1_06 = "P09_F013_P1_06";//新增
+	public final static String CUSTOM_RATE_P1_07 = "P09_F013_P1_07";//新增
+	public final static String CUSTOM_RATE_P1_08 = "P09_F013_P1_08";//保存
+	public final static String CUSTOM_RATE_P1_09 = "P09_F013_P1_09";//删除
+	
+	public final static String SUPLR_RATE = "P09_F014";
+	public final static String SUPLR_RATE_P1 = "P09_F014_P1"; //按钮功能
+	public final static String SUPLR_RATE_P1_01 = "P09_F014_P1_01";//新增
+	public final static String SUPLR_RATE_P1_02 = "P09_F014_P1_02";//保存
+	public final static String SUPLR_RATE_P1_03 = "P09_F014_P1_03";//删除
+	public final static String SUPLR_RATE_P1_04 = "P09_F014_P1_04";//取消
+	public final static String SUPLR_RATE_P1_05 = "P09_F014_P1_05";//导出
+	public final static String SUPLR_RATE_P1_06 = "P09_F014_P1_06";//新增
+	public final static String SUPLR_RATE_P1_07 = "P09_F014_P1_07";//新增
+	public final static String SUPLR_RATE_P1_08 = "P09_F014_P1_08";//保存
+	public final static String SUPLR_RATE_P1_09 = "P09_F014_P1_09";//删除
+	
+	//店配线路结算清单
+	public final static String SHOP_ROUTE_MANIFEST = "P09_F028";
+	public final static String SHOP_ROUTE_MANIFEST_P1 = "P09_F028_P1"; //按钮功能
+	public final static String SHOP_ROUTE_MANIFEST_P1_01 = "P09_F028_P1_01";//确认收款
+	public final static String SHOP_ROUTE_MANIFEST_P1_02 = "P09_F028_P1_02";//取消收款
+	public final static String SHOP_ROUTE_MANIFEST_P1_03 = "P09_F028_P1_03";//导出
+}

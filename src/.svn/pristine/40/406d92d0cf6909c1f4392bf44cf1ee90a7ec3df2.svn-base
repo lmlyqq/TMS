@@ -1,0 +1,164 @@
+package com.rd.client.view.tms;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.rd.client.common.obj.FormUtil;
+import com.rd.client.common.util.ColorUtil;
+import com.rd.client.common.util.MSGUtil;
+import com.rd.client.common.util.StaticRef;
+import com.rd.client.common.util.Util;
+import com.rd.client.common.widgets.SGCombo;
+import com.smartgwt.client.types.Alignment;
+import com.smartgwt.client.types.TitleOrientation;
+import com.smartgwt.client.widgets.IButton;
+import com.smartgwt.client.widgets.Window;
+import com.smartgwt.client.widgets.events.ClickEvent;
+import com.smartgwt.client.widgets.events.ClickHandler;
+import com.smartgwt.client.widgets.form.DynamicForm;
+import com.smartgwt.client.widgets.form.fields.TextAreaItem;
+import com.smartgwt.client.widgets.grid.ListGrid;
+import com.smartgwt.client.widgets.layout.VStack;
+import com.smartgwt.client.widgets.tab.TabSet;
+import com.smartgwt.client.widgets.toolbar.ToolStrip;
+
+/**
+ * 托运单管理--订单取消二级窗口
+ * @author Administrator
+ *
+ */
+public class OrderCanlWin extends Window{
+	
+	DynamicForm form = new DynamicForm();
+	public static interface CloseHandler{
+		void onClosed(String message);
+	}
+	private List<CloseHandler> closeHandlers=new ArrayList<CloseHandler>();
+	private ListGrid table;
+	public void addCloseHandler(CloseHandler handler){
+		closeHandlers.add(handler);
+	}
+	public void removeHandler(CloseHandler handler){
+		closeHandlers.remove(handler);
+	}
+	public void fireCloseEvent(String message){
+		for(CloseHandler handler:closeHandlers)
+			handler.onClosed(message);
+	} 
+	
+	public OrderCanlWin(final ListGrid table){
+		this.table = table;
+		setTitle("订单信息");
+		setTop("25%");
+		setLeft("25%");
+        setWidth(610);
+        setHeight(400);
+        setCanDragResize(true);	
+        
+		ToolStrip toolStrip = new ToolStrip();
+		toolStrip.setAlign(Alignment.RIGHT);
+		toolStrip.setWidth100();
+		toolStrip.setHeight(28);
+		toolStrip.setPadding(2);
+		toolStrip.setSeparatorSize(12);
+		IButton confirmButton = new IButton(Util.BI18N.CONFIRM());
+		confirmButton.setIcon(StaticRef.ICON_SAVE);
+		confirmButton.setAutoFit(true);
+		toolStrip.addMember(confirmButton);
+		IButton cancelButton = new IButton(Util.BI18N.CANCEL());
+		cancelButton.setIcon(StaticRef.ICON_CANCEL);
+		cancelButton.setAutoFit(true);
+		toolStrip.addMember(cancelButton);
+		
+		TabSet tabSet = new TabSet();   
+		
+		VStack halfway = new VStack();
+		halfway.setWidth("75%");
+        halfway.setHeight("15%");
+        halfway.setPadding(30);
+        
+	    createTab1(halfway);
+	    tabSet.addPeer(halfway);
+		
+	    confirmButton.addClickHandler(new ClickHandler(){
+
+			@Override
+			public void onClick(ClickEvent event) {
+				ArrayList<String> sqlList = new ArrayList<String>();
+				StringBuffer sf = new StringBuffer();
+				sf.append("update TRANS_ORDER_HEADER set CANCEL_REASON = ");
+				sf.append("'"+form.getField("CANCEL_REASON").getValue()+"',");
+				sf.append("CANCEL_NOTES = ");
+				sf.append("'"+form.getField("CANCEL_NOTES").getValue()+"',");
+				sf.append("STATUS = '90',");
+				sf.append("STATUS_NAME = '已关闭'");
+				sf.append(" where ODR_NO = ");
+				sf.append("'"+table.getSelectedRecord().getAttribute("ODR_NO")+"'");
+				sqlList.add(sf.toString());
+				Util.async.excuteSQLList(sqlList, new AsyncCallback<String>() {
+
+					@Override
+					public void onFailure(Throwable caught) {
+						MSGUtil.sayError("订单取消失败");
+					}
+
+					@Override
+					public void onSuccess(String result) {
+						MSGUtil.showOperSuccess();
+						table.getSelectedRecord().setAttribute("STATUS_NAME","已关闭");
+						table.getSelectedRecord().setAttribute("STATUS","90");
+						table.redraw();
+						hide();
+					}
+					
+				});
+			}
+	    	
+	    });
+	    cancelButton.addClickHandler(new ClickHandler() {
+
+			@Override
+			public void onClick(ClickEvent event) {
+				if(form != null){
+					form.clearValues();
+//					form.editNewRecord();
+				}
+			}
+			
+		});
+	    
+	    
+	    addItem(toolStrip);
+	    addItem(tabSet);
+		draw();
+		
+	}
+	
+	private void createTab1(VStack canvas) {
+		
+		createComboForm(form);
+		canvas.addMember(form);
+	}
+	
+	private void createComboForm(DynamicForm form) {
+		form.setWidth100();
+		form.setNumCols(8);
+		form.setHeight(280);
+		form.setTitleWidth(110);
+		
+		SGCombo CANCEL_REASON = new SGCombo("CANCEL_REASON", ColorUtil.getRedTitle("取消原因"));
+		Util.initCodesComboValue(CANCEL_REASON, "CLOSE_REASON");
+		CANCEL_REASON.setTitleOrientation(TitleOrientation.LEFT);
+		
+		TextAreaItem CANCEL_NOTES = new TextAreaItem("CANCEL_NOTES","原因描述");
+		CANCEL_NOTES.setStartRow(true);
+		CANCEL_NOTES.setColSpan(4);
+		CANCEL_NOTES.setHeight(50);
+		CANCEL_NOTES.setWidth(FormUtil.longWidth);
+		CANCEL_NOTES.setTitleOrientation(TitleOrientation.LEFT);
+		
+		form.setItems(CANCEL_REASON,CANCEL_NOTES);
+	}
+	
+}
